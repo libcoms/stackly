@@ -1,0 +1,6 @@
+[Unit]
+Description=stackly: резервная копия базы
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'mkdir -p /var/backups/stackly && sqlite3 /var/lib/stackly/stackly.db ".backup /var/backups/stackly/stackly-$(date +%%F).db" && find /var/backups/stackly -name "stackly-*.db" -mtime +14 -delete'
