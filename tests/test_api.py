@@ -293,7 +293,8 @@ class ContentTest(ServerCase):
         self.assertEqual(st, 200, r)
         pid = r['id']
         self.assertTrue(pid.startswith('u'))
-        p = next(x for x in self.content(Client(self.base))['problems'] if x['id'] == pid)
+        self.assertEqual(self.content(Client(self.base))['problems'], [])     # гостю задачи не отдаём
+        p = next(x for x in self.content(s)['problems'] if x['id'] == pid)
         self.assertGreaterEqual(p['num'], 101)
         self.assertEqual((p['answer'], p['builtin']), ('42', False))
         # второй учитель не может править чужую, автор — может
@@ -334,6 +335,20 @@ class ContentTest(ServerCase):
         a.call('POST', '/content/lesson/reset', {'kind': 'ege', 'key': 5})
         self.assertEqual(self.content(a)['lessons']['ege'], {})
 
+    def test_guest_sees_no_problems_or_writeups(self):
+        t, a = self.user('teacher'), self.user('admin')
+        t.call('POST', '/content/problem', self.P)
+        a.call('POST', '/content/lesson', {'kind': 'ege', 'key': 7, 'data': {'title': 'Карточка', 'theory': 'Секретный разбор'}})
+        a.call('POST', '/content/lesson', {'kind': 'py', 'key': 3, 'data': {'title': 'Тема', 'text': 'Открытый текст'}})
+        g = self.content(Client(self.base))
+        self.assertEqual(g['problems'], [])
+        self.assertEqual(g['lessons']['ege']['7']['title'], 'Карточка')            # карточка на главной
+        self.assertNotIn('theory', g['lessons']['ege']['7'])                       # а разбор — нет
+        self.assertEqual(g['lessons']['py']['3']['text'], 'Открытый текст')        # учебник Python открыт
+        self.assertTrue(self.content(t)['problems'])
+        for kind, key in (('ege', 7), ('py', 3)):
+            a.call('POST', '/content/lesson/reset', {'kind': kind, 'key': key})
+
     def test_media(self):
         import base64
         t, s = self.user('teacher'), self.user('student')
@@ -349,6 +364,38 @@ class ContentTest(ServerCase):
         svg = base64.b64encode(b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').decode()
         self.assertEqual(t.call('POST', '/media', {'type': 'image/svg+xml', 'data': svg})[0], 400)
         self.assertEqual(t.call('POST', '/media', {'type': 'image/png', 'data': svg})[0], 400)
+
+
+class ContentAccessTest(ServerCase):
+    """Методичка, шпаргалка и банк задач — только после входа."""
+    def fetch(self, c, headers=None):
+        req = urllib.request.Request(self.base + '/content/ege.js', headers=dict(headers or {}))
+        if c.cookie:
+            req.add_header('Cookie', c.cookie)
+        try:
+            r = urllib.request.urlopen(req, timeout=10)
+        except urllib.error.HTTPError as e:
+            r = e
+        return r.status, r.headers, r.read()
+
+    def test_guest_gets_401(self):
+        st, _, body = self.fetch(Client(self.base))
+        self.assertEqual(st, 401)
+        self.assertNotIn(b'window.BANK', body)
+
+    def test_user_gets_content_and_loses_it_after_logout(self):
+        c, _ = self.register()
+        st, h, body = self.fetch(c)
+        self.assertEqual(st, 200)
+        self.assertTrue(h['Content-Type'].startswith('text/javascript'))
+        self.assertIn('private', h['Cache-Control'])
+        self.assertIn(b'window.STACKLY_CONTENT = true', body)
+        st, _, body = self.fetch(c, {'If-None-Match': h['ETag']})
+        self.assertEqual((st, body), (304, b''))
+        cookie = c.cookie
+        c.call('POST', '/auth/logout', {})
+        c.cookie = cookie                                   # старая cookie после выхода не работает
+        self.assertEqual(self.fetch(c, {'If-None-Match': h['ETag']})[0], 401)
 
 
 if __name__ == '__main__':
