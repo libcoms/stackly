@@ -31,5 +31,6 @@ jobs:
           sed -e "s#DOMAIN#example.com#g" -e "s#SSL_CERT#$T/c.pem#g" -e "s#SSL_KEY#$T/k.pem#g" -e '/http2 on;/d' \
               -e '/listen \[::\]/d' -e 's/listen 80;/listen 18080;/' -e 's/listen 443 ssl;/listen 18443 ssl;/' \
             deploy/nginx-stackly.conf > "$T/site.conf"
-          printf 'events {}\nhttp { include /etc/nginx/mime.types; include %s/site.conf; }\n' "$T" > "$T/nginx.conf"
+          # server_tokens off; часто уже стоит в главном nginx.conf — проверяем, что конфиг сайта его не дублирует
+          printf 'events {}\nhttp { server_tokens off; include /etc/nginx/mime.types; include %s/site.conf; }\n' "$T" > "$T/nginx.conf"
           sudo nginx -t -c "$T/nginx.conf"
