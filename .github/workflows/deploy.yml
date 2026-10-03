@@ -1,0 +1,81 @@
+name: Deploy
+
+# После каждого изменения в main: тесты → копирование файлов на сервер → deploy/update.sh.
+# Нужны секреты репозитория (Settings → Secrets and variables → Actions):
+#   DEPLOY_HOST         адрес сервера, например 194.67.74.213
+#   DEPLOY_USER         пользователь SSH (root или пользователь с sudo без пароля)
+#   DEPLOY_SSH_KEY      приватный SSH-ключ для входа на сервер
+#   DEPLOY_KNOWN_HOSTS  вывод команды  ssh-keyscan -H <адрес сервера>  — защита от подмены сервера
+# Пока секретов нет, деплой пропускается без ошибки.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -v
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      HOST: ${{ secrets.DEPLOY_HOST }}
+      USER_NAME: ${{ secrets.DEPLOY_USER }}
+    steps:
+      - name: Проверка секретов
+        id: cfg
+        run: |
+          if [ -z "$HOST" ] || [ -z "$USER_NAME" ]; then
+            echo "::notice::Секреты DEPLOY_* не заданы — деплой пропущен"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.ready == 'true'
+
+      - name: Ключ SSH
+        if: steps.cfg.outputs.ready == 'true'
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          if [ -z "$KNOWN" ]; then echo "::error::Не задан секрет DEPLOY_KNOWN_HOSTS"; exit 1; fi
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+
+      - name: Выкладка
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          # файлы собираются во временную папку и подменяют прошлую версию целиком, затем update.sh
+          tar czf - --exclude=.git --exclude=.github . | \
+            ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=yes "$USER_NAME@$HOST" '
+              set -e
+              D="$HOME/stackly-deploy"
+              rm -rf "$D.new" && mkdir -p "$D.new" && tar xzf - -C "$D.new"
+              rm -rf "$D" && mv "$D.new" "$D"
+              if [ "$(id -u)" = 0 ]; then bash "$D/deploy/update.sh"; else sudo -n bash "$D/deploy/update.sh"; fi
+            '
+
+      - name: Проверка сайта
+        if: steps.cfg.outputs.ready == 'true'
+        run: |
+          ssh -i ~/.ssh/id_deploy "$USER_NAME@$HOST" 'curl -fsS http://127.0.0.1:8090/api/health'

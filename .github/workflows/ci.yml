@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Синтаксис Python и shell-скриптов
+        run: |
+          python -m py_compile app/stackly_api.py
+          for f in deploy/*.sh; do bash -n "$f"; done
+      - name: Тесты API
+        run: python -m unittest discover -s tests -v
+      - name: Проверка конфига nginx
+        run: |
+          sudo apt-get install -y -q nginx >/dev/null
+          T=$(mktemp -d)
+          openssl req -x509 -nodes -newkey rsa:2048 -days 1 -subj /CN=t -keyout "$T/k.pem" -out "$T/c.pem" 2>/dev/null
+          # http2 on; понимает nginx ≥ 1.25, на раннере версия старше — эту строку в проверке убираем;
+          # IPv6 и порты 80/443 на раннере могут быть недоступны — проверяем на высоких портах
+          sed -e "s#DOMAIN#example.com#g" -e "s#SSL_CERT#$T/c.pem#g" -e "s#SSL_KEY#$T/k.pem#g" -e '/http2 on;/d' \
+              -e '/listen \[::\]/d' -e 's/listen 80;/listen 18080;/' -e 's/listen 443 ssl;/listen 18443 ssl;/' \
+            deploy/nginx-stackly.conf > "$T/site.conf"
+          printf 'events {}\nhttp { include /etc/nginx/mime.types; include %s/site.conf; }\n' "$T" > "$T/nginx.conf"
+          sudo nginx -t -c "$T/nginx.conf"

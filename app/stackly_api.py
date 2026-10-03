@@ -86,17 +86,34 @@ def sha(token: str) -> str:
 
 # ---------------------------------------------------------------- ограничение попыток
 _hits, _hits_lock = {}, threading.Lock()
+_HITS_TTL = 3600          # самое длинное окно среди лимитов
+_hits_swept = 0.0
 
 def too_many(key: str, limit: int, window: int) -> bool:
     now = time.time()
     with _hits_lock:
-        q = [t for t in _hits.get(key, []) if now - t < window]
-        _hits[key] = q
+        q = [t for t in _hits.get(key, ()) if now - t < window]
+        if q:
+            _hits[key] = q
+        else:
+            _hits.pop(key, None)   # пустые ключи не храним — иначе перебор адресов почты раздувает память
         return len(q) >= limit
 
 def hit(key: str):
+    global _hits_swept
+    now = time.time()
     with _hits_lock:
-        _hits.setdefault(key, []).append(time.time())
+        _hits.setdefault(key, []).append(now)
+        if now - _hits_swept > 300:          # раз в 5 минут выбрасываем устаревшие записи
+            _hits_swept = now
+            for k in [k for k, q in _hits.items() if now - q[-1] > _HITS_TTL]:
+                del _hits[k]
+
+def check_new_password(pw: str, email: str):
+    if len(pw) < 8 or len(pw) > 200:
+        raise ApiError(400, 'weak_password', 'Пароль — от 8 символов')
+    if pw.lower() in (email, email.split('@')[0]) or len(set(pw)) < 4:
+        raise ApiError(400, 'weak_password', 'Пароль слишком простой')
 
 # ---------------------------------------------------------------- почта
 def send_reset_mail(to: str, name: str, link: str):
@@ -164,7 +181,12 @@ class Handler(BaseHTTPRequestHandler):
     def body(self):
         if not (self.headers.get('Content-Type') or '').startswith('application/json'):
             raise ApiError(415, 'bad_type', 'Ожидается JSON')
-        n = int(self.headers.get('Content-Length') or 0)
+        try:
+            n = int(self.headers.get('Content-Length') or 0)
+        except ValueError:
+            n = -1
+        if n < 0:
+            raise ApiError(400, 'bad_length', 'Некорректный запрос')
         if n > MAX_BODY:
             raise ApiError(413, 'too_large', 'Слишком большой запрос')
         try:
@@ -180,6 +202,8 @@ class Handler(BaseHTTPRequestHandler):
             return
         origin = self.headers.get('Origin')
         if origin and origin.rstrip('/') != ORIGIN:
+            raise ApiError(403, 'bad_origin', 'Запрос с чужого сайта')
+        if self.headers.get('Sec-Fetch-Site') == 'cross-site':
             raise ApiError(403, 'bad_origin', 'Запрос с чужого сайта')
 
     def token(self):
@@ -260,10 +284,7 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, 'bad_email', 'Проверьте адрес почты')
         if not 1 <= len(name) <= 60:
             raise ApiError(400, 'bad_name', 'Укажите имя — от 1 до 60 символов')
-        if len(pw) < 8 or len(pw) > 200:
-            raise ApiError(400, 'weak_password', 'Пароль — от 8 символов')
-        if pw.lower() in (email, email.split('@')[0]) or len(set(pw)) < 4:
-            raise ApiError(400, 'weak_password', 'Пароль слишком простой')
+        check_new_password(pw, email)
         hit('reg:' + ip)
         try:
             cur = db().execute('INSERT INTO users (email, name, pw_hash, created) VALUES (?,?,?,?)',
@@ -312,13 +333,15 @@ class Handler(BaseHTTPRequestHandler):
     def reset(self):
         d = self.body()
         tok, pw = str(d.get('token', '')), str(d.get('password', ''))
-        if len(pw) < 8 or len(pw) > 200:
-            raise ApiError(400, 'weak_password', 'Пароль — от 8 символов')
-        r = db().execute('SELECT * FROM resets WHERE token_hash = ? AND used = 0 AND expires > ?',
+        r = db().execute('SELECT r.user_id, u.email FROM resets r JOIN users u ON u.id = r.user_id '
+                         'WHERE r.token_hash = ? AND r.used = 0 AND r.expires > ?',
                          (sha(tok), int(time.time()))).fetchone()
         if not r:
             raise ApiError(400, 'bad_token', 'Ссылка устарела или уже использована. Запросите новую')
-        db().execute('UPDATE resets SET used = 1 WHERE token_hash = ?', (sha(tok),))
+        check_new_password(pw, r['email'])
+        # одна ссылка сработала — остальные письма этого пользователя больше не действуют
+        db().execute('UPDATE resets SET used = 1 WHERE user_id = ?', (r['user_id'],))
+        db().execute('DELETE FROM resets WHERE expires < ?', (int(time.time()) - 86400,))
         db().execute('UPDATE users SET pw_hash = ? WHERE id = ?', (hash_password(pw), r['user_id']))
         db().execute('DELETE FROM sessions WHERE user_id = ?', (r['user_id'],))   # выходим на всех устройствах
         u = db().execute('SELECT * FROM users WHERE id = ?', (r['user_id'],)).fetchone()
@@ -327,11 +350,9 @@ class Handler(BaseHTTPRequestHandler):
     def change_password(self):
         u = self.current_user()
         d = self.body()
-        if not check_password(str(d.get('old', '')), u['pw_hash']):
-            raise ApiError(400, 'bad_credentials', 'Текущий пароль указан неверно')
+        self.check_own_password(u, str(d.get('old', '')), 'Текущий пароль указан неверно')
         new = str(d.get('new', ''))
-        if len(new) < 8 or len(new) > 200:
-            raise ApiError(400, 'weak_password', 'Новый пароль — от 8 символов')
+        check_new_password(new, u['email'])
         db().execute('UPDATE users SET pw_hash = ? WHERE id = ?', (hash_password(new), u['id']))
         tok = self.token()
         db().execute('DELETE FROM sessions WHERE user_id = ? AND token_hash != ?', (u['id'], sha(tok or '')))
@@ -340,10 +361,17 @@ class Handler(BaseHTTPRequestHandler):
     def delete_account(self):
         u = self.current_user()
         d = self.body()
-        if not check_password(str(d.get('password', '')), u['pw_hash']):
-            raise ApiError(400, 'bad_credentials', 'Пароль указан неверно')
+        self.check_own_password(u, str(d.get('password', '')), 'Пароль указан неверно')
         db().execute('DELETE FROM users WHERE id = ?', (u['id'],))
         self.send_json(200, {'ok': True}, [self.session_cookie('', 0)])
+
+    def check_own_password(self, u, pw, message):
+        key = f'pw:{u["id"]}'
+        if too_many(key, 8, 600):
+            raise ApiError(429, 'rate_limited', 'Слишком много попыток. Подождите 10 минут')
+        if not check_password(pw, u['pw_hash']):
+            hit(key)
+            raise ApiError(400, 'bad_credentials', message)
 
     def get_progress(self):
         u = self.current_user()

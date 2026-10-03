@@ -114,8 +114,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @media (max-width: 900px) {
   .top .wrap { flex-wrap: wrap; gap: 8px 12px; padding-block: 10px; }
   .logo small { display: none; }
-  .nav { order: 3; width: 100%; margin-left: 0; }
+  .nav { order: 3; width: 100%; margin-left: 0; scroll-padding-inline: 16px;
+    /* края меню растворяются — видно, что его можно листать */
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 22px), transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 14px, #000 calc(100% - 22px), transparent); }
+  .nav a { padding: 10px 14px; }
   .tools { margin-left: auto; }
+}
+/* телефон: логотип и кнопки в одну строку, меню — второй строкой */
+@media (max-width: 560px) {
+  .top .wrap { gap: 6px 8px; padding-block: 8px 6px; }
+  .logo { font-size: 22px; }
+  .logo .ball { --s: 21px; }
+  .tools { gap: 6px; }
+  .score-pill { padding: 6px 11px 6px 6px; }
+  .score-pill .lbl { display: none; }
+  .nav { margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); width: calc(100% + var(--gutter) * 2); }
+  .nav a { font-size: 14.5px; padding: 10px 13px; }
 }
 
 /* ---------- кнопки, чипы, бейджи ---------- */
@@ -388,9 +403,9 @@ table.mapping td, table.mapping th { text-align: left; }
 .ring .lbl { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
 .ring .lbl b { font: 900 28px/1 var(--f-display); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
 .ring .lbl span { font-size: 11.5px; color: var(--mute); }
-.filters { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 64px); z-index: 20; background: var(--paper); padding-block: 12px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.filters { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--top-h, 64px)); z-index: 20; background: var(--paper); padding-block: 12px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 2px; }
-@media (max-width: 700px) { .filter-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } }
+@media (max-width: 700px) { .filter-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; } .filter-row > * { flex: none; } }
 .chip.wrap-ok { white-space: normal; text-align: left; }
 .filter-row .chip.num { min-width: 40px; justify-content: center; font-family: var(--f-display); font-weight: 700; font-variant-numeric: tabular-nums; }
 .filter-row .chip.num.all-done { background: var(--lime); border-color: rgba(13,15,23,.3); color: var(--on-lime); }
@@ -608,6 +623,12 @@ table.mapping td, table.mapping th { text-align: left; }
 .hm.today { outline: 2px solid var(--ink); outline-offset: 1px; }
 .hm-months { display: grid; grid-template-columns: repeat(16, 14px); gap: 4px; font-size: 10.5px; color: var(--mute); margin-top: 6px; white-space: nowrap; }
 .hm-legend { margin-top: 12px; gap: 5px; }
+@media (max-width: 420px) {
+  .hm-grid, .hm-months { grid-template-columns: repeat(16, 12px); gap: 3px; }
+  .hm-col { grid-template-rows: repeat(7, 12px); gap: 3px; }
+  .hm-days { gap: 3px; } .hm-days span { height: 12px; line-height: 12px; }
+  .hm { width: 12px; height: 12px; border-radius: 3px; }
+}
 .row-stat { display: grid; grid-template-columns: 30px minmax(0, 140px) minmax(0, 1fr) 46px; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); color: var(--ink); }
 .row-stat:first-of-type { border-top: 0; }
 .row-stat.link:hover { text-decoration: none; background: var(--paper-2); }
@@ -667,6 +688,8 @@ table.mapping td, table.mapping th { text-align: left; }
 @media (max-width: 960px) { .me-settings { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- анимации ---------- */
+.sr { opacity: 0; transform: translateY(22px); animation: none !important; }
+.sr.in { opacity: 1; transform: none; transition: opacity .6s var(--ease) var(--d, 0ms), transform .7s var(--ease) var(--d, 0ms); }
 @keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes pop { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
@@ -689,7 +712,7 @@ table.mapping td, table.mapping th { text-align: left; }
   .cards4, .news { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .study { grid-template-columns: minmax(0, 1fr); padding-top: 10px; }
   .side { display: none; }
-  .numbar { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 12px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 104px); background: var(--paper); z-index: 10; scrollbar-width: none; }
+  .numbar { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 12px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--top-h, 104px)); background: var(--paper); z-index: 10; scrollbar-width: none; }
   .numbar::-webkit-scrollbar { display: none; }
   .numbar a { flex: none; min-width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--line); font: 800 15px/1 var(--f-display); color: var(--ink); }
   .numbar a:hover { text-decoration: none; }
@@ -712,6 +735,12 @@ table.mapping td, table.mapping th { text-align: left; }
   .band { min-height: 0; }
   .band .in { margin: 120px 14px 14px; }
   .filter-sub input { width: 100%; }
+  /* на телефоне фильтры не прилипают — иначе они закрывают полэкрана; группы листаются вбок */
+  .filters { position: static; grid-template-columns: minmax(0, 1fr); }
+  .filter-sub > * { min-width: 0; }
+  .filter-sub .grp { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; }
+  .filter-sub .grp::-webkit-scrollbar { display: none; }
+  .filter-sub .grp > * { flex: none; }
   .task-foot { grid-template-columns: 1fr; }
   .task-foot .nx { grid-column: auto; }
 }
@@ -727,7 +756,7 @@ table.mapping td, table.mapping th { text-align: left; }
     <a href="#cheat" data-nav="cheat">Шпаргалка</a>
   </nav>
   <div class="tools">
-    <a class="score-pill" id="scorePill" href="#bank" title="Решено задач в банке"><span class="ball" aria-hidden="true"></span><b>0</b>&nbsp;решено</a>
+    <a class="score-pill" id="scorePill" href="#bank" title="Решено задач в банке"><span class="ball" aria-hidden="true"></span><b>0</b><span class="lbl">&nbsp;решено</span></a>
     <a class="acct-btn" id="acctbtn" href="#login" aria-label="Войти"></a>
     <button class="icon-btn" id="searchbtn" type="button" aria-label="Поиск (Ctrl+K)"></button>
     <button class="icon-btn" id="themebtn" type="button" aria-label="Сменить тему"></button>
@@ -2894,6 +2923,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const list = filteredBank(), el = $('#plist'); if (!el) return;
     el.innerHTML = list.length ? list.map(probHTML).join('') : '<div class="empty"><b>Задач не найдено</b>Сбрось фильтры или выбери другой номер.</div>';
     const c = $('#bankcount'); if (c) c.textContent = `Показано задач: ${list.length}`;
+    reveal(el);
   }
   function checkAnswer(form) {
     const id = form.dataset.check, p = BANK.find(b => b.id === id);
@@ -3296,6 +3326,31 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     draw(); inp.focus();
   }
 
+  // высота шапки — для липких полос под ней (на телефоне шапка в две строки)
+  { const top = $('.top'), set = () => document.documentElement.style.setProperty('--top-h', top.offsetHeight + 'px');
+    set(); if ('ResizeObserver' in window) new ResizeObserver(set).observe(top); }
+
+  /* ═════════════ ПОЯВЛЕНИЕ ПРИ ПРОКРУТКЕ ═════════════ */
+  // блоки ниже первого экрана всплывают, когда до них доходит прокрутка; то, что видно сразу, не трогаем
+  const REVEAL = '.section, .block, .panel, .kpi, .type, .cards4 > *, .news > *, .cheat, .topic, .prob, .me-settings, .danger';
+  const revealIO = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+    let k = 0;
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      e.target.style.setProperty('--d', (k++ * 70) + 'ms');   // соседи всплывают лесенкой
+      e.target.classList.add('in'); revealIO.unobserve(e.target);
+    }
+  }, { rootMargin: '0px 0px -8% 0px' }) : null;
+  function reveal(root) {
+    if (!root || !revealIO || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const fold = innerHeight;
+    for (const el of root.querySelectorAll(REVEAL)) {
+      if (el.classList.contains('sr') || el.parentElement.closest('.sr')) continue;
+      if (el.getBoundingClientRect().top < fold) continue;
+      el.classList.add('sr'); revealIO.observe(el);
+    }
+  }
+
   /* ═════════════ МАРШРУТЫ ═════════════ */
   let curNav = '';
   function route() {
@@ -3356,6 +3411,10 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const nbar = $('.numbar'), nb = $('.numbar a.on');
     if (nbar && nb && nbar.offsetParent) nbar.scrollTo({ left: nb.getBoundingClientRect().left - nbar.getBoundingClientRect().left + nbar.scrollLeft - nbar.clientWidth / 2 + nb.offsetWidth / 2, behavior: reduce ? 'instant' : 'smooth' });
     $$('.nav a').forEach(a => a.classList.toggle('on', a.dataset.nav === nav));
+    // на телефоне меню прокручивается — подвигаем его к активному разделу
+    const navEl = $('.nav'), navOn = $('.nav a.on');
+    if (navEl && navEl.scrollWidth > navEl.clientWidth) navEl.scrollTo({ left: navOn ? navOn.offsetLeft - navEl.offsetLeft - navEl.clientWidth / 2 + navOn.offsetWidth / 2 : 0, behavior: reduce ? 'instant' : 'smooth' });
+    reveal($('#app'));
     document.title = { home: 'stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly' }[nav];
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', nav === 'me' || nav === 'login');
   }
