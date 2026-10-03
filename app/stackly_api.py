@@ -374,6 +374,7 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/teach/student'): self.t_student,
             ('POST', '/api/teach/homework'): self.t_hw_save,
             ('POST', '/api/teach/homework/delete'): self.t_hw_delete,
+            ('GET', '/api/teach/homework'): self.t_hw_stats,
             # администратор
             ('GET', '/api/admin/users'): self.a_users,
             ('POST', '/api/admin/role'): self.a_role,
@@ -734,6 +735,35 @@ class Handler(BaseHTTPRequestHandler):
             if tt and dn == tt:
                 db().execute('INSERT OR IGNORE INTO homework_done VALUES (?,?,?)', (hid, uid, now))
         self.send_json(200 if h else 201, {'homework': hw_json(db().execute('SELECT * FROM homework WHERE id = ?', (hid,)).fetchone())})
+
+    def t_hw_stats(self):
+        """Подробно по одному ДЗ: каждый адресат × каждый пункт, для задач — попытки и верные ответы."""
+        u = self.teacher()
+        h = db().execute('SELECT * FROM homework WHERE id = ?', (self.int_arg(self.query, 'id'),)).fetchone()
+        if not h:
+            raise ApiError(404, 'not_found', 'Задание не найдено')
+        g = self.own_group(u, h['group_id'])
+        items, to = json.loads(h['items']), json.loads(h['students'])
+        rows = db().execute('SELECT u.id, u.name FROM group_members m JOIN users u ON u.id = m.user_id '
+                            'WHERE m.group_id = ? ORDER BY u.name COLLATE NOCASE', (g['id'],)).fetchall()
+        done = {r['user_id']: r['done_at'] for r in db().execute('SELECT * FROM homework_done WHERE hw_id = ?', (h['id'],))}
+        students = []
+        for r in rows:
+            if to and r['id'] not in to:
+                continue
+            data, updated = load_progress(r['id'])
+            sets = progress_sets(data)
+            att = data.get('att') if isinstance(data.get('att'), dict) else {}
+            bank = {}
+            for pid in items.get('bank', []):
+                a = att.get(pid) if isinstance(att.get(pid), dict) else {}
+                # [решена, попыток, верных, когда впервые решена (мс)]
+                bank[pid] = [pid in sets['bank'], int(a.get('n') or 0), int(a.get('c') or 0), int(a.get('ok') or 0)]
+            d, t = hw_progress(items, sets)
+            students.append({'id': r['id'], 'name': r['name'], 'done_at': done.get(r['id']), 'updated': updated, 'done': d, 'total': t,
+                             'bank': bank, 'py': [x for x in items.get('py', []) if x in sets['py']],
+                             'ege': [x for x in items.get('ege', []) if x in sets['ege']]})
+        self.send_json(200, {'homework': hw_json(h), 'group': {'id': g['id'], 'name': g['name']}, 'students': students})
 
     def t_hw_delete(self):
         u = self.teacher()

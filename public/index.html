@@ -795,7 +795,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .who { display: grid; grid-template-columns: minmax(0, 1fr) minmax(60px, 160px) auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
 .who:first-child { border-top: 0; }
 .who a { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.picker { border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 12px; }
+.picker { border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .seg { display: inline-grid; grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: 999px; background: var(--paper-2); justify-self: start; max-width: 100%; overflow-x: auto; }
 .seg button { border: 0; background: none; padding: 9px 14px; border-radius: 999px; font: 700 13.5px/1 var(--f-display); color: var(--ink-2); white-space: nowrap; }
 .seg button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(13,15,23,.12); }
@@ -813,7 +813,8 @@ table.mapping td, table.mapping th { text-align: left; }
 .sel-sum .hwi { padding-right: 6px; }
 .sel-sum .hwi button { border: 0; background: none; color: var(--mute); padding: 0 4px; font-size: 15px; line-height: 1; }
 .sel-sum .hwi button:hover { color: var(--bad); }
-.hw-form { display: grid; gap: 16px; max-width: 860px; }
+.hw-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; max-width: 860px; }
+.hw-form .fld, .picker { min-width: 0; }
 .hw-form .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 14px; }
 .stud-picks { display: flex; flex-wrap: wrap; gap: 6px; }
 .stud-picks label { display: inline-flex; gap: 7px; align-items: center; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13.5px; color: var(--ink); cursor: pointer; }
@@ -824,6 +825,68 @@ table.mapping td, table.mapping th { text-align: left; }
 .prob.flash { animation: flash 1.6s var(--ease); }
 .read-btn { margin-top: 12px; }
 .me-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* сквозной номер задачи */
+.pnum { font: 700 12px/1 var(--f-mono); color: var(--mute); padding: 5px 7px; border-radius: 7px; background: var(--paper-2); white-space: nowrap; }
+.pick .pnum { padding: 3px 6px; margin-right: 2px; }
+/* пункт меню «ДЗ» со счётчиком */
+.nav-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--bad); color: #fff; font: 800 11px/1 var(--f-display); vertical-align: 1px; }
+/* раздел «ДЗ» */
+.hw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+.hw-link { color: var(--ink); transition: border-color .2s, transform .25s var(--ease), box-shadow .25s var(--ease); }
+.hw-link:hover { text-decoration: none; border-color: var(--ink-2); transform: translateY(-2px); box-shadow: var(--shadow); }
+.hw-prog .go { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; color: var(--blue-ink); white-space: nowrap; }
+.hw-prog .go svg { width: 14px; height: 14px; }
+.hw-head { display: grid; gap: 12px; padding-bottom: 6px; }
+.hw-head h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 900; letter-spacing: -.045em; overflow-wrap: anywhere; }
+.hw-head-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.hw-sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--top-h, 64px)); z-index: 15; background: var(--paper); padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
+.hw-prog.big { font-size: 15px; }
+.hw-prog.big .pbar { height: 10px; }
+.hw-jump { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.hw-jump::-webkit-scrollbar { display: none; }
+.hw-jump .hwi { flex: none; cursor: pointer; font: 700 12.5px/1.2 var(--f-display); }
+button.hwi { font-family: inherit; }
+.hw-ege { border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; background: var(--paper); display: grid; gap: 12px; min-width: 0; }
+.hw-ege-h { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.hw-ege-h .lvl { width: 40px; height: 40px; font-size: 17px; }
+.hw-ege-h h3 { font-size: 19px; font-weight: 800; margin-top: 4px; }
+.hw-ege .task-goal { margin: 0; font-size: 16px; }
+.hw-more > summary { cursor: pointer; font: 700 14.5px var(--f-display); color: var(--blue-ink); padding: 4px 0; }
+.hw-more[open] > summary { margin-bottom: 14px; }
+.hw-more > *:not(summary) + *:not(summary) { margin-top: 16px; }
+.hw-finish { margin-top: 26px; background: var(--ok-soft); border-style: solid; border-color: transparent; color: var(--ink-2); }
+.hw-finish b { color: var(--ok); }
+/* подбор задач в редакторе ДЗ */
+.pk-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.pk-bar .seg { min-width: 0; }
+.pk-bar input { flex: 1 1 260px; min-width: 0; padding: 11px 15px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 15px var(--f-body); }
+.pk-bar input:focus { outline: none; border-color: var(--blue); }
+.pk-found { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13.5px; padding: 2px 4px; }
+.pk-list { max-height: 520px; }
+.pk-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border-radius: 12px; }
+.pk-row.on { background: var(--blue-soft); }
+.pk-row .pick:hover { background: transparent; }
+.pk-row:hover { background: var(--paper-2); }
+.pk-row.on:hover { background: var(--blue-soft); }
+.pk-eye { border: 0; background: none; color: var(--blue-ink); font: 600 13px var(--f-body); padding: 8px 10px; white-space: nowrap; }
+.pk-prev { grid-column: 1 / -1; margin: 0 10px 12px 42px; padding: 14px 16px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); font-size: 14.5px; min-width: 0; overflow-x: auto; }
+/* матрица «ученик × пункт» */
+.mx-tbl th.c, .mx-tbl td.c { text-align: center; padding-inline: 6px; min-width: 46px; }
+.mx-tbl th.c a { color: var(--ink-2); font: 700 12px/1 var(--f-mono); letter-spacing: 0; text-transform: none; }
+.mx-tbl td:first-child, .mx-tbl th:first-child { position: sticky; left: 0; background: var(--paper); z-index: 1; box-shadow: 1px 0 0 var(--line); }
+.mx-tbl tbody tr:hover td:first-child { background: var(--paper-2); }
+.mx-tbl tfoot td { border-top: 1px solid var(--line); font: 700 12.5px var(--f-display); color: var(--mute); padding: 10px 6px; }
+.mx-tbl tfoot td:first-child { padding-left: 14px; }
+.mx { display: inline-grid; place-items: center; min-width: 30px; height: 28px; padding: 0 6px; border-radius: 8px; font: 800 14px/1 var(--f-display); color: var(--mute); background: var(--paper-2); }
+.mx small { font-size: 10px; margin-left: 2px; opacity: .8; }
+.mx.ok { background: var(--ok-soft); color: var(--ok); }
+.mx.bad { background: var(--bad-soft); color: var(--bad); }
+.legend .mx { display: inline-grid; }
+@media (max-width: 560px) {
+  .hw-ege-h { grid-template-columns: auto minmax(0, 1fr); }
+  .hw-ege-h .study-btn { grid-column: 1 / -1; justify-self: start; }
+  .pk-prev { margin-left: 10px; }
+}
 @media (max-width: 860px) { .myclass { grid-template-columns: minmax(0, 1fr); } .hw-form .two { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) {
   .t-hw > summary { grid-template-columns: minmax(0, 1fr); }
@@ -880,6 +943,7 @@ table.mapping td, table.mapping th { text-align: left; }
     <a href="#bank" data-nav="bank">Банк задач</a>
     <a href="#python" data-nav="python">Python</a>
     <a href="#cheat" data-nav="cheat">Шпаргалка</a>
+    <a href="#hw" data-nav="hw" hidden>ДЗ</a>
     <a href="#teach" data-nav="teach" hidden>Учителю</a>
   </nav>
   <div class="tools">
@@ -2732,6 +2796,20 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   const EGE = window.EGE, PY = window.PY, BLOCKS = window.PY_BLOCKS, BANK = window.BANK, LOOP = window.LOOP_PATH;
   const egeBy = Object.fromEntries(EGE.map(t => [t.n, t]));
   const pyBy = Object.fromEntries(PY.map(t => [t.id, t]));
+  // у каждой задачи банка свой сквозной номер: #1, #2, … — по порядку в банке
+  const pnum = Object.fromEntries(BANK.map((p, i) => [p.id, i + 1]));
+  // «17», «#17», «5-9», «3, 12, 30–33» → множество номеров; null, если это не список номеров
+  function parseNums(q) {
+    const s = String(q).trim();
+    if (!/\d/.test(s) || !/^[#\d\s,;–-]+$/.test(s)) return null;
+    const out = new Set();
+    for (const part of s.replace(/#/g, '').split(/[\s,;]+/).filter(Boolean)) {
+      const m = part.match(/^(\d+)(?:[–-](\d+))?$/); if (!m) continue;
+      const a = +m[1], b = m[2] ? +m[2] : a;
+      for (let k = Math.min(a, b); k <= Math.max(a, b) && k <= Math.min(a, b) + 300; k++) out.add(k);
+    }
+    return out.size ? out : null;
+  }
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -3003,7 +3081,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const isS = solved.has(p.id), multi = p.answer.includes('\n');
     const lines = p.data ? p.data.split('\n').length : 0, kb = p.data ? (new Blob([p.data]).size / 1024).toFixed(1) : 0;
     return `<article class="prob ${isS ? 'solved' : ''}" style="--i:${Math.min(i, 8)}" data-pid="${p.id}">
-      <div class="prob-head"><span class="pn"><em>№</em>${p.task}</span><h3>${esc(p.title)}</h3>${isS ? '<span class="badge-ok">решено</span>' : ''}
+      <div class="prob-head"><span class="pn"><em>№</em>${p.task}</span><span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${isS ? '<span class="badge-ok">решено</span>' : ''}
         <span class="diff"><span>${lvWord[p.level]}</span>${[1, 2, 3].map(k => `<i class="${k <= lvDots[p.level] ? 'on' : ''}"></i>`).join('')}</span></div>
       <div class="prob-body">${p.text}${p.extra ? `<div class="extra">${p.extra}</div>` : ''}
         ${p.data ? `<div class="datafile"><span class="ico">TXT</span><span><span class="nm">${esc(p.dname)}</span><br><span class="sz">${lines} ${plural(lines, 'строка', 'строки', 'строк')} · ${kb} КБ</span></span>
@@ -3018,7 +3096,8 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     </article>`;
   }
   function filteredBank() {
-    const q = bankF.q.trim().toLowerCase();
+    const q = bankF.q.trim().toLowerCase(), nums = parseNums(q);
+    if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
     return BANK.filter(p => (!bankF.task || p.task === bankF.task) && (!bankF.level || p.level === bankF.level)
       && (!bankF.status || (bankF.status === 'done') === solved.has(p.id))
       && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
@@ -3039,7 +3118,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
           ${EGE.map(t => `<button type="button" class="chip num ${bankF.task === t.n ? 'on' : ''} ${allDone(t.n) ? 'all-done' : ''}" data-task="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
         <div class="filter-sub">${grp('Сложность', 'level', [['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']])}
           ${grp('Статус', 'status', [['', 'Все'], ['todo', 'Не решённые'], ['done', 'Решённые']])}
-          <input id="bankq" type="search" placeholder="Поиск по условию" value="${esc(bankF.q)}"><span class="count-note" id="bankcount"></span></div>
+          <input id="bankq" type="search" placeholder="#17, 5-9 или слова из условия" value="${esc(bankF.q)}"><span class="count-note" id="bankcount"></span></div>
       </div>
       <div id="banktheory">${bankTheory()}</div>
       <div class="plist" id="plist"></div>
@@ -3113,7 +3192,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   }
   function persist() {
     store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]);
-    updHWBadge();
+    updHWBadge(); updHWPage();
     if (!acct.cloud || acct.readOnly) return;
     clearTimeout(acct.saveT);
     acct.saveT = setTimeout(writeCloud, 700);
@@ -3173,7 +3252,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     try { const r = await api('/auth/me'); setUser(r.user); await connect(true); }
     catch (e) { /* не вошли — работаем в гостевом режиме */ }
     acct.checked = true; renderAcctBtn();
-    if (/^#(login|me|teach|admin)/.test(location.hash)) route();
+    if (/^#(login|me|teach|admin|hw)/.test(location.hash)) route();
   }
   async function logout() {
     try { await api('/auth/logout', 'POST', {}); } catch (e) { }
@@ -3433,6 +3512,9 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   const setsOf = P => ({ bank: new Set((P.solved || []).map(String)), py: new Set((P.studied || []).map(Number)), ege: new Set((P.ege || []).map(Number)) });
   const barHTML = (done, total, cls = '') => `<span class="pbar ${cls}"><i style="width:${total ? Math.min(done / total, 1) * 100 : 0}%"></i></span>`;
   const itemsCount = it => (it.bank || []).length + (it.py || []).length + (it.ege || []).length;
+  // «3 задачи · 1 тема Python · 2 разбора»
+  const itemsText = it => [[(it.bank || []).length, 'задача', 'задачи', 'задач'], [(it.py || []).length, 'тема Python', 'темы Python', 'тем Python'], [(it.ege || []).length, 'разбор', 'разбора', 'разборов']]
+    .filter(x => x[0]).map(([n, a, b, c]) => `${n} ${plural(n, a, b, c)}`).join(' · ');
   function hwProg(it, S) {
     let d = 0, t = 0;
     for (const x of it.bank || []) { t++; d += S.bank.has(String(x)); }
@@ -3445,7 +3527,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const chip = (ok, href, tag, text) => `<a class="hwi ${ok ? 'ok' : ''}" href="${href}">${ok ? I.check : ''}<b>${tag}</b><span>${esc(text)}</span></a>`;
     return (it.ege || []).map(n => egeBy[n] ? chip(S && S.ege.has(+n), `#ege-${n}`, 'разбор ' + n, egeBy[n].title) : '').join('')
       + (it.py || []).map(id => pyBy[id] ? chip(S && S.py.has(+id), `#py-${id}`, 'Python ' + id, pyBy[id].title) : '').join('')
-      + (it.bank || []).map(id => { const p = BANK.find(x => x.id === id); return p ? chip(S && S.bank.has(id), `#p-${id}`, '№' + p.task, p.title) : ''; }).join('');
+      + (it.bank || []).map(id => { const p = BANK.find(x => x.id === id); return p ? chip(S && S.bank.has(id), `#p-${id}`, `#${pnum[id]} · №${p.task}`, p.title) : ''; }).join('');
   }
   const fmtDue = t => new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
   const fmtAgo = s => { if (!s) return '—'; const d = Math.floor((Date.now() / 1000 - s) / 86400); return d <= 0 ? 'сегодня' : d === 1 ? 'вчера' : d < 30 ? `${d} ${plural(d, 'день', 'дня', 'дней')} назад` : fmtDate(s * 1000); };
@@ -3464,13 +3546,15 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   function updHWBadge() {
     const b = $('#acctbtn'); if (!b) return;
     const n = acct.cloud ? hwPending() : 0, dot = $('.hw-dot', b);
+    const nl = $('.nav [data-nav="hw"]');
+    if (nl) { nl.hidden = !(acct.cloud && (acct.role === 'student' || myHW.length)); nl.innerHTML = 'ДЗ' + (n ? `<span class="nav-n">${n}</span>` : ''); }
     if (!n) { if (dot) dot.remove(); return; }
     if (dot) dot.textContent = n; else b.insertAdjacentHTML('beforeend', `<span class="hw-dot" title="Невыполненные домашние задания">${n}</span>`);
   }
   async function refreshHW() { try { myHW = (await api('/me/homework')).homework; updHWBadge(); } catch (e) { } }
   function myClassShell() {
     return `<section class="myclass" id="myclass">
-      <div class="panel"><div class="panel-h"><h2>Домашние задания</h2><span class="muted" id="hwcount"></span></div>
+      <div class="panel"><div class="panel-h"><h2>Домашние задания</h2><a class="muted" href="#hw" id="hwcount">Все задания →</a></div>
         <div id="hwlist"><div class="loading-row" style="padding:20px 0"><span class="ball"></span>Загрузка…</div></div></div>
       <div class="panel"><div class="panel-h"><h2>Мои группы</h2></div><div id="mygroups"></div>
         <form class="join-form" data-tform="join" novalidate><input name="code" maxlength="12" autocomplete="off" placeholder="Код группы" aria-label="Код группы"><button class="btn small" type="submit">Вступить</button></form>
@@ -3487,19 +3571,94 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   }
   function renderMyClass(groups) {
     const box = $('#hwlist'); if (!box) return;
-    const S = localSets(), list = myHW.map(h => ({ h, p: hwProg(h.items, S) }));
-    const open = list.filter(x => x.p[0] < x.p[1]), done = list.filter(x => x.p[0] >= x.p[1]);
-    const card = ({ h, p }) => `<article class="hw-card ${p[0] >= p[1] ? 'done' : ''}">
-        <div class="hw-top"><div><h3>${esc(h.title)}</h3><span class="hw-meta">${esc(h.group)} · ${esc(h.teacher)}</span></div>${dueHTML(h.due, h.done_at, p[0] >= p[1])}</div>
-        ${h.comment ? `<div class="hw-comment">${esc(h.comment)}</div>` : ''}
-        <div class="hw-prog">${barHTML(p[0], p[1])}<span>${p[0]} / ${p[1]}</span></div>
-        <div class="hw-items">${hwItemsHTML(h.items, S)}</div></article>`;
-    box.innerHTML = list.length
-      ? `<div class="hw-list">${open.map(card).join('')}</div>${done.length ? `<p class="cap" style="margin-top:16px">Выполненные</p><div class="hw-list">${done.map(card).join('')}</div>` : ''}`
-      : `<div class="empty-mini"><b>${groups.length ? 'Заданий пока нет' : 'Вы не состоите в группе'}</b>${groups.length ? 'Когда учитель выдаст задание, оно появится здесь.' : 'Введите код группы, который дал учитель, — и его задания появятся здесь.'}</div>`;
-    $('#hwcount').textContent = open.length ? `${open.length} ${plural(open.length, 'невыполненное', 'невыполненных', 'невыполненных')}` : '';
+    const S = localSets(), open = myHW.map(h => ({ h, p: hwProg(h.items, S) })).filter(x => x.p[0] < x.p[1]);
+    box.innerHTML = open.length ? `<div class="hw-list">${open.slice(0, 3).map(hwCardHTML).join('')}</div>${open.length > 3 ? `<p class="muted" style="margin:12px 0 0;font-size:14px">и ещё ${open.length - 3} — <a href="#hw">все задания</a></p>` : ''}`
+      : `<div class="empty-mini"><b>${myHW.length ? 'Все задания выполнены' : groups.length ? 'Заданий пока нет' : 'Вы не состоите в группе'}</b>${myHW.length ? 'Выполненные — в разделе «ДЗ».' : groups.length ? 'Когда учитель выдаст задание, оно появится здесь.' : 'Введите код группы, который дал учитель, — и его задания появятся здесь.'}</div>`;
+    $('#hwcount').textContent = open.length ? `${open.length} ${plural(open.length, 'невыполненное', 'невыполненных', 'невыполненных')} →` : 'Все задания →';
     $('#mygroups').innerHTML = groups.map(g => `<div class="grp-row"><span><b>${esc(g.name)}</b><small>учитель ${esc(g.teacher)}</small></span><button type="button" class="btn small ghost" data-tact="leave" data-id="${g.id}" data-name="${esc(g.name)}">Выйти</button></div>`).join('')
       || '<p class="muted" style="margin:0 0 12px;font-size:14px">Пока ни одной группы.</p>';
+  }
+
+  // карточка-ссылка на одно ДЗ (список заданий и кабинет)
+  function hwCardHTML({ h, p }) {
+    const done = p[0] >= p[1];
+    return `<a class="hw-card hw-link ${done ? 'done' : ''}" href="#hw-${h.id}">
+        <div class="hw-top"><div><h3>${esc(h.title)}</h3><span class="hw-meta">${esc(h.group)} · ${esc(h.teacher)}</span></div>${dueHTML(h.due, h.done_at, done)}</div>
+        <span class="hw-meta">${itemsText(h.items)}</span>
+        <div class="hw-prog">${barHTML(p[0], p[1])}<span>${p[0]} / ${p[1]}</span><span class="go">${done ? 'Открыть' : p[0] ? 'Продолжить' : 'Начать'} ${I.arrow}</span></div></a>`;
+  }
+  let hwSeq = 0, curHW = 0, curHWDone = false;
+  async function loadHW(h) {
+    const seq = ++hwSeq;
+    const put = html => { const box = $('#hwpage'); if (seq !== hwSeq || !box) return; box.innerHTML = html; reveal(box); };
+    if (!acct.checked) return;
+    if (!acct.cloud) return put(tMsg('Войдите в аккаунт', 'Домашние задания видны после входа — учитель выдаёт их в группе.', '#login', 'Войти'));
+    try { myHW = (await api('/me/homework')).homework; updHWBadge(); }
+    catch (e) { return put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#me', 'В кабинет')); }
+    const m = h.match(/^hw-(\d+)$/);
+    if (!m) { curHW = 0; return put(hwListHTML()); }
+    const hw = myHW.find(x => x.id === +m[1]);
+    if (!hw) return put(tMsg('Задание не найдено', 'Возможно, учитель его удалил или вы вышли из группы.', '#hw', 'Ко всем заданиям'));
+    curHW = hw.id; curHWDone = hwProg(hw.items, localSets())[0] >= itemsCount(hw.items);
+    put(hwPageHTML(hw));
+  }
+  function hwListHTML() {
+    const S = localSets(), list = myHW.map(h => ({ h, p: hwProg(h.items, S) }));
+    const open = list.filter(x => x.p[0] < x.p[1]).sort((a, b) => (a.h.due || 9e12) - (b.h.due || 9e12));
+    const done = list.filter(x => x.p[0] >= x.p[1]).sort((a, b) => (b.h.done_at || 0) - (a.h.done_at || 0));
+    const late = open.filter(x => x.h.due && x.h.due * 1000 < Date.now()).length;
+    return `<header class="t-head"><div><span class="eyebrow">Ученику</span><h1>Домашние задания</h1>
+        <p>${open.length ? `Предстоит сделать: ${open.length}${late ? `, из них просрочено: ${late}` : ''}.` : 'Все задания выполнены.'} Каждое задание открывается одной страницей — задачи решаются прямо в нём.</p></div></header>
+      <section class="t-sec"><h2><span>Предстоит <span class="muted" style="font-size:15px;font-weight:600">${open.length}</span></span></h2>
+        ${open.length ? `<div class="hw-grid">${open.map(hwCardHTML).join('')}</div>` : `<div class="t-empty"><b>Нечего делать — и это хорошо</b>${myHW.length ? 'Новые задания появятся здесь, как только учитель их выдаст.' : 'Вступите в группу по коду учителя в <a href="#me">личном кабинете</a>.'}</div>`}</section>
+      <section class="t-sec"><h2><span>Выполненные <span class="muted" style="font-size:15px;font-weight:600">${done.length}</span></span></h2>
+        ${done.length ? `<div class="hw-grid">${done.map(hwCardHTML).join('')}</div>` : '<p class="muted">Здесь появятся сданные задания.</p>'}</section>`;
+  }
+  // разбор задания методички внутри ДЗ: суть сразу, подробности — по раскрытию
+  function egeInline(t) {
+    const on = egeRead.has(t.n);
+    return `<article class="hw-ege" id="hwe-${t.n}">
+      <div class="hw-ege-h"><span class="lvl lvl-${t.level}">${t.n}</span><div><span class="eyebrow">Разбор задания ${t.n}</span><h3>${esc(t.title)}</h3></div>
+        <button type="button" class="btn small ghost study-btn ${on ? 'on' : ''}" data-read="${t.n}">${on ? 'Разобрано ✓' : 'Отметить разобранным'}</button></div>
+      <p class="task-goal">${esc(t.lead)}</p>
+      <details class="hw-more"><summary>Теория, формулы и ход решения</summary>
+        <div class="types">${t.types.map(([a, b]) => `<div class="type"><h3>${esc(a)}</h3><p>${esc(b)}</p></div>`).join('')}</div>
+        <div class="prose">${t.theory}</div>
+        <div class="formulas">${t.formulas.map(([f, d]) => `<div class="formula-row"><div class="f">${f}</div><div class="d">${esc(d)}</div></div>`).join('')}</div>
+        <ol class="steps">${t.steps.map(x => `<li><span>${x}</span></li>`).join('')}</ol>
+        ${codeBlock(t.code)}
+        <p style="margin:12px 0 0"><a href="#ege-${t.n}">Открыть полный разбор задания ${t.n} →</a></p></details>
+    </article>`;
+  }
+  const jumpOk = (k, v, S) => k === 'p' ? S.bank.has(v) : k === 't' ? S.py.has(+v) : S.ege.has(+v);
+  function hwProgHTML(hw) {
+    const S = localSets(), [d, t] = hwProg(hw.items, S), it = hw.items;
+    const chips = [...(it.ege || []).filter(n => egeBy[n]).map(n => ['e', n, 'Разбор ' + n]), ...(it.py || []).filter(id => pyBy[id]).map(id => ['t', id, 'Python ' + id]),
+      ...(it.bank || []).filter(id => pnum[id]).map(id => ['p', id, '#' + pnum[id]])];
+    return `<div class="hw-prog big">${barHTML(d, t)}<span>${d} / ${t}</span></div>
+      <div class="hw-jump">${chips.map(([k, v, l]) => `<button type="button" class="hwi ${jumpOk(k, String(v), S) ? 'ok' : ''}" data-hwjump="${k}:${esc(v)}">${jumpOk(k, String(v), S) ? I.check : ''}<span>${esc(l)}</span></button>`).join('')}</div>`;
+  }
+  function hwPageHTML(hw) {
+    const it = hw.items, S = localSets(), done = hwProg(it, S)[0] >= itemsCount(it);
+    const ege = (it.ege || []).filter(n => egeBy[n]), py = (it.py || []).filter(id => pyBy[id]), bank = (it.bank || []).map(id => BANK.find(p => p.id === id)).filter(Boolean);
+    return `<a class="t-back" href="#hw">← Все задания</a>
+      <header class="hw-head"><span class="eyebrow">${esc(hw.group)} · ${esc(hw.teacher)}</span><h1>${esc(hw.title)}</h1>
+        <div class="hw-head-meta">${dueHTML(hw.due, hw.done_at, done)}<span class="hw-meta">${itemsText(it)}</span></div>
+        ${hw.comment ? `<div class="hw-comment">${esc(hw.comment)}</div>` : ''}
+        <div class="hw-sticky" id="hwprog">${hwProgHTML(hw)}</div></header>
+      ${ege.length ? `<section class="t-sec"><h2>${plural(ege.length, 'Разбор', 'Разборы', 'Разборы')} методички</h2><div class="hw-list">${ege.map(n => egeInline(egeBy[n])).join('')}</div></section>` : ''}
+      ${py.length ? `<section class="t-sec"><h2>Python</h2>${py.map(id => topicHTML(pyBy[id])).join('')}</section>` : ''}
+      ${bank.length ? `<section class="t-sec"><h2>Задачи</h2><div class="plist">${bank.map(probHTML).join('')}</div></section>` : ''}
+      <div class="t-empty hw-finish" id="hwfinish" ${done ? '' : 'hidden'}><b>Задание выполнено</b>Учитель видит, что вы всё сделали. <a href="#hw">Ко всем заданиям →</a></div>`;
+  }
+  // решили задачу или отметили тему — обновляем шкалу и пункты, не перерисовывая страницу
+  function updHWPage() {
+    const box = $('#hwprog'), hw = curHW && myHW.find(x => x.id === curHW); if (!box || !hw) return;
+    box.innerHTML = hwProgHTML(hw);
+    const done = hwProg(hw.items, localSets())[0] >= itemsCount(hw.items);
+    const fin = $('#hwfinish'); if (fin) fin.hidden = !done;
+    if (done && !curHWDone) toast('Домашнее задание выполнено!');
+    curHWDone = done;
   }
 
   /* ═════════════ КАБИНЕТ УЧИТЕЛЯ ═════════════ */
@@ -3522,10 +3681,11 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
         const hw = m[2] === 'new' ? null : tGroup.homework.find(x => x.id === +m[2]);
         if (m[2] !== 'new' && !hw) throw { message: 'Задание не найдено — возможно, его удалили' };
         const it = hw ? hw.items : {};
-        hwDraft = { bank: new Set(it.bank || []), py: new Set(it.py || []), ege: new Set(it.ege || []), tab: 'bank', num: (it.bank || []).length ? (BANK.find(p => p.id === it.bank[0]) || { task: 1 }).task : 1 };
+        hwDraft = { bank: new Set(it.bank || []), py: new Set(it.py || []), ege: new Set(it.ege || []), tab: 'bank', num: 0, lvl: '', q: '' };
         if (put(tHwEditHTML(tGroup, hw))) renderPicker(true);
       }
       else if ((m = h.match(/^teach-s-(\d+)$/))) put(tStudentHTML(await api('/teach/student?id=' + m[1])));
+      else if ((m = h.match(/^teach-hwv-(\d+)$/))) put(tHwStatsHTML(await api('/teach/homework?id=' + m[1])));
       else if (h === 'admin') {
         if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
         put(tAdminHTML(await api('/admin/users')));
@@ -3559,7 +3719,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
           <div class="rate">${doneN} / ${ids.length}<small>выполнили</small>${barHTML(doneN, ids.length)}</div></summary>
         <div class="body">${h.comment ? `<div class="hw-comment">${esc(h.comment)}</div>` : ''}<div class="hw-items">${hwItemsHTML(h.items, null)}</div>
           <div>${order.map(k => { const x = h.status[k], m = byId[k]; return m ? `<div class="who"><a href="#teach-s-${k}">${esc(m.name)}</a>${barHTML(x[0], x[1])}${stDone(x) ? dueHTML(h.due, x[2], true) : `<span class="hw-meta">${x[0]} из ${x[1]}</span>`}</div>` : ''; }).join('') || '<p class="muted" style="margin:0">В группе пока нет учеников.</p>'}</div>
-          <div class="acts"><a class="btn small" href="#teach-hw-${g.id}-${h.id}">Изменить</a><button type="button" class="btn small ghost" data-tact="del-hw" data-id="${h.id}">Удалить</button></div></div></details>`;
+          <div class="acts"><a class="btn small blue" href="#teach-hwv-${h.id}">Статистика по ученикам</a><a class="btn small" href="#teach-hw-${g.id}-${h.id}">Изменить</a><button type="button" class="btn small ghost" data-tact="del-hw" data-id="${h.id}">Удалить</button></div></div></details>`;
     };
     return `<a class="t-back" href="${acct.role === 'admin' && g.teacher_id !== acct.uid ? '#teach-all' : '#teach'}">← Все группы</a>
       <header class="t-head"><div><span class="eyebrow">Группа${g.teacher_id !== acct.uid ? ' · учитель ' + esc(g.teacher) : ''}</span><h1>${esc(g.name)}</h1>
@@ -3608,7 +3768,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const D = hwDraft; if (!D || !$('#pickbody')) return;
     const sel = [...[...D.ege].sort((a, b) => a - b).map(n => ['ege', n, 'разбор ' + n, (egeBy[n] || {}).title]),
       ...[...D.py].sort((a, b) => a - b).map(id => ['py', id, 'Python ' + id, (pyBy[id] || {}).title]),
-      ...[...D.bank].map(id => { const p = BANK.find(x => x.id === id); return ['bank', id, p ? '№' + p.task : '?', p ? p.title : 'задача удалена']; })];
+      ...[...D.bank].sort((a, b) => (pnum[a] || 0) - (pnum[b] || 0)).map(id => { const p = BANK.find(x => x.id === id); return ['bank', id, p ? `#${pnum[id]} · №${p.task}` : '?', p ? p.title : 'задача удалена']; })];
     $('#selsum').innerHTML = sel.length ? sel.map(([k, v, tag, text]) => `<span class="hwi"><b>${tag}</b><span>${esc(text || '')}</span><button type="button" data-tact="unpick" data-k="${k}" data-v="${esc(v)}" aria-label="Убрать">×</button></span>`).join('')
       : '<span class="muted" style="font-size:14px">Пока ничего не выбрано — отметьте задачи и темы ниже</span>';
     $$('[data-ptab]').forEach(b => { b.classList.toggle('on', b.dataset.ptab === D.tab); $('i', b).textContent = D[b.dataset.ptab].size || ''; });
@@ -3618,14 +3778,34 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     let html = '';
     if (D.tab === 'bank') {
       const counts = {}; BANK.forEach(p => counts[p.task] = (counts[p.task] || 0) + 1);
-      html = `<div class="pick-nums">${EGE.map(t => `<button type="button" class="chip ${D.num === t.n ? 'on' : ''} ${BANK.some(p => p.task === t.n && D.bank.has(p.id)) ? 'has' : ''}" data-pnum="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
-        <div class="pick-list">${BANK.filter(p => p.task === D.num).map(p => row('bank', p.id, p.title, lvWord[p.level])).join('') || '<p class="muted">Для этого номера задач в банке пока нет.</p>'}</div>`;
+      html = `<div class="pk-bar"><input id="pkq" type="search" value="${esc(D.q)}" placeholder="Номер задачи: 17, 5-9, 3, 12 — или слова из условия" aria-label="Поиск задач по номеру или тексту" autocomplete="off">
+          <div class="seg">${[['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']].map(([v, n]) => `<button type="button" class="${D.lvl === v ? 'on' : ''}" data-plvl="${v}">${n}</button>`).join('')}</div></div>
+        <div class="pick-nums" role="group" aria-label="Номер задания ЕГЭ"><button type="button" class="chip ${!D.num ? 'on' : ''}" data-pnum="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${D.num === t.n ? 'on' : ''} ${BANK.some(p => p.task === t.n && D.bank.has(p.id)) ? 'has' : ''}" data-pnum="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
+        <div id="pklist"></div>`;
     } else if (D.tab === 'py') {
       html = `<div class="pick-list">${BLOCKS.map(b => `<div class="pick-h">${b.id}. ${esc(b.title)}</div>` + PY.filter(t => t.id >= b.from && t.id <= b.to).map(t => row('py', t.id, `${t.id}. ${t.title}`, t.ege.length ? '№ ' + t.ege.join(', ') : 'основа')).join('')).join('')}</div>`;
     } else {
       html = `<div class="pick-list">${EGE.map(t => row('ege', t.n, `${t.n}. ${t.title}`, lvName[t.level])).join('')}</div>`;
     }
     $('#pickbody').innerHTML = html;
+    if (D.tab === 'bank') renderPkList();
+  }
+  const pkFound = () => {
+    const D = hwDraft, nums = parseNums(D.q), q = D.q.trim().toLowerCase();
+    if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
+    return BANK.filter(p => (!D.num || p.task === D.num) && (!D.lvl || p.level === D.lvl) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
+  };
+  const pkPreview = p => `${p.text}${p.extra ? `<div class="extra">${p.extra}</div>` : ''}${p.data ? `<p class="muted" style="font-size:13px">К задаче прилагается файл ${esc(p.dname)} — ученик скопирует его со страницы задания.</p>` : ''}<p class="muted" style="font-size:13px;margin:8px 0 0">Ответ: <b>${esc(p.answer)}</b></p>`;
+  // список найденных задач; при поиске по номеру условие раскрыто сразу
+  function renderPkList() {
+    const D = hwDraft, box = $('#pklist'); if (!box) return;
+    const list = pkFound(), open = !!parseNums(D.q) && list.length <= 4, fresh = list.filter(p => !D.bank.has(p.id)).length;
+    box.innerHTML = `<div class="pk-found"><span class="muted">${list.length ? `Найдено: ${list.length}` : 'Ничего не найдено — проверьте номер или сбросьте фильтры'}</span>
+        ${list.length && fresh && list.length <= 60 ? `<button type="button" class="linkbtn" data-tact="pick-all">Добавить ${list.length === 1 ? 'задачу' : `все ${fresh}`}</button>` : ''}</div>
+      <div class="pick-list pk-list">${list.map(p => { const on = D.bank.has(p.id); return `<div class="pk-row ${on ? 'on' : ''}">
+          <label class="pick"><input type="checkbox" data-pick="bank" value="${p.id}" ${on ? 'checked' : ''}><span><b class="pnum">#${pnum[p.id]}</b> №${p.task} · ${esc(p.title)}</span><small>${lvWord[p.level]}</small></label>
+          <button type="button" class="pk-eye" data-pkx="${p.id}" aria-expanded="${open}">${open ? 'Скрыть' : 'Условие'}</button>
+          <div class="pk-prev prob-body" ${open ? '' : 'hidden'}>${open ? pkPreview(p) : ''}</div></div>`; }).join('')}</div>`;
   }
 
   function tStudentHTML(r) {
@@ -3657,6 +3837,45 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
         <div class="panel"><div class="panel-h"><h2>Учебник Python</h2><span class="muted">${s.studied} из ${PY.length} тем</span></div>
           ${blocks.map(x => `<div class="row-stat"><span class="rs-no">${x.b.id}</span><span class="rs-name">${esc(x.b.title)}</span>${barHTML(x.done, x.total)}<b>${x.done}/${x.total}</b></div>`).join('')}</div>
       </section>`;
+  }
+
+  function tHwStatsHTML(r) {
+    const h = r.homework, it = h.items, st = r.students, N = st.length;
+    const cols = [...(it.ege || []).filter(n => egeBy[n]).map(n => ({ k: 'e', v: n, lbl: 'Р' + n, title: `Разбор ${n}: ${egeBy[n].title}`, href: `#ege-${n}` })),
+      ...(it.py || []).filter(id => pyBy[id]).map(id => ({ k: 't', v: id, lbl: 'Py' + id, title: `Python ${id}: ${pyBy[id].title}`, href: `#py-${id}` })),
+      ...(it.bank || []).filter(id => pnum[id]).map(id => { const p = BANK.find(x => x.id === id); return { k: 'p', v: id, lbl: '#' + pnum[id], title: `#${pnum[id]} · №${p.task} · ${p.title}`, href: `#p-${id}`, p }; })];
+    const has = (s, c) => c.k === 'p' ? !!(s.bank[c.v] || [])[0] : c.k === 't' ? s.py.includes(c.v) : s.ege.includes(c.v);
+    const isDone = s => !!s.done_at || (s.total > 0 && s.done >= s.total);
+    const done = st.filter(isDone), late = done.filter(s => h.due && s.done_at && s.done_at > h.due).length;
+    const avg = N ? Math.round(st.reduce((a, s) => a + (s.total ? s.done / s.total : 0), 0) / N * 100) : 0;
+    const colStat = c => { const k = st.filter(s => has(s, c)).length; if (c.k !== 'p') return { k }; let n = 0, ok = 0; st.forEach(s => { const x = s.bank[c.v] || []; n += x[1] || 0; ok += x[2] || 0; }); return { k, n, ok }; };
+    const cell = (s, c) => {
+      if (c.k !== 'p') return has(s, c) ? `<span class="mx ok" title="${esc(c.title)}: сделано">✓</span>` : `<span class="mx" title="${esc(c.title)}: не сделано">·</span>`;
+      const [ok, n, right] = s.bank[c.v] || [false, 0, 0];
+      if (ok) return `<span class="mx ok" title="${esc(c.title)}: решена${n ? `, попыток: ${n}` : ''}">✓${n > 1 ? `<small>${n}</small>` : ''}</span>`;
+      return n ? `<span class="mx bad" title="${esc(c.title)}: ${n} ${plural(n, 'попытка', 'попытки', 'попыток')}, верного ответа нет">✗<small>${n}</small></span>` : `<span class="mx" title="${esc(c.title)}: не начата">·</span>`;
+    };
+    const order = [...st].sort((a, b) => isDone(a) - isDone(b) || a.done / (a.total || 1) - b.done / (b.total || 1) || a.name.localeCompare(b.name));
+    return `<a class="t-back" href="#teach-g-${r.group.id}">← ${esc(r.group.name)}</a>
+      <header class="t-head"><div><span class="eyebrow">Статистика задания · ${esc(r.group.name)}</span><h1>${esc(h.title)}</h1>
+          <div class="hw-head-meta">${dueHTML(h.due)}<span class="hw-meta">${itemsText(it)} · ${h.students.length ? 'выбранным ученикам' : 'вся группа'}</span></div></div>
+        <a class="btn small" href="#teach-hw-${r.group.id}-${h.id}">Изменить задание</a></header>
+      <section class="kpis">
+        <div class="kpi"><span class="k-l">Выполнили</span><b>${done.length}<small> / ${N}</small></b>${barHTML(done.length, N)}<span class="k-s">${N - done.length ? `не закончили: ${N - done.length}` : 'все сдали'}</span></div>
+        <div class="kpi"><span class="k-l">В срок</span><b>${done.length - late}</b><span class="k-s">${late ? `с опозданием: ${late}` : 'опозданий нет'}</span></div>
+        <div class="kpi"><span class="k-l">Средний прогресс</span><b>${avg}<small>%</small></b>${barHTML(avg, 100)}<span class="k-s">доля сделанных пунктов</span></div>
+        <div class="kpi accent"><span class="k-l">Самая трудная</span>${(() => { const ps = cols.filter(c => c.k === 'p').map(c => ({ c, s: colStat(c) })).filter(x => x.s.n).sort((a, b) => a.s.k / N - b.s.k / N || (a.s.ok / a.s.n) - (b.s.ok / b.s.n)); return ps.length ? `<b style="font-size:30px">${ps[0].c.lbl}</b><span class="k-s">решили ${ps[0].s.k} из ${N} · верных ответов ${Math.round(ps[0].s.ok / ps[0].s.n * 100)}%</span>` : '<b style="font-size:30px">—</b><span class="k-s">по задачам ещё нет попыток</span>'; })()}</div>
+      </section>
+      <section class="t-sec"><h2>Кто что сделал</h2>
+        ${N ? `<div class="tbl-wrap"><table class="tbl mx-tbl"><thead><tr><th>Ученик</th>${cols.map(c => `<th class="c" title="${esc(c.title)}"><a href="${c.href}">${c.lbl}</a></th>`).join('')}<th>Итог</th></tr></thead><tbody>
+          ${order.map(s => `<tr><td class="name"><a href="#teach-s-${s.id}">${esc(s.name)}</a><small>заходил: ${fmtAgo(s.updated)}</small></td>${cols.map(c => `<td class="c">${cell(s, c)}</td>`).join('')}
+            <td>${isDone(s) ? dueHTML(h.due, s.done_at, true) : `<span class="hw-meta">${s.done} из ${s.total}</span>`}</td></tr>`).join('')}
+          </tbody><tfoot><tr><td>Сделали</td>${cols.map(c => `<td class="c">${colStat(c).k}/${N}</td>`).join('')}<td></td></tr></tfoot></table></div>
+          <p class="legend" style="margin-top:10px"><span><span class="mx ok">✓</span> сделано (цифра — с какой попытки)</span><span><span class="mx bad">✗</span> были попытки, верного ответа нет</span><span><span class="mx">·</span> не начато</span></p>`
+          : '<div class="t-empty"><b>Некому выполнять</b>В группе пока нет учеников, которым выдано это задание.</div>'}</section>
+      ${cols.some(c => c.k === 'p') ? `<section class="t-sec"><h2>По задачам</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Задача</th><th class="num">Решили</th><th class="num">Попыток</th><th class="num">Верных ответов</th></tr></thead><tbody>
+        ${cols.filter(c => c.k === 'p').map(c => { const x = colStat(c); return `<tr><td class="name"><a href="${c.href}">${esc(c.title)}</a></td><td class="num">${x.k} / ${N}</td><td class="num">${x.n}</td><td class="num">${x.n ? `<span class="acc ${x.ok / x.n >= .8 ? 'hi' : x.ok / x.n < .5 ? 'lo' : ''}">${Math.round(x.ok / x.n * 100)}%</span>` : '—'}</td></tr>`; }).join('')}
+        </tbody></table></div></section>` : ''}`;
   }
 
   const roleName = { student: 'ученик', teacher: 'учитель', admin: 'администратор' };
@@ -3701,11 +3920,24 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   }
   document.addEventListener('submit', e => { const f = e.target.closest('[data-tform]'); if (f) { e.preventDefault(); submitTeach(f); } });
   document.addEventListener('click', async e => {
-    const b = e.target.closest('[data-tact],[data-ptab],[data-pnum]'); if (!b) return;
+    const b = e.target.closest('[data-tact],[data-ptab],[data-pnum],[data-plvl],[data-pkx],[data-hwjump]'); if (!b) return;
+    if (b.dataset.hwjump) {
+      const [k, v] = b.dataset.hwjump.split(':'), el = k === 'p' ? $(`[data-pid="${v}"]`) : k === 't' ? $('#topic-' + v) : $('#hwe-' + v);
+      if (el) { el.classList.remove('sr'); window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - ($('#hwprog') || { offsetHeight: 0 }).offsetHeight - 14, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); }
+      return;
+    }
     if (b.dataset.ptab) { hwDraft.tab = b.dataset.ptab; return renderPicker(true); }
-    if (b.dataset.pnum) { hwDraft.num = +b.dataset.pnum; return renderPicker(true); }
+    if (b.dataset.pnum) { hwDraft.num = +b.dataset.pnum; hwDraft.q = ''; return renderPicker(true); }
+    if (b.dataset.plvl !== undefined) { hwDraft.lvl = b.dataset.plvl; $$('[data-plvl]').forEach(x => x.classList.toggle('on', x === b)); return renderPkList(); }
+    if (b.dataset.pkx) {
+      const row = b.closest('.pk-row'), pv = $('.pk-prev', row), open = pv.hidden;
+      if (open && !pv.innerHTML) pv.innerHTML = pkPreview(BANK.find(p => p.id === b.dataset.pkx));
+      pv.hidden = !open; b.textContent = open ? 'Скрыть' : 'Условие'; b.setAttribute('aria-expanded', open);
+      return;
+    }
     const a = b.dataset.tact, id = +b.dataset.id;
     if (a === 'unpick') { hwDraft[b.dataset.k].delete(b.dataset.k === 'bank' ? b.dataset.v : +b.dataset.v); return renderPicker(true); }
+    if (a === 'pick-all') { pkFound().forEach(p => hwDraft.bank.add(p.id)); renderPicker(false); return renderPkList(); }
     if (a === 'copy-code') return copyText(b.dataset.code, null);
     const ask = { 'del-hw': 'Удалить задание? Отметки учеников о выполнении пропадут.', 'del-group': `Удалить группу «${b.dataset.name}» вместе со всеми заданиями?`,
       'rm-member': `Убрать ${b.dataset.name} из группы?`, 'leave': `Выйти из группы «${b.dataset.name}»? Её задания пропадут из кабинета.`, 'new-code': 'Выдать новый код? Старый перестанет работать.' }[a];
@@ -3722,7 +3954,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   });
   document.addEventListener('change', async e => {
     const t = e.target;
-    if (t.dataset.pick) { const k = t.dataset.pick, v = k === 'bank' ? t.value : +t.value; t.checked ? hwDraft[k].add(v) : hwDraft[k].delete(v); renderPicker(false); }
+    if (t.dataset.pick) { const k = t.dataset.pick, v = k === 'bank' ? t.value : +t.value; t.checked ? hwDraft[k].add(v) : hwDraft[k].delete(v); renderPicker(false); const r = t.closest('.pk-row'); if (r) r.classList.toggle('on', t.checked); }
     else if (t.name === 'to' && t.closest('[data-tform="hw"]')) $('#studlist').hidden = t.value !== 'some';
     else if (t.dataset.urole) {
       const prev = [...t.options].find(o => o.defaultSelected);
@@ -3731,6 +3963,19 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     }
   });
   let usrT;
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'pkq' || !hwDraft) return;
+    hwDraft.q = e.target.value;
+    // поиск по номеру или тексту — по всему банку, выбранный номер ЕГЭ сбрасываем
+    if (hwDraft.q.trim() && hwDraft.num) { hwDraft.num = 0; $$('[data-pnum]').forEach(x => x.classList.toggle('on', x.dataset.pnum === '0')); }
+    renderPkList();
+  });
+  // Enter в поиске задач не отправляет форму, а добавляет найденное по номерам
+  document.addEventListener('keydown', e => {
+    if (e.target.id !== 'pkq' || e.key !== 'Enter') return;
+    e.preventDefault();
+    if (parseNums(hwDraft.q)) { pkFound().forEach(p => hwDraft.bank.add(p.id)); renderPicker(false); renderPkList(); }
+  });
   document.addEventListener('input', e => {
     if (e.target.id !== 'usrq') return;
     clearTimeout(usrT); const q = e.target.value;
@@ -3741,7 +3986,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   const index = [
     ...EGE.map(t => ({ k: 'Задание', ic: 'e', n: t.n, title: `${t.n}. ${t.title}`, sub: t.short, href: '#ege-' + t.n, text: (t.title + ' ' + t.short + ' ' + t.lead + ' ' + strip(t.theory) + ' ' + t.types.flat().join(' ')).toLowerCase() })),
     ...PY.map(t => ({ k: 'Python', ic: 'p', n: t.id, title: t.title, sub: 'тема ' + t.id, href: '#py-' + t.id, text: (t.title + ' ' + strip(t.text)).toLowerCase() })),
-    ...BANK.map(p => ({ k: 'Задача', ic: '', n: p.task, title: p.title, sub: 'банк, задание ' + p.task, href: '#bank-' + p.task, text: (p.title + ' ' + strip(p.text)).toLowerCase() })),
+    ...BANK.map(p => ({ k: 'Задача', ic: '', n: p.task, title: `#${pnum[p.id]} ${p.title}`, sub: 'банк, задание ' + p.task, href: '#p-' + p.id, text: ('#' + pnum[p.id] + ' ' + p.title + ' ' + strip(p.text)).toLowerCase() })),
   ];
   function openSearch() {
     if ($('.scrim')) return;
@@ -3820,6 +4065,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
       Object.assign(bankF, { task: p.task, level: '', status: '', q: '' }); html = pageBank(); nav = 'bank'; focusPid = p.id; curNav = '';
     }
     else if (/^(teach|admin)/.test(h)) { html = teachShell(); nav = 'teach'; }
+    else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
     else if (h === 'login') { if (acct.cloud) { location.replace('#me'); return; } html = pageLogin(); nav = 'login'; }
     else if (h === 'me') { html = pageMe(); nav = 'me'; }
@@ -3877,8 +4123,9 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     if (focusPid) { const el = $(`[data-pid="${focusPid}"]`); if (el) { jump(el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - 16); el.classList.add('flash'); } }
     reveal($('#app'));
     if (nav === 'teach') loadTeach(h);
+    if (nav === 'hw') loadHW(h); else curHW = 0;
     if (nav === 'me') loadMyClass();
-    document.title = { home: 'stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly' }[nav];
+    document.title = { home: 'stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly' }[nav];
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', nav === 'me' || nav === 'login');
   }
 

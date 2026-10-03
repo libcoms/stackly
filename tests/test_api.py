@@ -214,12 +214,20 @@ class ClassroomTest(ServerCase):
         mine = {h['id']: h for h in s1.call('GET', '/me/homework')[1]['homework']}
         self.assertIsNotNone(mine[hid]['done_at'])
 
+        # подробная статистика ДЗ: по каждому ученику и каждой задаче
+        st, hs = t.call('GET', f'/teach/homework?id={hid}')
+        self.assertEqual(st, 200, hs)
+        me = next(x for x in hs['students'] if x['id'] == sid1)
+        self.assertEqual((me['done'], me['total'], me['py'], me['ege']), (4, 4, [3], [1]))
+        self.assertTrue(me['bank']['b1'][0])
+        self.assertEqual(len(hs['students']), 2)
         # карточка ученика доступна учителю, но не чужому учителю
         self.assertEqual(t.call('GET', f'/teach/student?id={sid1}')[0], 200)
         other, _ = self.teacher()
         self.assertEqual(other.call('GET', f'/teach/student?id={sid1}')[0], 404)
         self.assertEqual(other.call('GET', f'/teach/group?id={g["id"]}')[0], 404)
         self.assertEqual(other.call('POST', '/teach/homework/delete', {'id': hid})[0], 404)
+        self.assertEqual(other.call('GET', f'/teach/homework?id={hid}')[0], 404)
 
         # ученик ушёл из группы — ДЗ пропали
         s2.call('POST', '/me/groups/leave', {'id': g['id']})
