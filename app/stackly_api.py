@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""stackly API — регистрация, вход и прогресс учеников.
+"""stackly API — регистрация, вход, прогресс учеников, группы и домашние задания.
 
 Только стандартная библиотека Python 3.10+: http.server, sqlite3, hashlib.scrypt.
 Работает за nginx (127.0.0.1:8090), сам наружу не смотрит.
@@ -11,7 +11,8 @@
   STACKLY_COOKIE_SECURE 1 — cookie только по HTTPS (выключать лишь для локальной проверки)
   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM — почта для восстановления пароля
 """
-import base64, hashlib, hmac, json, logging, os, re, secrets, smtplib, sqlite3, threading, time
+import base64, hashlib, hmac, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
+from urllib.parse import parse_qs
 from email.message import EmailMessage
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -27,6 +28,9 @@ SESSION_DAYS = 30
 RESET_MINUTES = 60
 MAX_BODY = 256 * 1024
 MAX_PROGRESS = 200 * 1024
+ROLES = ('student', 'teacher', 'admin')
+CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'      # без похожих 0/O и 1/I
+BANK_ID_RE = re.compile(r'^[\w.-]{1,40}$')
 EMAIL_RE = re.compile(r'^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,24}$')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -62,7 +66,34 @@ def migrate():
         token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         expires INTEGER NOT NULL, used INTEGER NOT NULL DEFAULT 0);
       CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
+
+      -- группы учителя: ученик вступает по коду
+      CREATE TABLE IF NOT EXISTS study_groups (
+        id INTEGER PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL, code TEXT NOT NULL UNIQUE, created INTEGER NOT NULL);
+      CREATE INDEX IF NOT EXISTS groups_teacher ON study_groups(teacher_id);
+      CREATE TABLE IF NOT EXISTS group_members (
+        group_id INTEGER NOT NULL REFERENCES study_groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        joined INTEGER NOT NULL, PRIMARY KEY (group_id, user_id));
+      CREATE INDEX IF NOT EXISTS members_user ON group_members(user_id);
+
+      -- домашнее задание группе; students — JSON-список id, пустой = вся группа
+      -- items — JSON {"bank": [id задач], "py": [темы Python], "ege": [номера заданий методички]}
+      CREATE TABLE IF NOT EXISTS homework (
+        id INTEGER PRIMARY KEY, group_id INTEGER NOT NULL REFERENCES study_groups(id) ON DELETE CASCADE,
+        title TEXT NOT NULL, comment TEXT NOT NULL DEFAULT '', items TEXT NOT NULL,
+        students TEXT NOT NULL DEFAULT '[]', due INTEGER, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+      CREATE INDEX IF NOT EXISTS homework_group ON homework(group_id);
+      -- когда ученик закрыл все пункты ДЗ (фиксируется при сохранении прогресса)
+      CREATE TABLE IF NOT EXISTS homework_done (
+        hw_id INTEGER NOT NULL REFERENCES homework(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        done_at INTEGER NOT NULL, PRIMARY KEY (hw_id, user_id));
     ''')
+    cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
+    if 'role' not in cols:
+        db().execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'")
 
 # ---------------------------------------------------------------- пароли и токены
 def hash_password(pw: str) -> str:
@@ -114,6 +145,86 @@ def check_new_password(pw: str, email: str):
         raise ApiError(400, 'weak_password', 'Пароль — от 8 символов')
     if pw.lower() in (email, email.split('@')[0]) or len(set(pw)) < 4:
         raise ApiError(400, 'weak_password', 'Пароль слишком простой')
+
+# ---------------------------------------------------------------- прогресс и домашние задания
+def load_progress(user_id):
+    r = db().execute('SELECT data, updated FROM progress WHERE user_id = ?', (user_id,)).fetchone()
+    if not r:
+        return {}, None
+    try:
+        data = json.loads(r['data'])
+    except ValueError:
+        data = {}
+    return (data if isinstance(data, dict) else {}), r['updated']
+
+def _ints(xs):
+    out = set()
+    for x in xs if isinstance(xs, list) else ():
+        try:
+            out.add(int(x))
+        except (TypeError, ValueError):
+            pass
+    return out
+
+def progress_sets(data):
+    solved = {str(x) for x in data.get('solved', []) if isinstance(x, (str, int))} if isinstance(data.get('solved'), list) else set()
+    return {'bank': solved, 'py': _ints(data.get('studied')), 'ege': _ints(data.get('ege'))}
+
+def hw_progress(items, sets):
+    """(сделано пунктов, всего пунктов) по одному ДЗ."""
+    total = done = 0
+    for k in ('bank', 'py', 'ege'):
+        for x in items.get(k, []):
+            total += 1
+            done += (str(x) if k == 'bank' else x) in sets[k]
+    return done, total
+
+def summary(data, updated):
+    """Короткая статистика ученика для таблиц учителя."""
+    sets = progress_sets(data)
+    att = data.get('att') if isinstance(data.get('att'), dict) else {}
+    tries = right = 0
+    for a in att.values():
+        if isinstance(a, dict):
+            tries += int(a.get('n') or 0); right += int(a.get('c') or 0)
+    days = {k for k, v in (data.get('days') or {}).items() if v} if isinstance(data.get('days'), dict) else set()
+    today = time.time()
+    day = lambda back: time.strftime('%Y-%m-%d', time.localtime(today - back * 86400))
+    streak, back = 0, (0 if day(0) in days else 1)        # сегодня ещё не занимался — серия считается со вчера
+    while day(back) in days:
+        streak += 1; back += 1
+    return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']),
+            'tries': tries, 'right': right, 'accuracy': round(right / tries * 100) if tries else None,
+            'active7': sum(day(i) in days for i in range(7)), 'streak': streak, 'updated': updated}
+
+def hw_json(h):
+    return {'id': h['id'], 'group_id': h['group_id'], 'title': h['title'], 'comment': h['comment'],
+            'items': json.loads(h['items']), 'students': json.loads(h['students']), 'due': h['due'],
+            'created': h['created'], 'updated': h['updated']}
+
+def assigned_homework(user_id):
+    """ДЗ, выданные ученику: во всех его группах, кроме адресованных другим ученикам."""
+    rows = db().execute('SELECT h.*, g.name AS group_name, t.name AS teacher_name FROM homework h '
+                        'JOIN group_members m ON m.group_id = h.group_id AND m.user_id = ? '
+                        'JOIN study_groups g ON g.id = h.group_id JOIN users t ON t.id = g.teacher_id '
+                        'ORDER BY COALESCE(h.due, h.created + 315360000), h.id', (user_id,)).fetchall()
+    return [h for h in rows if not json.loads(h['students']) or user_id in json.loads(h['students'])]
+
+def record_homework_done(user_id, data):
+    sets, now = progress_sets(data), int(time.time())
+    done = {r['hw_id'] for r in db().execute('SELECT hw_id FROM homework_done WHERE user_id = ?', (user_id,))}
+    for h in assigned_homework(user_id):
+        if h['id'] in done:
+            continue
+        d, t = hw_progress(json.loads(h['items']), sets)
+        if t and d == t:
+            db().execute('INSERT OR IGNORE INTO homework_done VALUES (?,?,?)', (h['id'], user_id, now))
+
+def new_group_code():
+    while True:
+        code = ''.join(secrets.choice(CODE_ABC) for _ in range(8))
+        if not db().execute('SELECT 1 FROM study_groups WHERE code = ?', (code,)).fetchone():
+            return code
 
 # ---------------------------------------------------------------- почта
 def send_reset_mail(to: str, name: str, link: str):
@@ -234,7 +345,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self): self.route('DELETE')
 
     def route(self, method):
-        path = self.path.split('?', 1)[0]
+        path, _, qs = self.path.partition('?')
+        self.query = {k: v[0] for k, v in parse_qs(qs).items()}
         handlers = {
             ('GET', '/api/health'): self.health,
             ('GET', '/api/auth/me'): self.me,
@@ -247,6 +359,24 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/account/delete'): self.delete_account,
             ('GET', '/api/progress'): self.get_progress,
             ('PUT', '/api/progress'): self.put_progress,
+            # ученик
+            ('GET', '/api/me/groups'): self.my_groups,
+            ('POST', '/api/me/groups/join'): self.join_group,
+            ('POST', '/api/me/groups/leave'): self.leave_group,
+            ('GET', '/api/me/homework'): self.my_homework,
+            # учитель
+            ('GET', '/api/teach/groups'): self.t_groups,
+            ('POST', '/api/teach/groups'): self.t_group_create,
+            ('POST', '/api/teach/groups/update'): self.t_group_update,
+            ('POST', '/api/teach/groups/delete'): self.t_group_delete,
+            ('POST', '/api/teach/groups/remove'): self.t_group_remove,
+            ('GET', '/api/teach/group'): self.t_group,
+            ('GET', '/api/teach/student'): self.t_student,
+            ('POST', '/api/teach/homework'): self.t_hw_save,
+            ('POST', '/api/teach/homework/delete'): self.t_hw_delete,
+            # администратор
+            ('GET', '/api/admin/users'): self.a_users,
+            ('POST', '/api/admin/role'): self.a_role,
         }
         fn = handlers.get((method, path))
         try:
@@ -267,7 +397,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {'ok': True})
 
     def user_json(self, u):
-        return {'id': u['id'], 'email': u['email'], 'name': u['name'], 'created': u['created']}
+        return {'id': u['id'], 'email': u['email'], 'name': u['name'], 'created': u['created'], 'role': u['role']}
 
     def me(self):
         self.send_json(200, {'user': self.user_json(self.current_user())})
@@ -390,10 +520,275 @@ class Handler(BaseHTTPRequestHandler):
         now = int(time.time())
         db().execute('INSERT INTO progress VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated',
                      (u['id'], raw, now))
+        record_homework_done(u['id'], data)
         self.send_json(200, {'ok': True, 'updated': now})
+
+    # --- ученик: группы и домашние задания
+    def my_groups(self):
+        u = self.current_user()
+        rows = db().execute('SELECT g.id, g.name, t.name AS teacher, m.joined FROM group_members m '
+                            'JOIN study_groups g ON g.id = m.group_id JOIN users t ON t.id = g.teacher_id '
+                            'WHERE m.user_id = ? ORDER BY m.joined', (u['id'],)).fetchall()
+        self.send_json(200, {'groups': [dict(r) for r in rows]})
+
+    def join_group(self):
+        u = self.current_user()
+        key = f'join:{u["id"]}'
+        if too_many(key, 10, 3600):
+            raise ApiError(429, 'rate_limited', 'Слишком много попыток. Попробуйте через час')
+        code = re.sub(r'[\s-]', '', str(self.body().get('code', ''))).upper()
+        g = db().execute('SELECT * FROM study_groups WHERE code = ?', (code,)).fetchone() if code else None
+        if not g:
+            hit(key)
+            raise ApiError(404, 'bad_code', 'Группа с таким кодом не найдена — проверьте код у учителя')
+        if g['teacher_id'] == u['id']:
+            raise ApiError(400, 'own_group', 'Это ваша собственная группа')
+        db().execute('INSERT OR IGNORE INTO group_members VALUES (?,?,?)', (g['id'], u['id'], int(time.time())))
+        data, _ = load_progress(u['id'])
+        record_homework_done(u['id'], data)       # уже выполненное засчитываем сразу
+        self.send_json(200, {'group': {'id': g['id'], 'name': g['name']}})
+
+    def leave_group(self):
+        u = self.current_user()
+        gid = self.int_arg(self.body(), 'id')
+        db().execute('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', (gid, u['id']))
+        self.send_json(200, {'ok': True})
+
+    def my_homework(self):
+        u = self.current_user()
+        done = {r['hw_id']: r['done_at'] for r in db().execute('SELECT * FROM homework_done WHERE user_id = ?', (u['id'],))}
+        out = []
+        for h in assigned_homework(u['id']):
+            j = hw_json(h); del j['students']
+            j.update(group=h['group_name'], teacher=h['teacher_name'], done_at=done.get(h['id']))
+            out.append(j)
+        self.send_json(200, {'homework': out})
+
+    # --- учитель
+    @staticmethod
+    def int_arg(d, key):
+        try:
+            return int(d.get(key))
+        except (TypeError, ValueError):
+            raise ApiError(400, 'bad_request', 'Некорректный запрос')
+
+    def teacher(self):
+        u = self.current_user()
+        if u['role'] not in ('teacher', 'admin'):
+            raise ApiError(403, 'forbidden', 'Раздел доступен только учителям')
+        return u
+
+    def own_group(self, u, gid):
+        g = db().execute('SELECT * FROM study_groups WHERE id = ?', (gid,)).fetchone()
+        if not g or (g['teacher_id'] != u['id'] and u['role'] != 'admin'):
+            raise ApiError(404, 'not_found', 'Группа не найдена')
+        return g
+
+    @staticmethod
+    def group_name(d):
+        name = re.sub(r'\s+', ' ', str(d.get('name', ''))).strip()
+        if not 1 <= len(name) <= 60:
+            raise ApiError(400, 'bad_name', 'Название группы — от 1 до 60 символов')
+        return name
+
+    def t_groups(self):
+        u = self.teacher()
+        mine = '' if u['role'] == 'admin' and self.query.get('all') == '1' else 'WHERE g.teacher_id = ?'
+        rows = db().execute('SELECT g.id, g.name, g.code, g.created, g.teacher_id, t.name AS teacher, '
+                            '(SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id) AS members, '
+                            '(SELECT COUNT(*) FROM homework h WHERE h.group_id = g.id) AS homework '
+                            f'FROM study_groups g JOIN users t ON t.id = g.teacher_id {mine} ORDER BY g.created DESC',
+                            (u['id'],) if mine else ()).fetchall()
+        self.send_json(200, {'groups': [dict(r) for r in rows]})
+
+    def t_group_create(self):
+        u = self.teacher()
+        name = self.group_name(self.body())
+        if db().execute('SELECT COUNT(*) FROM study_groups WHERE teacher_id = ?', (u['id'],)).fetchone()[0] >= 200:
+            raise ApiError(400, 'too_many', 'Слишком много групп')
+        cur = db().execute('INSERT INTO study_groups (teacher_id, name, code, created) VALUES (?,?,?,?)',
+                           (u['id'], name, new_group_code(), int(time.time())))
+        self.send_json(201, {'group': dict(db().execute('SELECT * FROM study_groups WHERE id = ?', (cur.lastrowid,)).fetchone())})
+
+    def t_group_update(self):
+        u = self.teacher()
+        d = self.body()
+        g = self.own_group(u, self.int_arg(d, 'id'))
+        if 'name' in d:
+            db().execute('UPDATE study_groups SET name = ? WHERE id = ?', (self.group_name(d), g['id']))
+        if d.get('new_code'):
+            db().execute('UPDATE study_groups SET code = ? WHERE id = ?', (new_group_code(), g['id']))
+        self.send_json(200, {'group': dict(db().execute('SELECT * FROM study_groups WHERE id = ?', (g['id'],)).fetchone())})
+
+    def t_group_delete(self):
+        u = self.teacher()
+        g = self.own_group(u, self.int_arg(self.body(), 'id'))
+        db().execute('DELETE FROM study_groups WHERE id = ?', (g['id'],))
+        self.send_json(200, {'ok': True})
+
+    def t_group_remove(self):
+        u = self.teacher()
+        d = self.body()
+        g = self.own_group(u, self.int_arg(d, 'group_id'))
+        db().execute('DELETE FROM group_members WHERE group_id = ? AND user_id = ?', (g['id'], self.int_arg(d, 'user_id')))
+        self.send_json(200, {'ok': True})
+
+    def hw_status(self, hws, members):
+        """Статус каждого ДЗ у каждого адресата: {hw_id: {user_id: [сделано, всего, done_at]}}."""
+        ids = [h['id'] for h in hws]
+        done = {}
+        if ids:
+            for r in db().execute(f'SELECT * FROM homework_done WHERE hw_id IN ({",".join("?" * len(ids))})', ids):
+                done[(r['hw_id'], r['user_id'])] = r['done_at']
+        out = {}
+        for h in hws:
+            items, to = json.loads(h['items']), json.loads(h['students'])
+            st = out[h['id']] = {}
+            for uid, sets in members.items():
+                if to and uid not in to:
+                    continue
+                d, t = hw_progress(items, sets)
+                st[uid] = [d, t, done.get((h['id'], uid))]
+        return out
+
+    def t_group(self):
+        u = self.teacher()
+        g = self.own_group(u, self.int_arg(self.query, 'id'))
+        rows = db().execute('SELECT u.id, u.name, u.email, m.joined FROM group_members m JOIN users u ON u.id = m.user_id '
+                            'WHERE m.group_id = ? ORDER BY u.name COLLATE NOCASE', (g['id'],)).fetchall()
+        members, sets = [], {}
+        for r in rows:
+            data, updated = load_progress(r['id'])
+            sets[r['id']] = progress_sets(data)
+            members.append(dict(r, stats=summary(data, updated)))
+        hws = db().execute('SELECT * FROM homework WHERE group_id = ? ORDER BY COALESCE(due, created + 315360000) DESC, id DESC',
+                           (g['id'],)).fetchall()
+        status = self.hw_status(hws, sets)
+        teacher = db().execute('SELECT name FROM users WHERE id = ?', (g['teacher_id'],)).fetchone()['name']
+        self.send_json(200, {'group': dict(g, teacher=teacher), 'members': members,
+                             'homework': [dict(hw_json(h), status=status[h['id']]) for h in hws]})
+
+    def t_student(self):
+        u = self.teacher()
+        sid = self.int_arg(self.query, 'id')
+        own = '' if u['role'] == 'admin' else 'AND g.teacher_id = ?'
+        groups = db().execute('SELECT g.id, g.name FROM study_groups g JOIN group_members m ON m.group_id = g.id '
+                              f'WHERE m.user_id = ? {own} ORDER BY g.name', (sid,) + (() if u['role'] == 'admin' else (u['id'],))).fetchall()
+        st = db().execute('SELECT id, name, email, created FROM users WHERE id = ?', (sid,)).fetchone()
+        if not st or (not groups and u['role'] != 'admin'):
+            raise ApiError(404, 'not_found', 'Ученик не найден в ваших группах')
+        data, updated = load_progress(sid)
+        gids = [g['id'] for g in groups]
+        hws = db().execute(f'SELECT * FROM homework WHERE group_id IN ({",".join("?" * len(gids))}) ORDER BY COALESCE(due, created + 315360000) DESC',
+                           gids).fetchall() if gids else []
+        hws = [h for h in hws if not json.loads(h['students']) or sid in json.loads(h['students'])]
+        status = self.hw_status(hws, {sid: progress_sets(data)})
+        self.send_json(200, {'student': dict(st), 'groups': [dict(g) for g in groups], 'progress': data,
+                             'stats': summary(data, updated),
+                             'homework': [dict(hw_json(h), status=status[h['id']].get(sid)) for h in hws]})
+
+    def t_hw_save(self):
+        u = self.teacher()
+        d = self.body()
+        if d.get('id'):
+            h = db().execute('SELECT * FROM homework WHERE id = ?', (self.int_arg(d, 'id'),)).fetchone()
+            if not h:
+                raise ApiError(404, 'not_found', 'Задание не найдено')
+            g = self.own_group(u, h['group_id'])
+        else:
+            h, g = None, self.own_group(u, self.int_arg(d, 'group_id'))
+        title = re.sub(r'\s+', ' ', str(d.get('title', ''))).strip()
+        if not 1 <= len(title) <= 120:
+            raise ApiError(400, 'bad_title', 'Название — от 1 до 120 символов')
+        comment = str(d.get('comment', '')).strip()
+        if len(comment) > 2000:
+            raise ApiError(400, 'bad_comment', 'Комментарий — до 2000 символов')
+        raw = d.get('items') if isinstance(d.get('items'), dict) else {}
+        bank = list(dict.fromkeys(str(x) for x in raw.get('bank', []) if BANK_ID_RE.match(str(x))))[:200] if isinstance(raw.get('bank'), list) else []
+        py = sorted(x for x in _ints(raw.get('py')) if 1 <= x <= 500)
+        ege = sorted(x for x in _ints(raw.get('ege')) if 1 <= x <= 27)
+        if not (bank or py or ege):
+            raise ApiError(400, 'empty', 'Добавьте в задание хотя бы одну задачу или тему')
+        due = d.get('due')
+        if due is not None:
+            due = self.int_arg(d, 'due')
+            if not 1_600_000_000 < due < 4_000_000_000:
+                raise ApiError(400, 'bad_due', 'Некорректный срок сдачи')
+        member_ids = {r['user_id'] for r in db().execute('SELECT user_id FROM group_members WHERE group_id = ?', (g['id'],))}
+        students = sorted(x for x in _ints(d.get('students')) if x in member_ids)
+        items = json.dumps({'bank': bank, 'py': py, 'ege': ege})
+        now = int(time.time())
+        if h:
+            db().execute('UPDATE homework SET title=?, comment=?, items=?, students=?, due=?, updated=? WHERE id=?',
+                         (title, comment, items, json.dumps(students), due, now, h['id']))
+            hid = h['id']
+        else:
+            hid = db().execute('INSERT INTO homework (group_id, title, comment, items, students, due, created, updated) VALUES (?,?,?,?,?,?,?,?)',
+                               (g['id'], title, comment, items, json.dumps(students), due, now, now)).lastrowid
+        # состав изменился — пересчитываем, кто уже всё сделал
+        if h and h['items'] != items:
+            db().execute('DELETE FROM homework_done WHERE hw_id = ?', (hid,))
+        for uid in (students or member_ids):
+            data, _ = load_progress(uid)
+            dn, tt = hw_progress(json.loads(items), progress_sets(data))
+            if tt and dn == tt:
+                db().execute('INSERT OR IGNORE INTO homework_done VALUES (?,?,?)', (hid, uid, now))
+        self.send_json(200 if h else 201, {'homework': hw_json(db().execute('SELECT * FROM homework WHERE id = ?', (hid,)).fetchone())})
+
+    def t_hw_delete(self):
+        u = self.teacher()
+        h = db().execute('SELECT * FROM homework WHERE id = ?', (self.int_arg(self.body(), 'id'),)).fetchone()
+        if not h:
+            raise ApiError(404, 'not_found', 'Задание не найдено')
+        self.own_group(u, h['group_id'])
+        db().execute('DELETE FROM homework WHERE id = ?', (h['id'],))
+        self.send_json(200, {'ok': True})
+
+    # --- администратор
+    def admin(self):
+        u = self.current_user()
+        if u['role'] != 'admin':
+            raise ApiError(403, 'forbidden', 'Раздел доступен только администратору')
+        return u
+
+    def a_users(self):
+        self.admin()
+        q = '%' + str(self.query.get('q', '')).strip().lower().replace('%', '').replace('_', '') + '%'
+        rows = db().execute('SELECT u.id, u.name, u.email, u.role, u.created, p.updated, '
+                            '(SELECT COUNT(*) FROM group_members m WHERE m.user_id = u.id) AS groups_in, '
+                            '(SELECT COUNT(*) FROM study_groups g WHERE g.teacher_id = u.id) AS groups_own '
+                            'FROM users u LEFT JOIN progress p ON p.user_id = u.id '
+                            'WHERE lower(u.email) LIKE ? OR lower(u.name) LIKE ? '
+                            "ORDER BY CASE u.role WHEN 'admin' THEN 0 WHEN 'teacher' THEN 1 ELSE 2 END, u.created DESC LIMIT 300",
+                            (q, q)).fetchall()
+        total = db().execute('SELECT COUNT(*) FROM users').fetchone()[0]
+        self.send_json(200, {'users': [dict(r) for r in rows], 'total': total})
+
+    def a_role(self):
+        me = self.admin()
+        d = self.body()
+        uid, role = self.int_arg(d, 'user_id'), str(d.get('role', ''))
+        if role not in ROLES:
+            raise ApiError(400, 'bad_role', 'Неизвестная роль')
+        if uid == me['id']:
+            raise ApiError(400, 'self', 'Свою роль менять нельзя — попросите другого администратора')
+        if not db().execute('UPDATE users SET role = ? WHERE id = ?', (role, uid)).rowcount:
+            raise ApiError(404, 'not_found', 'Пользователь не найден')
+        self.send_json(200, {'ok': True})
+
+
+def cli_set_role(email, role):
+    migrate()
+    if role not in ROLES:
+        sys.exit(f'Роль должна быть одной из: {", ".join(ROLES)}')
+    if not db().execute('UPDATE users SET role = ? WHERE email = ?', (role, email.strip().lower())).rowcount:
+        sys.exit(f'Пользователь {email} не найден — сначала зарегистрируйтесь на сайте')
+    print(f'{email}: роль {role}')
 
 
 def main():
+    if len(sys.argv) == 4 and sys.argv[1] == 'set-role':
+        return cli_set_role(sys.argv[2], sys.argv[3])
     migrate()
     srv = ThreadingHTTPServer((HOST, PORT), Handler)
     srv.daemon_threads = True

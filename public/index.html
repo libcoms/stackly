@@ -110,7 +110,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .score-pill:hover { text-decoration: none; filter: brightness(.96); }
 .score-pill .ball { --s: 20px; background: var(--on-lime); }
 .score-pill.bump { animation: bump .5s var(--ease); }
-@media (max-width: 1400px) { .logo small { display: none; } }
+/* подпись у логотипа не помещается рядом с меню из 5–6 пунктов (контейнер не шире 1240px) */
+.logo small { display: none; }
+@media (max-width: 1400px) { .score-pill .lbl { display: none; } .score-pill { padding-right: 11px; } }
+@media (max-width: 1180px) and (min-width: 901px) { .nav a { padding: 8px 10px; } .top .wrap { gap: 12px; } }
 @media (max-width: 900px) {
   .top .wrap { flex-wrap: wrap; gap: 8px 12px; padding-block: 10px; }
   .logo small { display: none; }
@@ -706,6 +709,129 @@ table.mapping td, table.mapping th { text-align: left; }
   html { scroll-behavior: auto; }
 }
 
+/* ---------- домашние задания и кабинет учителя ---------- */
+.fld textarea, .fld select { width: 100%; padding: 12px 15px; border-radius: 13px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 15px/1.5 var(--f-body); transition: border-color .2s; }
+.fld textarea { min-height: 92px; resize: vertical; }
+.fld textarea:focus, .fld select:focus { outline: none; border-color: var(--blue); }
+.hw-dot { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font: 800 11px/18px var(--f-display); text-align: center; box-shadow: 0 0 0 2px var(--paper); }
+.acct-btn { position: relative; }
+.loading-row { display: flex; gap: 10px; align-items: center; color: var(--mute); padding: 60px 0; justify-content: center; }
+.loading-row .ball { animation: spin 1s linear infinite; }
+.myclass { margin-top: 26px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 320px); gap: 14px; align-items: start; }
+.hw-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.hw-card { border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; background: var(--paper); min-width: 0; }
+.hw-card.done { background: var(--paper-2); }
+.hw-top { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; justify-content: space-between; }
+.hw-top h3 { font-size: 17px; font-weight: 800; }
+.hw-meta { font-size: 12.5px; color: var(--mute); }
+.hw-comment { font-size: 14px; color: var(--ink-2); white-space: pre-line; padding: 10px 12px; border-radius: 12px; background: var(--paper-2); border-left: 3px solid var(--lime); }
+.hw-card.done .hw-comment { background: var(--paper); }
+.hw-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.hwi { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 13px; line-height: 1.25; max-width: 100%; }
+.hwi:hover { text-decoration: none; border-color: var(--ink-2); }
+.hwi b { font: 800 11px/1 var(--f-display); color: var(--mute); white-space: nowrap; }
+.hwi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hwi.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+.hwi.ok b { color: var(--ok); }
+.hwi svg { width: 14px; height: 14px; flex: none; }
+.hw-prog { display: flex; gap: 10px; align-items: center; font: 700 13px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.due { display: inline-flex; align-items: center; gap: 5px; font: 700 12px/1 var(--f-body); padding: 5px 9px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); white-space: nowrap; }
+.due.soon { background: var(--lime-soft); color: var(--ink); }
+.due.late { background: var(--bad-soft); color: var(--bad); }
+.due.ok { background: var(--ok-soft); color: var(--ok); }
+.join-form { display: flex; gap: 8px; }
+.join-form input { flex: 1; min-width: 0; padding: 11px 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 700 15px var(--f-mono); letter-spacing: .12em; text-transform: uppercase; }
+.join-form input:focus { outline: none; border-color: var(--blue); }
+.grp-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.grp-row:first-of-type { border-top: 0; }
+.grp-row small { display: block; color: var(--mute); font-size: 12.5px; }
+.t-page { padding-block: 34px 70px; }
+.t-head { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+.t-head h1 { font-size: clamp(30px, 4vw, 46px); font-weight: 900; letter-spacing: -.045em; margin: 8px 0 6px; overflow-wrap: anywhere; }
+.t-head p { color: var(--ink-2); margin: 0; max-width: 60ch; }
+.t-back { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--mute); }
+.t-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.t-sec { margin-top: 26px; }
+.t-sec > h2 { font-size: 21px; font-weight: 800; margin-bottom: 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+.t-card { border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; display: grid; gap: 12px; color: var(--ink); background: var(--paper); transition: border-color .2s, transform .25s var(--ease), box-shadow .25s var(--ease); }
+.t-card:hover { text-decoration: none; border-color: var(--ink-2); transform: translateY(-2px); box-shadow: var(--shadow); }
+.t-card h3 { font-size: 20px; font-weight: 800; overflow-wrap: anywhere; }
+.t-card .nums { display: flex; gap: 18px; font-size: 13px; color: var(--mute); }
+.t-card .nums b { display: block; font: 900 24px/1 var(--f-display); color: var(--ink); letter-spacing: -.03em; }
+.code-chip { font: 700 13px/1 var(--f-mono); letter-spacing: .1em; padding: 6px 10px; border-radius: 8px; background: var(--paper-2); justify-self: start; }
+.t-create { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.t-create input { flex: 1 1 220px; min-width: 0; padding: 12px 15px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 15px var(--f-body); }
+.t-create input:focus { outline: none; border-color: var(--blue); }
+.t-create .form-msg { flex-basis: 100%; }
+.code-box { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 18px; background: var(--lime); color: var(--on-lime); }
+.code-box .lbl { font-size: 12.5px; }
+.code-box b { font: 800 24px/1 var(--f-mono); letter-spacing: .14em; }
+.code-box .btn { border-color: rgba(13,15,23,.3); }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tbl th { text-align: left; font: 600 11.5px/1.2 var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--mute); padding: 12px 14px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.tbl td { padding: 11px 14px; border-top: 1px solid var(--line); vertical-align: middle; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tbl tr:first-child td { border-top: 0; }
+.tbl td.name { white-space: normal; min-width: 160px; }
+.tbl td.name a { font-weight: 600; color: var(--ink); }
+.tbl td.name small { display: block; color: var(--mute); font-size: 12.5px; }
+.tbl tbody tr:hover { background: var(--paper-2); }
+.tbl .num { text-align: right; }
+.tbl select { padding: 7px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 14px var(--f-body); }
+.icon-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--mute); display: inline-grid; place-items: center; font-size: 16px; line-height: 1; }
+.icon-x:hover { color: var(--bad); border-color: var(--bad); }
+.acc { font-weight: 700; } .acc.lo { color: var(--bad); } .acc.hi { color: var(--ok); }
+.t-hw { border: 1px solid var(--line); border-radius: 18px; background: var(--paper); }
+.t-hw + .t-hw { margin-top: 12px; }
+.t-hw > summary { list-style: none; cursor: pointer; padding: 16px 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; }
+.t-hw > summary::-webkit-details-marker { display: none; }
+.t-hw > summary h3 { font-size: 17px; font-weight: 800; }
+.t-hw .sub { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 12.5px; color: var(--mute); margin-top: 6px; }
+.t-hw .rate { display: grid; gap: 6px; justify-items: end; font: 800 18px/1 var(--f-display); min-width: 110px; }
+.t-hw .rate small { font: 500 12px var(--f-body); color: var(--mute); }
+.t-hw .body { padding: 0 18px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.t-hw .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.who { display: grid; grid-template-columns: minmax(0, 1fr) minmax(60px, 160px) auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.who:first-child { border-top: 0; }
+.who a { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker { border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 12px; }
+.seg { display: inline-grid; grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: 999px; background: var(--paper-2); justify-self: start; max-width: 100%; overflow-x: auto; }
+.seg button { border: 0; background: none; padding: 9px 14px; border-radius: 999px; font: 700 13.5px/1 var(--f-display); color: var(--ink-2); white-space: nowrap; }
+.seg button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(13,15,23,.12); }
+.seg button i { font-style: normal; color: var(--blue-ink); margin-left: 4px; }
+.pick-nums { display: flex; flex-wrap: wrap; gap: 6px; }
+.pick-nums .chip { min-width: 40px; justify-content: center; font-family: var(--f-display); font-weight: 700; }
+.pick-nums .chip.has { box-shadow: inset 0 -3px 0 var(--lime); }
+.pick-list { display: grid; gap: 2px; max-height: 360px; overflow-y: auto; overscroll-behavior: contain; }
+.pick { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 12px; font-size: 14px; cursor: pointer; color: var(--ink); }
+.pick:hover { background: var(--paper-2); }
+.pick input { width: 18px; height: 18px; accent-color: var(--blue); margin: 0; }
+.pick small { color: var(--mute); font-size: 12px; white-space: nowrap; }
+.pick-h { font: 600 11.5px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--mute); padding: 12px 10px 4px; }
+.sel-sum { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 34px; }
+.sel-sum .hwi { padding-right: 6px; }
+.sel-sum .hwi button { border: 0; background: none; color: var(--mute); padding: 0 4px; font-size: 15px; line-height: 1; }
+.sel-sum .hwi button:hover { color: var(--bad); }
+.hw-form { display: grid; gap: 16px; max-width: 860px; }
+.hw-form .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 14px; }
+.stud-picks { display: flex; flex-wrap: wrap; gap: 6px; }
+.stud-picks label { display: inline-flex; gap: 7px; align-items: center; padding: 7px 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13.5px; color: var(--ink); cursor: pointer; }
+.stud-picks input, .fld .stud-picks input { width: 16px; height: 16px; padding: 0; accent-color: var(--blue); margin: 0; flex: none; }
+.form-acts { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.t-empty { padding: 26px; border: 1px dashed var(--line); border-radius: 18px; color: var(--mute); display: grid; gap: 6px; }
+.t-empty b { color: var(--ink); font: 800 17px var(--f-display); }
+.prob.flash { animation: flash 1.6s var(--ease); }
+.read-btn { margin-top: 12px; }
+.me-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 860px) { .myclass { grid-template-columns: minmax(0, 1fr); } .hw-form .two { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+  .t-hw > summary { grid-template-columns: minmax(0, 1fr); }
+  .t-hw .rate { justify-items: start; }
+  .who { grid-template-columns: minmax(0, 1fr) auto; }
+  .who .pbar { display: none; }
+}
+
 /* ---------- адаптив ---------- */
 @media (max-width: 1060px) {
   .hero-grid { grid-template-columns: minmax(0, 1fr); }
@@ -752,8 +878,9 @@ table.mapping td, table.mapping th { text-align: left; }
     <a href="#home" data-nav="home">Главная</a>
     <a href="#ege" data-nav="ege">Методичка</a>
     <a href="#bank" data-nav="bank">Банк задач</a>
-    <a href="#python" data-nav="python">Python для ЕГЭ</a>
+    <a href="#python" data-nav="python">Python</a>
     <a href="#cheat" data-nav="cheat">Шпаргалка</a>
+    <a href="#teach" data-nav="teach" hidden>Учителю</a>
   </nav>
   <div class="tools">
     <a class="score-pill" id="scorePill" href="#bank" title="Решено задач в банке"><span class="ball" aria-hidden="true"></span><b>0</b><span class="lbl">&nbsp;решено</span></a>
@@ -2618,6 +2745,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   };
   const solved = new Set(store.get('solved', []));
   const studied = new Set(store.get('studied', []));
+  const egeRead = new Set(store.get('egeRead', []));          // разобранные задания методички
 
   /* ── иконки (тонкая линия) ── */
   const svg = (d, w = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -2826,7 +2954,8 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
           <header class="task-head">
             <div class="task-num"><span class="ball"></span>${n}</div>
             <div><span class="eyebrow">Задание ${n} · ${esc(t.sect)}</span><h1>${esc(t.title)}</h1>
-              <div class="task-meta"><span class="tag"><span class="lvl lvl-${t.level}">${t.level}</span>${lvName[t.level]} уровень</span><span class="tag">${pts(n)} ${plural(pts(n), 'балл', 'балла', 'баллов')}</span><span class="tag">≈ ${t.time} мин</span><span class="tag"><span class="tool-ico">${I[k]}</span>${esc(t.tool)}</span></div></div>
+              <div class="task-meta"><span class="tag"><span class="lvl lvl-${t.level}">${t.level}</span>${lvName[t.level]} уровень</span><span class="tag">${pts(n)} ${plural(pts(n), 'балл', 'балла', 'баллов')}</span><span class="tag">≈ ${t.time} мин</span><span class="tag"><span class="tool-ico">${I[k]}</span>${esc(t.tool)}</span></div>
+              <button type="button" class="btn small ghost study-btn read-btn ${egeRead.has(n) ? 'on' : ''}" data-read="${n}">${egeRead.has(n) ? 'Разобрано ✓' : 'Отметить разобранным'}</button></div>
           </header>
           <p class="task-goal">${esc(t.lead)}</p>
           <div class="pytags">${t.py.map(id => pyBy[id] ? `<a href="#py-${id}">${esc(pyBy[id].title)}</a>` : '').join('')}</div>
@@ -2969,7 +3098,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     return { att: s.att && typeof s.att === 'object' ? s.att : {}, days: s.days && typeof s.days === 'object' ? s.days : {}, events: Array.isArray(s.events) ? s.events.slice(-120) : [], since: +s.since || Date.now() };
   }
   let stats = normStats(store.get('stats', null));
-  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
+  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
   function bumpDay() { const d = DAY(Date.now()); stats.days[d] = (stats.days[d] || 0) + 1; }
   function track(kind, id, ok) {
     const now = Date.now();
@@ -2983,7 +3112,8 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     persist();
   }
   function persist() {
-    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]);
+    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]);
+    updHWBadge();
     if (!acct.cloud || acct.readOnly) return;
     clearTimeout(acct.saveT);
     acct.saveT = setTimeout(writeCloud, 700);
@@ -3014,6 +3144,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     if (!remote) return;
     (remote.solved || []).forEach(x => solved.add(String(x)));
     (remote.studied || []).forEach(x => studied.add(+x));
+    (remote.ege || []).forEach(x => egeRead.add(+x));
     const r = normStats(remote);
     for (const [k, a] of Object.entries(r.att)) {
       const l = stats.att[k];
@@ -3023,7 +3154,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const seen = new Set(); stats.events = [...stats.events, ...r.events].sort((x, y) => x.t - y.t).filter(e => { const k = e.t + e.k + e.id; if (seen.has(k)) return false; seen.add(k); return true; }).slice(-120);
     stats.since = Math.min(stats.since, r.since);
   }
-  function setUser(u) { acct.uid = u.id; acct.name = u.name; acct.email = u.email; acct.created = u.created * 1000; }
+  function setUser(u) { acct.uid = u.id; acct.name = u.name; acct.email = u.email; acct.created = u.created * 1000; acct.role = u.role || 'student'; }
   async function connect(silent) {
     // вызывается после входа/регистрации или при открытии сайта с живой сессией
     try {
@@ -3031,9 +3162,9 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
       if (r.data) mergeIn(r.data);
       if (acct.created) stats.since = Math.min(stats.since, acct.created);
       acct.cloud = true;
-      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]);
+      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]);
       await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok';
-      updScore(false); renderAcctBtn();
+      updScore(false); renderAcctBtn(); refreshHW();
       if (!silent) toast(`Вы вошли как ${acct.name}`);
       return true;
     } catch (e) { if (!silent) toast(e.message || 'Не получилось загрузить прогресс'); return false; }
@@ -3042,13 +3173,13 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     try { const r = await api('/auth/me'); setUser(r.user); await connect(true); }
     catch (e) { /* не вошли — работаем в гостевом режиме */ }
     acct.checked = true; renderAcctBtn();
-    if (/^#(login|me)$/.test(location.hash)) route();
+    if (/^#(login|me|teach|admin)/.test(location.hash)) route();
   }
   async function logout() {
     try { await api('/auth/logout', 'POST', {}); } catch (e) { }
-    acct.cloud = false; acct.uid = null;
-    solved.clear(); studied.clear(); stats = normStats(null);
-    store.set('solved', []); store.set('studied', []); store.set('stats', stats);
+    acct.cloud = false; acct.uid = null; acct.role = ''; myHW = [];
+    solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null);
+    store.set('solved', []); store.set('studied', []); store.set('egeRead', []); store.set('stats', stats);
     updScore(false); renderAcctBtn(); toast('Вы вышли. Прогресс сохранён в аккаунте');
     location.hash = 'login';
   }
@@ -3068,6 +3199,8 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     b.setAttribute('href', acct.cloud ? '#me' : '#login');
     b.setAttribute('aria-label', acct.cloud ? 'Личный кабинет' : 'Войти');
     b.classList.toggle('on', acct.cloud);
+    const tl = $('.nav [data-nav="teach"]'); if (tl) tl.hidden = !isTeacher();
+    updHWBadge();
   }
 
   /* ── страница входа ── */
@@ -3151,7 +3284,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     msg.textContent = ''; msg.className = 'form-msg'; btn.disabled = true;
     try {
       if (kind === 'password') { await api('/auth/password', 'POST', { old: v('st-old'), new: v('st-new') }); form.reset(); msg.textContent = 'Пароль изменён. Остальные устройства вышли из аккаунта'; msg.className = 'form-msg ok'; }
-      if (kind === 'delete') { await api('/account/delete', 'POST', { password: v('st-del') }); acct.cloud = false; solved.clear(); studied.clear(); stats = normStats(null); persist(); updScore(false); renderAcctBtn(); toast('Аккаунт удалён'); location.hash = 'home'; return; }
+      if (kind === 'delete') { await api('/account/delete', 'POST', { password: v('st-del') }); acct.cloud = false; acct.role = ''; myHW = []; solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist(); updScore(false); renderAcctBtn(); toast('Аккаунт удалён'); location.hash = 'home'; return; }
     } catch (e) { msg.textContent = e.message; msg.className = 'form-msg bad'; }
     btn.disabled = false;
   }
@@ -3219,6 +3352,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const recent = stats.events.slice(-8).reverse();
     const evText = e => {
       if (e.k === 'a') { const p = BANK.find(b => b.id === e.id); return p ? [e.ok ? `Решена задача «${p.title}»` : `Ошибка в задаче «${p.title}»`, `#bank-${p.task}`, `№${p.task}`, e.ok ? 'ok' : 'bad'] : null; }
+      if (e.k === 'r') { const t = egeBy[+e.id]; return t ? [`${e.ok ? 'Разобрано' : 'Снята отметка'}: задание ${t.n} «${t.title}»`, `#ege-${t.n}`, '№' + t.n, e.ok ? 'ok' : ''] : null; }
       if (e.k === 's') { const t = pyBy[+e.id]; return t ? [`${e.ok ? 'Изучена' : 'Снята отметка'}: тема «${t.title}»`, `#py-${t.id}`, 'Py', e.ok ? 'ok' : ''] : null; }
       return null;
     };
@@ -3229,8 +3363,9 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
         <div class="me-id">${avatarHTML('xl')}
           <div><span class="eyebrow">Личный кабинет</span><h1>${acct.cloud ? esc(acct.name || 'Ученик') : 'Гость'}</h1>
             <div class="me-meta">${syncBadge()}<span>в stackly с ${fmtDate(stats.since)}</span></div></div></div>
-        <div class="me-actions">${acct.cloud ? `<button type="button" class="btn ghost small" data-act="logout">Выйти</button>` : `<a class="btn blue small" href="#login">Войти и сохранить прогресс <span class="arr">${I.arrow}</span></a>`}</div>
+        <div class="me-actions">${isTeacher() ? `<a class="btn small" href="#teach">Кабинет учителя <span class="arr">${I.arrow}</span></a>` : ''}${acct.cloud ? `<button type="button" class="btn ghost small" data-act="logout">Выйти</button>` : `<a class="btn blue small" href="#login">Войти и сохранить прогресс <span class="arr">${I.arrow}</span></a>`}</div>
       </header>
+      ${acct.cloud ? myClassShell() : ''}
 
       <section class="kpis">
         <div class="kpi"><span class="k-l">Решено задач</span><b>${sN}<small> / ${total}</small></b>${bar(sN, total)}<span class="k-s">${pct(sN, total)}% банка</span></div>
@@ -3287,10 +3422,320 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     </div>`;
   }
   function resetAll() {
-    solved.clear(); studied.clear(); stats = normStats(null); persist(); updScore(false);
+    solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist(); updScore(false);
     toast('Прогресс сброшен'); route();
   }
 
+
+  /* ═════════════ ДОМАШНИЕ ЗАДАНИЯ: общее ═════════════ */
+  const isTeacher = () => acct.cloud && (acct.role === 'teacher' || acct.role === 'admin');
+  const localSets = () => ({ bank: solved, py: studied, ege: egeRead });
+  const setsOf = P => ({ bank: new Set((P.solved || []).map(String)), py: new Set((P.studied || []).map(Number)), ege: new Set((P.ege || []).map(Number)) });
+  const barHTML = (done, total, cls = '') => `<span class="pbar ${cls}"><i style="width:${total ? Math.min(done / total, 1) * 100 : 0}%"></i></span>`;
+  const itemsCount = it => (it.bank || []).length + (it.py || []).length + (it.ege || []).length;
+  function hwProg(it, S) {
+    let d = 0, t = 0;
+    for (const x of it.bank || []) { t++; d += S.bank.has(String(x)); }
+    for (const x of it.py || []) { t++; d += S.py.has(+x); }
+    for (const x of it.ege || []) { t++; d += S.ege.has(+x); }
+    return [d, t];
+  }
+  // пункты задания: ссылки на задачи банка, темы Python и разборы методички; S — чей прогресс подсвечивать
+  function hwItemsHTML(it, S) {
+    const chip = (ok, href, tag, text) => `<a class="hwi ${ok ? 'ok' : ''}" href="${href}">${ok ? I.check : ''}<b>${tag}</b><span>${esc(text)}</span></a>`;
+    return (it.ege || []).map(n => egeBy[n] ? chip(S && S.ege.has(+n), `#ege-${n}`, 'разбор ' + n, egeBy[n].title) : '').join('')
+      + (it.py || []).map(id => pyBy[id] ? chip(S && S.py.has(+id), `#py-${id}`, 'Python ' + id, pyBy[id].title) : '').join('')
+      + (it.bank || []).map(id => { const p = BANK.find(x => x.id === id); return p ? chip(S && S.bank.has(id), `#p-${id}`, '№' + p.task, p.title) : ''; }).join('');
+  }
+  const fmtDue = t => new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
+  const fmtAgo = s => { if (!s) return '—'; const d = Math.floor((Date.now() / 1000 - s) / 86400); return d <= 0 ? 'сегодня' : d === 1 ? 'вчера' : d < 30 ? `${d} ${plural(d, 'день', 'дня', 'дней')} назад` : fmtDate(s * 1000); };
+  // срок: doneAt — когда ученик всё сдал (сек), complete — сделано ли сейчас
+  function dueHTML(due, doneAt, complete) {
+    if (doneAt || complete) return `<span class="due ok">${doneAt ? `сдано ${fmtDue(doneAt * 1000)}${due && doneAt > due ? ' · с опозданием' : ''}` : 'выполнено'}</span>`;
+    if (!due) return '<span class="due">без срока</span>';
+    const left = due * 1000 - Date.now();
+    return `<span class="due ${left < 0 ? 'late' : left < 2 * 864e5 ? 'soon' : ''}">${left < 0 ? 'срок прошёл · ' : 'до '}${fmtDue(due * 1000)}</span>`;
+  }
+  const toLocalInput = t => { const d = new Date(t); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+
+  /* ═════════════ ДОМАШНИЕ ЗАДАНИЯ: ученик ═════════════ */
+  let myHW = [];
+  const hwPending = () => myHW.filter(h => { const [d, t] = hwProg(h.items, localSets()); return d < t; }).length;
+  function updHWBadge() {
+    const b = $('#acctbtn'); if (!b) return;
+    const n = acct.cloud ? hwPending() : 0, dot = $('.hw-dot', b);
+    if (!n) { if (dot) dot.remove(); return; }
+    if (dot) dot.textContent = n; else b.insertAdjacentHTML('beforeend', `<span class="hw-dot" title="Невыполненные домашние задания">${n}</span>`);
+  }
+  async function refreshHW() { try { myHW = (await api('/me/homework')).homework; updHWBadge(); } catch (e) { } }
+  function myClassShell() {
+    return `<section class="myclass" id="myclass">
+      <div class="panel"><div class="panel-h"><h2>Домашние задания</h2><span class="muted" id="hwcount"></span></div>
+        <div id="hwlist"><div class="loading-row" style="padding:20px 0"><span class="ball"></span>Загрузка…</div></div></div>
+      <div class="panel"><div class="panel-h"><h2>Мои группы</h2></div><div id="mygroups"></div>
+        <form class="join-form" data-tform="join" novalidate><input name="code" maxlength="12" autocomplete="off" placeholder="Код группы" aria-label="Код группы"><button class="btn small" type="submit">Вступить</button></form>
+        <div class="form-msg" role="alert" style="margin-top:10px"></div>
+        <p class="auth-note" style="margin-top:10px">Код выдаёт учитель. После вступления здесь появятся его задания.</p></div>
+    </section>`;
+  }
+  async function loadMyClass() {
+    if (!acct.cloud || !$('#myclass')) return;
+    try {
+      const [g, h] = await Promise.all([api('/me/groups'), api('/me/homework')]);
+      myHW = h.homework; renderMyClass(g.groups); updHWBadge();
+    } catch (e) { const l = $('#hwlist'); if (l) l.innerHTML = `<p class="muted">${esc(e.message || 'Не получилось загрузить задания')}</p>`; }
+  }
+  function renderMyClass(groups) {
+    const box = $('#hwlist'); if (!box) return;
+    const S = localSets(), list = myHW.map(h => ({ h, p: hwProg(h.items, S) }));
+    const open = list.filter(x => x.p[0] < x.p[1]), done = list.filter(x => x.p[0] >= x.p[1]);
+    const card = ({ h, p }) => `<article class="hw-card ${p[0] >= p[1] ? 'done' : ''}">
+        <div class="hw-top"><div><h3>${esc(h.title)}</h3><span class="hw-meta">${esc(h.group)} · ${esc(h.teacher)}</span></div>${dueHTML(h.due, h.done_at, p[0] >= p[1])}</div>
+        ${h.comment ? `<div class="hw-comment">${esc(h.comment)}</div>` : ''}
+        <div class="hw-prog">${barHTML(p[0], p[1])}<span>${p[0]} / ${p[1]}</span></div>
+        <div class="hw-items">${hwItemsHTML(h.items, S)}</div></article>`;
+    box.innerHTML = list.length
+      ? `<div class="hw-list">${open.map(card).join('')}</div>${done.length ? `<p class="cap" style="margin-top:16px">Выполненные</p><div class="hw-list">${done.map(card).join('')}</div>` : ''}`
+      : `<div class="empty-mini"><b>${groups.length ? 'Заданий пока нет' : 'Вы не состоите в группе'}</b>${groups.length ? 'Когда учитель выдаст задание, оно появится здесь.' : 'Введите код группы, который дал учитель, — и его задания появятся здесь.'}</div>`;
+    $('#hwcount').textContent = open.length ? `${open.length} ${plural(open.length, 'невыполненное', 'невыполненных', 'невыполненных')}` : '';
+    $('#mygroups').innerHTML = groups.map(g => `<div class="grp-row"><span><b>${esc(g.name)}</b><small>учитель ${esc(g.teacher)}</small></span><button type="button" class="btn small ghost" data-tact="leave" data-id="${g.id}" data-name="${esc(g.name)}">Выйти</button></div>`).join('')
+      || '<p class="muted" style="margin:0 0 12px;font-size:14px">Пока ни одной группы.</p>';
+  }
+
+  /* ═════════════ КАБИНЕТ УЧИТЕЛЯ ═════════════ */
+  let tSeq = 0, tGroup = null, hwDraft = null;
+  const teachShell = () => `<div class="page wrap t-page" id="tpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
+  const tMsg = (title, text, href, label) => `<div class="t-empty" style="margin-top:30px"><b>${esc(title)}</b>${esc(text)}${href ? `<div class="cta-row"><a class="btn small" href="${href}">${label}</a></div>` : ''}</div>`;
+  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя"><a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a>` : ''}</nav>`;
+  async function loadTeach(h) {
+    const seq = ++tSeq;
+    const put = html => { const box = $('#tpage'); if (seq !== tSeq || !box) return false; box.innerHTML = html; reveal(box); return true; };
+    if (!acct.checked) return;                                   // initAccount перерисует страницу, когда узнает, кто вошёл
+    if (!acct.cloud) return put(tMsg('Войдите в аккаунт', 'Кабинет учителя открывается после входа.', '#login', 'Войти'));
+    if (!isTeacher()) return put(tMsg('Раздел для учителей', 'Попросите администратора сайта выдать вам роль учителя.', '#me', 'В личный кабинет'));
+    let m;
+    try {
+      if (h === 'teach' || h === 'teach-all') { const all = h === 'teach-all' && acct.role === 'admin'; put(tGroupsHTML((await api('/teach/groups' + (all ? '?all=1' : ''))).groups, all)); }
+      else if ((m = h.match(/^teach-g-(\d+)$/))) { tGroup = await api('/teach/group?id=' + m[1]); put(tGroupHTML(tGroup)); }
+      else if ((m = h.match(/^teach-hw-(\d+)-(new|\d+)$/))) {
+        tGroup = await api('/teach/group?id=' + m[1]);
+        const hw = m[2] === 'new' ? null : tGroup.homework.find(x => x.id === +m[2]);
+        if (m[2] !== 'new' && !hw) throw { message: 'Задание не найдено — возможно, его удалили' };
+        const it = hw ? hw.items : {};
+        hwDraft = { bank: new Set(it.bank || []), py: new Set(it.py || []), ege: new Set(it.ege || []), tab: 'bank', num: (it.bank || []).length ? (BANK.find(p => p.id === it.bank[0]) || { task: 1 }).task : 1 };
+        if (put(tHwEditHTML(tGroup, hw))) renderPicker(true);
+      }
+      else if ((m = h.match(/^teach-s-(\d+)$/))) put(tStudentHTML(await api('/teach/student?id=' + m[1])));
+      else if (h === 'admin') {
+        if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
+        put(tAdminHTML(await api('/admin/users')));
+      }
+      else put(tMsg('Страница не найдена', '', '#teach', 'К группам'));
+    } catch (e) { put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#teach', 'К группам')); }
+  }
+
+  function tGroupsHTML(groups, all) {
+    return `<header class="t-head"><div><span class="eyebrow">Кабинет учителя</span><h1>${all ? 'Все группы' : 'Мои группы'}</h1>
+        <p>Создайте группу и отправьте ученикам её код — они введут его в личном кабинете. Задания и статистика — внутри группы.</p></div>${tTabs(all ? 'all' : 'mine')}</header>
+      <section class="t-sec">
+        ${all ? '' : `<form class="t-create" data-tform="group-new" novalidate><input name="name" maxlength="60" placeholder="Название: «11А» или «Пн 18:00»" aria-label="Название группы"><button class="btn blue" type="submit">Создать группу</button><div class="form-msg" role="alert"></div></form>`}
+        ${groups.length ? `<div class="t-grid" style="margin-top:16px">${groups.map(g => `<a class="t-card" href="#teach-g-${g.id}"><h3>${esc(g.name)}</h3>${all ? `<span class="hw-meta">учитель ${esc(g.teacher)}</span>` : ''}
+            <div class="nums"><span><b>${g.members}</b>${plural(g.members, 'ученик', 'ученика', 'учеников')}</span><span><b>${g.homework}</b>${plural(g.homework, 'задание', 'задания', 'заданий')}</span></div>
+            <span class="code-chip">${esc(g.code)}</span></a>`).join('')}</div>`
+          : `<div class="t-empty" style="margin-top:16px"><b>Групп пока нет</b>${all ? 'Учителя ещё не создали ни одной группы.' : 'Создайте первую группу — например, для класса или для времени занятия.'}</div>`}
+      </section>`;
+  }
+
+  // статус ДЗ у ученика: [сделано, всего, сдано_в] → выполнено ли
+  const stDone = x => !!x && (!!x[2] || (x[1] > 0 && x[0] >= x[1]));
+  function tGroupHTML(r) {
+    const g = r.group, ms = r.members, hws = r.homework, byId = Object.fromEntries(ms.map(m => [m.id, m]));
+    const accCls = a => a === null ? '' : a >= 80 ? 'hi' : a < 50 ? 'lo' : '';
+    const hwOf = id => { const mine = hws.filter(h => h.status[id]); return [mine.filter(h => stDone(h.status[id])).length, mine.length]; };
+    const hwRow = h => {
+      const ids = Object.keys(h.status), doneN = ids.filter(k => stDone(h.status[k])).length;
+      const order = ids.sort((a, b) => stDone(h.status[a]) - stDone(h.status[b]) || (byId[a] || {}).name?.localeCompare((byId[b] || {}).name || ''));
+      return `<details class="t-hw"><summary><div><h3>${esc(h.title)}</h3><div class="sub">${dueHTML(h.due)}<span>${itemsCount(h.items)} ${plural(itemsCount(h.items), 'пункт', 'пункта', 'пунктов')}</span><span>${h.students.length ? `выбрано учеников: ${h.students.length}` : 'вся группа'}</span></div></div>
+          <div class="rate">${doneN} / ${ids.length}<small>выполнили</small>${barHTML(doneN, ids.length)}</div></summary>
+        <div class="body">${h.comment ? `<div class="hw-comment">${esc(h.comment)}</div>` : ''}<div class="hw-items">${hwItemsHTML(h.items, null)}</div>
+          <div>${order.map(k => { const x = h.status[k], m = byId[k]; return m ? `<div class="who"><a href="#teach-s-${k}">${esc(m.name)}</a>${barHTML(x[0], x[1])}${stDone(x) ? dueHTML(h.due, x[2], true) : `<span class="hw-meta">${x[0]} из ${x[1]}</span>`}</div>` : ''; }).join('') || '<p class="muted" style="margin:0">В группе пока нет учеников.</p>'}</div>
+          <div class="acts"><a class="btn small" href="#teach-hw-${g.id}-${h.id}">Изменить</a><button type="button" class="btn small ghost" data-tact="del-hw" data-id="${h.id}">Удалить</button></div></div></details>`;
+    };
+    return `<a class="t-back" href="${acct.role === 'admin' && g.teacher_id !== acct.uid ? '#teach-all' : '#teach'}">← Все группы</a>
+      <header class="t-head"><div><span class="eyebrow">Группа${g.teacher_id !== acct.uid ? ' · учитель ' + esc(g.teacher) : ''}</span><h1>${esc(g.name)}</h1>
+          <p>${ms.length} ${plural(ms.length, 'ученик', 'ученика', 'учеников')} · ${hws.length} ${plural(hws.length, 'задание', 'задания', 'заданий')}</p></div>
+        <div class="code-box"><span class="lbl">Код для учеников</span><b>${esc(g.code)}</b><button type="button" class="btn small ghost" data-tact="copy-code" data-code="${esc(g.code)}">Копировать</button></div></header>
+
+      <section class="t-sec"><h2>Домашние задания <a class="btn small blue" href="#teach-hw-${g.id}-new">Новое задание <span class="arr">${I.arrow}</span></a></h2>
+        ${hws.length ? hws.map(hwRow).join('') : `<div class="t-empty"><b>Заданий пока нет</b>Соберите задание из задач банка, тем Python и разборов методички — ученики увидят его в личном кабинете.</div>`}</section>
+
+      <section class="t-sec"><h2>Ученики</h2>
+        ${ms.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ученик</th><th class="num">Решено</th><th class="num">Точность</th><th class="num">Серия</th><th class="num">За 7 дней</th><th>Заходил</th><th class="num">ДЗ</th><th></th></tr></thead><tbody>
+          ${ms.map(m => { const s = m.stats, [hd, ht] = hwOf(m.id); return `<tr><td class="name"><a href="#teach-s-${m.id}">${esc(m.name)}</a><small>${esc(m.email)}</small></td>
+            <td class="num">${s.solved}<span class="muted"> / ${BANK.length}</span></td><td class="num"><span class="acc ${accCls(s.accuracy)}">${s.accuracy === null ? '—' : s.accuracy + '%'}</span></td>
+            <td class="num">${s.streak} ${plural(s.streak, 'день', 'дня', 'дней')}</td><td class="num">${s.active7} ${plural(s.active7, 'день', 'дня', 'дней')}</td><td>${fmtAgo(s.updated)}</td>
+            <td class="num">${ht ? `${hd} / ${ht}` : '—'}</td><td><button type="button" class="icon-x" data-tact="rm-member" data-id="${m.id}" data-name="${esc(m.name)}" aria-label="Убрать ${esc(m.name)} из группы" title="Убрать из группы">×</button></td></tr>`; }).join('')}
+          </tbody></table></div>`
+          : `<div class="t-empty"><b>В группе пока никого</b>Отправьте ученикам код <b style="display:inline;font-family:var(--f-mono)">${esc(g.code)}</b> — они введут его в личном кабинете на stackly.</div>`}</section>
+
+      <section class="t-sec"><h2>Настройки группы</h2><div class="panel" style="display:grid;gap:14px">
+        <form class="t-create" data-tform="group-rename" data-id="${g.id}" novalidate><input name="name" maxlength="60" value="${esc(g.name)}" aria-label="Название группы"><button class="btn small" type="submit">Переименовать</button><div class="form-msg" role="alert"></div></form>
+        <div class="form-acts"><button type="button" class="btn small ghost" data-tact="new-code" data-id="${g.id}">Выдать новый код</button><button type="button" class="btn small danger-btn" data-tact="del-group" data-id="${g.id}" data-name="${esc(g.name)}">Удалить группу</button></div>
+        <p class="auth-note">Новый код нужен, если старый попал не к тем людям: уже вступившие ученики останутся в группе. Удаление группы удалит и все её задания.</p></div></section>`;
+  }
+
+  function tHwEditHTML(r, hw) {
+    const g = r.group, ms = r.members, picked = new Set(hw ? hw.students : []), toAll = !hw || !hw.students.length;
+    const due = hw ? (hw.due ? toLocalInput(hw.due * 1000) : '') : toLocalInput((() => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(20, 0, 0, 0); return d; })());
+    return `<a class="t-back" href="#teach-g-${g.id}">← ${esc(g.name)}</a>
+      <header class="t-head"><div><span class="eyebrow">Группа ${esc(g.name)}</span><h1>${hw ? 'Изменить задание' : 'Новое задание'}</h1>
+        <p>Отметьте задачи банка, темы Python и разборы методички. Задачи ученик решает на сайте — ответ проверяется сразу, а вы видите, кто что сделал.</p></div></header>
+      <form class="hw-form t-sec" data-tform="hw" data-gid="${g.id}" data-hid="${hw ? hw.id : ''}" novalidate>
+        <div class="two"><label class="fld"><span>Название</span><input name="title" maxlength="120" value="${esc(hw ? hw.title : '')}" placeholder="Например: Графы и задание 1"></label>
+          <label class="fld"><span>Срок сдачи</span><input name="due" type="datetime-local" value="${due}"></label></div>
+        <label class="fld"><span>Комментарий для учеников</span><textarea name="comment" maxlength="2000" placeholder="Например: сначала прочитайте разбор, потом решайте задачи">${esc(hw ? hw.comment : '')}</textarea></label>
+        <div class="fld"><span>Кому</span><div class="stud-picks"><label><input type="radio" name="to" value="all" ${toAll ? 'checked' : ''}>Всей группе</label><label><input type="radio" name="to" value="some" ${toAll ? '' : 'checked'}>Выбранным ученикам</label></div>
+          <div class="stud-picks" id="studlist" style="margin-top:6px" ${toAll ? 'hidden' : ''}>${ms.map(m => `<label><input type="checkbox" name="st" value="${m.id}" ${picked.has(m.id) ? 'checked' : ''}>${esc(m.name)}</label>`).join('') || '<span class="muted">В группе пока нет учеников</span>'}</div></div>
+        <div class="fld"><span>Состав задания</span><div class="picker"><div class="sel-sum" id="selsum"></div>
+          <div class="seg" role="tablist"><button type="button" data-ptab="bank">Банк задач<i></i></button><button type="button" data-ptab="py">Python<i></i></button><button type="button" data-ptab="ege">Методичка<i></i></button></div>
+          <div id="pickbody"></div></div></div>
+        <div class="form-msg" role="alert"></div>
+        <div class="form-acts"><button class="btn blue" type="submit">${hw ? 'Сохранить' : 'Выдать задание'}</button><a class="btn ghost" href="#teach-g-${g.id}">Отмена</a></div>
+      </form>`;
+  }
+  // выбор пунктов: тело перерисовывается только при смене вкладки или номера, отметки обновляют сводку
+  function renderPicker(body) {
+    const D = hwDraft; if (!D || !$('#pickbody')) return;
+    const sel = [...[...D.ege].sort((a, b) => a - b).map(n => ['ege', n, 'разбор ' + n, (egeBy[n] || {}).title]),
+      ...[...D.py].sort((a, b) => a - b).map(id => ['py', id, 'Python ' + id, (pyBy[id] || {}).title]),
+      ...[...D.bank].map(id => { const p = BANK.find(x => x.id === id); return ['bank', id, p ? '№' + p.task : '?', p ? p.title : 'задача удалена']; })];
+    $('#selsum').innerHTML = sel.length ? sel.map(([k, v, tag, text]) => `<span class="hwi"><b>${tag}</b><span>${esc(text || '')}</span><button type="button" data-tact="unpick" data-k="${k}" data-v="${esc(v)}" aria-label="Убрать">×</button></span>`).join('')
+      : '<span class="muted" style="font-size:14px">Пока ничего не выбрано — отметьте задачи и темы ниже</span>';
+    $$('[data-ptab]').forEach(b => { b.classList.toggle('on', b.dataset.ptab === D.tab); $('i', b).textContent = D[b.dataset.ptab].size || ''; });
+    $$('[data-pnum]').forEach(b => b.classList.toggle('has', BANK.some(p => p.task === +b.dataset.pnum && D.bank.has(p.id))));
+    if (!body) return;
+    const row = (k, v, text, note) => `<label class="pick"><input type="checkbox" data-pick="${k}" value="${esc(v)}" ${D[k].has(k === 'bank' ? v : +v) ? 'checked' : ''}><span>${esc(text)}</span><small>${esc(note)}</small></label>`;
+    let html = '';
+    if (D.tab === 'bank') {
+      const counts = {}; BANK.forEach(p => counts[p.task] = (counts[p.task] || 0) + 1);
+      html = `<div class="pick-nums">${EGE.map(t => `<button type="button" class="chip ${D.num === t.n ? 'on' : ''} ${BANK.some(p => p.task === t.n && D.bank.has(p.id)) ? 'has' : ''}" data-pnum="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
+        <div class="pick-list">${BANK.filter(p => p.task === D.num).map(p => row('bank', p.id, p.title, lvWord[p.level])).join('') || '<p class="muted">Для этого номера задач в банке пока нет.</p>'}</div>`;
+    } else if (D.tab === 'py') {
+      html = `<div class="pick-list">${BLOCKS.map(b => `<div class="pick-h">${b.id}. ${esc(b.title)}</div>` + PY.filter(t => t.id >= b.from && t.id <= b.to).map(t => row('py', t.id, `${t.id}. ${t.title}`, t.ege.length ? '№ ' + t.ege.join(', ') : 'основа')).join('')).join('')}</div>`;
+    } else {
+      html = `<div class="pick-list">${EGE.map(t => row('ege', t.n, `${t.n}. ${t.title}`, lvName[t.level])).join('')}</div>`;
+    }
+    $('#pickbody').innerHTML = html;
+  }
+
+  function tStudentHTML(r) {
+    const u = r.student, P = r.progress || {}, S = setsOf(P), s = r.stats, att = P.att && typeof P.att === 'object' ? P.att : {};
+    const perTask = EGE.map(t => { const ps = BANK.filter(b => b.task === t.n); return { t, total: ps.length, done: ps.filter(p => S.bank.has(p.id)).length, wrong: ps.reduce((a, p) => a + Math.max(0, ((att[p.id] || {}).n || 0) - ((att[p.id] || {}).c || 0)), 0) }; });
+    const mistakes = BANK.filter(p => att[p.id] && att[p.id].n > att[p.id].c && !S.bank.has(p.id)).slice(0, 8);
+    const back = r.groups.length ? `#teach-g-${r.groups[0].id}` : '#teach';
+    const blocks = BLOCKS.map(b => { const ts = PY.filter(t => t.id >= b.from && t.id <= b.to); return { b, total: ts.length, done: ts.filter(t => S.py.has(t.id)).length }; });
+    return `<a class="t-back" href="${back}">← ${r.groups.length ? esc(r.groups[0].name) : 'Все группы'}</a>
+      <header class="t-head"><div><span class="eyebrow">Ученик${r.groups.length ? ' · ' + r.groups.map(g => esc(g.name)).join(', ') : ''}</span><h1>${esc(u.name)}</h1>
+        <p>${esc(u.email)} · на stackly с ${fmtDate(u.created * 1000)}</p></div></header>
+      <section class="kpis">
+        <div class="kpi"><span class="k-l">Решено задач</span><b>${s.solved}<small> / ${BANK.length}</small></b>${barHTML(s.solved, BANK.length)}<span class="k-s">Python: ${s.studied} из ${PY.length} тем · разборов: ${s.ege} из 27</span></div>
+        <div class="kpi"><span class="k-l">Точность ответов</span><b>${s.accuracy === null ? '—' : s.accuracy + '<small>%</small>'}</b>${barHTML(s.right, s.tries || 1)}<span class="k-s">${s.tries ? `${s.right} верных из ${s.tries} ${plural(s.tries, 'попытки', 'попыток', 'попыток')}` : 'ещё нет попыток'}</span></div>
+        <div class="kpi"><span class="k-l">Серия дней</span><b>${s.streak}<small> ${plural(s.streak, 'день', 'дня', 'дней')}</small></b><span class="k-s">занимался ${s.active7} ${plural(s.active7, 'день', 'дня', 'дней')} из последних 7</span></div>
+        <div class="kpi accent"><span class="k-l">Последний раз</span><b style="font-size:30px">${fmtAgo(s.updated)}</b><span class="k-s">прогресс сохранялся на сайте</span></div>
+      </section>
+      <section class="me-grid">
+        <div class="panel span2"><div class="panel-h"><h2>Прогресс по заданиям</h2><span class="muted">${perTask.filter(x => x.done).length} из 27 номеров начато</span></div>
+          <div class="taskbars" role="list">${perTask.map(x => `<a role="listitem" class="tb ${x.done && x.done === x.total ? 'full' : ''}" href="#bank-${x.t.n}" data-tipt="Задание ${x.t.n}: ${esc(x.t.short)}|решено ${x.done} из ${x.total}${x.wrong ? ', ошибок: ' + x.wrong : ''}">
+            <span class="tb-col"><i style="height:${x.total ? x.done / x.total * 100 : 0}%"></i></span><span class="tb-n">${x.t.n}</span></a>`).join('')}</div></div>
+        <div class="panel span2"><div class="panel-h"><h2>Домашние задания</h2></div>
+          ${r.homework.length ? `<div class="hw-list">${r.homework.map(h => { const x = h.status || [0, 0, null]; return `<article class="hw-card ${stDone(x) ? 'done' : ''}"><div class="hw-top"><div><h3>${esc(h.title)}</h3></div>${dueHTML(h.due, x[2], stDone(x))}</div>
+            <div class="hw-prog">${barHTML(x[0], x[1])}<span>${x[0]} / ${x[1]}</span></div><div class="hw-items">${hwItemsHTML(h.items, S)}</div></article>`; }).join('')}</div>`
+            : '<p class="muted" style="margin:0">Заданий этому ученику пока не выдавали.</p>'}</div>
+        <div class="panel"><div class="panel-h"><h2>Ошибки без верного ответа</h2></div>
+          ${mistakes.length ? mistakes.map(p => `<a class="next" href="#p-${p.id}"><span class="lvl lvl-${p.level}">${p.task}</span><span><b>${esc(p.title)}</b><small>${att[p.id].n - att[p.id].c} ${plural(att[p.id].n - att[p.id].c, 'неверный ответ', 'неверных ответа', 'неверных ответов')}</small></span>${I.arrow}</a>`).join('')
+            : '<p class="muted" style="margin:0">Нерешённых задач с ошибками нет.</p>'}</div>
+        <div class="panel"><div class="panel-h"><h2>Учебник Python</h2><span class="muted">${s.studied} из ${PY.length} тем</span></div>
+          ${blocks.map(x => `<div class="row-stat"><span class="rs-no">${x.b.id}</span><span class="rs-name">${esc(x.b.title)}</span>${barHTML(x.done, x.total)}<b>${x.done}/${x.total}</b></div>`).join('')}</div>
+      </section>`;
+  }
+
+  const roleName = { student: 'ученик', teacher: 'учитель', admin: 'администратор' };
+  function usersRows(users) {
+    return users.map(u => `<tr><td class="name"><b>${esc(u.name)}</b><small>${esc(u.email)}</small></td>
+      <td><select data-urole="${u.id}" aria-label="Роль ${esc(u.name)}" ${u.id === acct.uid ? 'disabled title="Свою роль менять нельзя"' : ''}>${Object.entries(roleName).map(([k, v]) => `<option value="${k}" ${u.role === k ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+      <td>${fmtDate(u.created * 1000)}</td><td>${fmtAgo(u.updated)}</td>
+      <td>${u.groups_own ? `ведёт ${u.groups_own} ${plural(u.groups_own, 'группу', 'группы', 'групп')}` : u.groups_in ? `в ${u.groups_in} ${plural(u.groups_in, 'группе', 'группах', 'группах')}` : '—'}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="muted">Никого не найдено</td></tr>';
+  }
+  function tAdminHTML(r) {
+    return `<header class="t-head"><div><span class="eyebrow">Администратор</span><h1>Пользователи</h1>
+        <p>Всего ${r.total}. Роль «учитель» открывает кабинет учителя, «администратор» — ещё и этот раздел со всеми группами.</p></div>${tTabs('users')}</header>
+      <section class="t-sec"><div class="t-create" style="margin-bottom:14px"><input id="usrq" type="search" placeholder="Поиск по имени или почте" aria-label="Поиск пользователей"></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Пользователь</th><th>Роль</th><th>Регистрация</th><th>Заходил</th><th>Группы</th></tr></thead><tbody id="usrbody">${usersRows(r.users)}</tbody></table></div></section>`;
+  }
+
+  /* ── события кабинета учителя и блока ДЗ ── */
+  async function submitTeach(f) {
+    const kind = f.dataset.tform, msg = f.querySelector('.form-msg') || f.parentElement.querySelector('.form-msg'), btn = f.querySelector('[type=submit]');
+    const say = (t, ok) => { if (msg) { msg.textContent = t; msg.className = 'form-msg ' + (ok ? 'ok' : 'bad'); } };
+    if (msg) { msg.textContent = ''; msg.className = 'form-msg'; }
+    let body;
+    if (kind === 'hw') {
+      const D = hwDraft, title = f.elements.title.value.trim(), to = f.querySelector('[name=to]:checked').value;
+      const students = to === 'some' ? $$('[name=st]:checked', f).map(x => +x.value) : [];
+      if (!title) return say('Укажите название задания');
+      if (!D.bank.size && !D.py.size && !D.ege.size) return say('Добавьте хотя бы одну задачу, тему или разбор');
+      if (to === 'some' && !students.length) return say('Отметьте учеников или выберите «Всей группе»');
+      body = { group_id: +f.dataset.gid, title, comment: f.elements.comment.value, due: f.elements.due.value ? Math.floor(new Date(f.elements.due.value).getTime() / 1000) : null, students,
+        items: { bank: [...D.bank], py: [...D.py], ege: [...D.ege] } };
+      if (f.dataset.hid) body.id = +f.dataset.hid;
+    }
+    btn.disabled = true;
+    try {
+      if (kind === 'join') { const r = await api('/me/groups/join', 'POST', { code: f.elements.code.value }); f.reset(); toast(`Вы в группе «${r.group.name}»`); await loadMyClass(); }
+      else if (kind === 'group-new') { const r = await api('/teach/groups', 'POST', { name: f.elements.name.value }); location.hash = 'teach-g-' + r.group.id; }
+      else if (kind === 'group-rename') { await api('/teach/groups/update', 'POST', { id: +f.dataset.id, name: f.elements.name.value }); toast('Группа переименована'); route(); }
+      else if (kind === 'hw') { await api('/teach/homework', 'POST', body); toast(body.id ? 'Задание сохранено' : 'Задание выдано'); location.hash = 'teach-g-' + body.group_id; }
+    } catch (e) { say(e.message || 'Ошибка'); }
+    btn.disabled = false;
+  }
+  document.addEventListener('submit', e => { const f = e.target.closest('[data-tform]'); if (f) { e.preventDefault(); submitTeach(f); } });
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-tact],[data-ptab],[data-pnum]'); if (!b) return;
+    if (b.dataset.ptab) { hwDraft.tab = b.dataset.ptab; return renderPicker(true); }
+    if (b.dataset.pnum) { hwDraft.num = +b.dataset.pnum; return renderPicker(true); }
+    const a = b.dataset.tact, id = +b.dataset.id;
+    if (a === 'unpick') { hwDraft[b.dataset.k].delete(b.dataset.k === 'bank' ? b.dataset.v : +b.dataset.v); return renderPicker(true); }
+    if (a === 'copy-code') return copyText(b.dataset.code, null);
+    const ask = { 'del-hw': 'Удалить задание? Отметки учеников о выполнении пропадут.', 'del-group': `Удалить группу «${b.dataset.name}» вместе со всеми заданиями?`,
+      'rm-member': `Убрать ${b.dataset.name} из группы?`, 'leave': `Выйти из группы «${b.dataset.name}»? Её задания пропадут из кабинета.`, 'new-code': 'Выдать новый код? Старый перестанет работать.' }[a];
+    if (ask && !confirm(ask)) return;
+    b.disabled = true;
+    try {
+      if (a === 'del-hw') { await api('/teach/homework/delete', 'POST', { id }); toast('Задание удалено'); }
+      else if (a === 'del-group') { await api('/teach/groups/delete', 'POST', { id }); toast('Группа удалена'); location.hash = 'teach'; return; }
+      else if (a === 'rm-member') { await api('/teach/groups/remove', 'POST', { group_id: tGroup.group.id, user_id: id }); toast('Ученик убран из группы'); }
+      else if (a === 'new-code') { await api('/teach/groups/update', 'POST', { id, new_code: true }); toast('Новый код готов'); }
+      else if (a === 'leave') { await api('/me/groups/leave', 'POST', { id }); toast('Вы вышли из группы'); return loadMyClass(); }
+      route();
+    } catch (err) { toast(err.message || 'Ошибка'); b.disabled = false; }
+  });
+  document.addEventListener('change', async e => {
+    const t = e.target;
+    if (t.dataset.pick) { const k = t.dataset.pick, v = k === 'bank' ? t.value : +t.value; t.checked ? hwDraft[k].add(v) : hwDraft[k].delete(v); renderPicker(false); }
+    else if (t.name === 'to' && t.closest('[data-tform="hw"]')) $('#studlist').hidden = t.value !== 'some';
+    else if (t.dataset.urole) {
+      const prev = [...t.options].find(o => o.defaultSelected);
+      try { await api('/admin/role', 'POST', { user_id: +t.dataset.urole, role: t.value }); [...t.options].forEach(o => o.defaultSelected = o.selected); toast('Роль изменена'); }
+      catch (err) { if (prev) prev.selected = true; toast(err.message || 'Ошибка'); }
+    }
+  });
+  let usrT;
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'usrq') return;
+    clearTimeout(usrT); const q = e.target.value;
+    usrT = setTimeout(async () => { try { const r = await api('/admin/users?q=' + encodeURIComponent(q)); const tb = $('#usrbody'); if (tb) tb.innerHTML = usersRows(r.users); } catch (err) { } }, 250);
+  });
 
   /* ═════════════ ПОИСК ═════════════ */
   const index = [
@@ -3341,6 +3786,15 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
       e.target.classList.add('in'); revealIO.unobserve(e.target);
     }
   }, { rootMargin: '0px 0px -8% 0px' }) : null;
+  // страховка: при резкой прокрутке блок может проскочить экран между кадрами и не попасть в наблюдатель
+  let revealRAF = 0;
+  addEventListener('scroll', () => {
+    if (revealRAF) return;
+    revealRAF = requestAnimationFrame(() => {
+      revealRAF = 0;
+      for (const el of document.querySelectorAll('.sr:not(.in)')) if (el.getBoundingClientRect().top < innerHeight) { el.classList.add('in'); revealIO.unobserve(el); }
+    });
+  }, { passive: true });
   function reveal(root) {
     if (!root || !revealIO || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const fold = innerHeight;
@@ -3355,11 +3809,17 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   let curNav = '';
   function route() {
     const h = (location.hash || '#home').slice(1);
-    let m, html, nav = 'home', scrollTo = null;
+    let m, html, nav = 'home', scrollTo = null, focusPid = null;
     codeStore = [];
     if ((m = h.match(/^ege(?:-(\d+))?$/))) { html = pageEge(m[1] ? +m[1] : 1); nav = 'ege'; }
     else if ((m = h.match(/^py-(\d+)$/)) || h === 'python') { html = pagePython(); nav = 'python'; scrollTo = m ? +m[1] : null; }
     else if ((m = h.match(/^bank(?:-(\d+))?$/))) { bankF.task = m[1] ? +m[1] : 0; html = pageBank(); nav = 'bank'; }
+    else if ((m = h.match(/^p-([\w.-]+)$/)) && BANK.some(p => p.id === m[1])) {
+      // ссылка на одну задачу (из домашнего задания): открываем её номер без фильтров
+      const p = BANK.find(x => x.id === m[1]);
+      Object.assign(bankF, { task: p.task, level: '', status: '', q: '' }); html = pageBank(); nav = 'bank'; focusPid = p.id; curNav = '';
+    }
+    else if (/^(teach|admin)/.test(h)) { html = teachShell(); nav = 'teach'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
     else if (h === 'login') { if (acct.cloud) { location.replace('#me'); return; } html = pageLogin(); nav = 'login'; }
     else if (h === 'me') { html = pageMe(); nav = 'me'; }
@@ -3414,8 +3874,11 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     // на телефоне меню прокручивается — подвигаем его к активному разделу
     const navEl = $('.nav'), navOn = $('.nav a.on');
     if (navEl && navEl.scrollWidth > navEl.clientWidth) navEl.scrollTo({ left: navOn ? navOn.offsetLeft - navEl.offsetLeft - navEl.clientWidth / 2 + navOn.offsetWidth / 2 : 0, behavior: reduce ? 'instant' : 'smooth' });
+    if (focusPid) { const el = $(`[data-pid="${focusPid}"]`); if (el) { jump(el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - 16); el.classList.add('flash'); } }
     reveal($('#app'));
-    document.title = { home: 'stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly' }[nav];
+    if (nav === 'teach') loadTeach(h);
+    if (nav === 'me') loadMyClass();
+    document.title = { home: 'stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly' }[nav];
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', nav === 'me' || nav === 'login');
   }
 
@@ -3477,6 +3940,9 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
       const p = BANK.find(x => x.id === b.dataset.preview), pv = $('.pv', b.closest('.prob'));
       if (pv.innerHTML) { pv.innerHTML = ''; b.textContent = 'Показать'; }
       else { const ls = p.data.split('\n'); pv.innerHTML = `<div class="preview">${esc(ls.slice(0, 40).join('\n'))}${ls.length > 40 ? `\n… ещё ${ls.length - 40} ${plural(ls.length - 40, 'строка', 'строки', 'строк')}` : ''}</div>`; b.textContent = 'Скрыть'; }
+    } else if ((b = t.closest('[data-read]'))) {
+      const n = +b.dataset.read; egeRead.has(n) ? egeRead.delete(n) : egeRead.add(n); track('r', n, egeRead.has(n));
+      const on = egeRead.has(n); b.classList.toggle('on', on); b.textContent = on ? 'Разобрано ✓' : 'Отметить разобранным';
     } else if ((b = t.closest('[data-study]'))) {
       const id = +b.dataset.study; studied.has(id) ? studied.delete(id) : studied.add(id); track('s', id, studied.has(id));
       const on = studied.has(id); b.classList.toggle('on', on); b.textContent = on ? 'Изучено ✓' : 'Отметить изученной';
