@@ -751,6 +751,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .t-head p { color: var(--ink-2); margin: 0; max-width: 60ch; }
 .t-back { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--mute); }
 .t-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.t-page > .t-tabs:first-child { margin-bottom: 18px; }
 .t-sec { margin-top: 26px; }
 .t-sec > h2 { font-size: 21px; font-weight: 800; margin-bottom: 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
@@ -3077,7 +3078,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
             <div class="task-num"><span class="ball"></span>${n}</div>
             <div><span class="eyebrow">Задание ${n} · ${esc(t.sect)}</span><h1>${esc(t.title)}</h1>
               <div class="task-meta"><span class="tag"><span class="lvl lvl-${t.level}">${t.level}</span>${lvName[t.level]} уровень</span><span class="tag">${pts(n)} ${plural(pts(n), 'балл', 'балла', 'баллов')}</span><span class="tag">≈ ${t.time} мин</span><span class="tag"><span class="tool-ico">${I[k]}</span>${esc(t.tool)}</span></div>
-              <button type="button" class="btn small ghost study-btn read-btn ${egeRead.has(n) ? 'on' : ''}" data-read="${n}">${egeRead.has(n) ? 'Разобрано ✓' : 'Отметить разобранным'}</button></div>
+              <button type="button" class="btn small ghost study-btn read-btn ${egeRead.has(n) ? 'on' : ''}" data-read="${n}">${egeRead.has(n) ? 'Разобрано ✓' : 'Отметить разобранным'}</button>${acct.role === 'admin' && acct.cloud ? ` <a class="btn small ghost read-btn" href="#edit-ege-${n}">Изменить разбор</a>` : ''}</div>
           </header>
           <p class="task-goal">${esc(t.lead)}</p>
           <div class="pytags">${t.py.map(id => pyBy[id] ? `<a href="#py-${id}">${esc(pyBy[id].title)}</a>` : '').join('')}</div>
@@ -3101,7 +3102,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     return `<article class="topic" id="topic-${t.id}">
       <aside><span class="eyebrow">Тема <b>${t.id}</b></span><h3>${esc(t.title)}</h3>
         <div class="pytags">${t.ege.length ? t.ege.map(e => `<a href="#ege-${e}">№${e}</a>`).join('') : '<a href="#ege-1">основа для всех заданий</a>'}</div>
-        <button type="button" class="btn small ghost study-btn ${on ? 'on' : ''}" data-study="${t.id}">${on ? 'Изучено ✓' : 'Отметить изученной'}</button></aside>
+        <button type="button" class="btn small ghost study-btn ${on ? 'on' : ''}" data-study="${t.id}">${on ? 'Изучено ✓' : 'Отметить изученной'}</button>${acct.role === 'admin' && acct.cloud ? `<a class="btn small ghost" style="margin-top:8px" href="#edit-py-${t.id}">Изменить тему</a>` : ''}</aside>
       <div class="main"><div class="prose">${t.text}</div>${codeBlock(t.code)}${t.out ? `<div class="out">${esc(t.out)}</div>` : ''}
         <div class="note"><b>Запомни.</b> ${esc(t.note)}</div></div>
     </article>`;
@@ -3134,7 +3135,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
       <form class="answer" data-check="${p.id}">
         <label for="ans-${p.id}">Ответ${multi ? ' (все строки)' : ''}${multi ? `<textarea id="ans-${p.id}" placeholder="число число"></textarea>` : `<input id="ans-${p.id}" autocomplete="off" inputmode="text">`}</label>
         <button class="btn" type="submit">Проверить</button><span class="spacer"></span>
-        <span class="more"><button type="button" class="btn small ghost" data-show="ans" data-p="${p.id}">Показать ответ</button><button type="button" class="btn small ghost" data-show="sol" data-p="${p.id}">Решение</button></span>
+        <span class="more"><button type="button" class="btn small ghost" data-show="ans" data-p="${p.id}">Показать ответ</button><button type="button" class="btn small ghost" data-show="sol" data-p="${p.id}">Решение</button>${isTeacher() ? `<a class="btn small ghost" href="${canEditProblem(p) ? '#edit-p-' : '#edit-p-copy-'}${p.id}">${canEditProblem(p) ? 'Изменить' : 'Копия'}</a>` : ''}</span>
         <div class="verdict" aria-live="polite"></div>
       </form><div class="reveal"></div>
     </article>`;
@@ -3156,7 +3157,8 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const grp = (lbl, key, opts) => `<span class="grp"><span class="lbl">${lbl}</span>${opts.map(([v, n]) => `<button type="button" class="chip ${bankF[key] === v ? 'on' : ''}" data-f="${key}" data-v="${v}">${n}</button>`).join('')}</span>`;
     return `<div class="page wrap">
       <header class="bank-top"><div><span class="eyebrow">Тренировка</span><h1>Банк задач</h1>
-        <p>${BANK.length} задач по всем номерам в формате КЕГЭ. Введи ответ и нажми «Проверить». Данные для файловых заданий копируются кнопкой — сохрани их в файл с указанным именем и запусти своё решение.</p></div>${ringHTML()}</header>
+        <p>${BANK.length} задач по всем номерам в формате КЕГЭ. Введи ответ и нажми «Проверить». Данные для файловых заданий копируются кнопкой — сохрани их в файл с указанным именем и запусти своё решение.</p>
+        ${isTeacher() ? `<div class="form-acts" style="margin-top:14px"><a class="btn small blue" href="#edit-p-new">Новая задача</a><a class="btn small ghost" href="#edit">Редактор задач</a></div>` : ''}</div>${ringHTML()}</header>
       <div class="filters">
         <div class="filter-row" role="group" aria-label="Номер задания"><button type="button" class="chip num ${!bankF.task ? 'on' : ''}" data-task="0">Все · ${BANK.length}</button>
           ${EGE.map(t => `<button type="button" class="chip num ${bankF.task === t.n ? 'on' : ''} ${allDone(t.n) ? 'all-done' : ''}" data-task="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
@@ -3448,7 +3450,8 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     try { const r = await api('/auth/me'); setUser(r.user); await connect(true); }
     catch (e) { /* не вошли — работаем в гостевом режиме */ }
     acct.checked = true; renderAcctBtn();
-    if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash)) route();
+    // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
+    if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash) || isTeacher()) { curNav = ''; route(); }
   }
   async function logout() {
     try { await api('/auth/logout', 'POST', {}); } catch (e) { }
@@ -3638,7 +3641,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
         <div class="me-id">${avatarHTML('xl')}
           <div><span class="eyebrow">Личный кабинет</span><h1>${acct.cloud ? esc(acct.name || 'Ученик') : 'Гость'}</h1>
             <div class="me-meta">${syncBadge()}<span>в stackly с ${fmtDate(stats.since)}</span></div></div></div>
-        <div class="me-actions">${isTeacher() ? `<a class="btn small" href="#teach">Кабинет учителя <span class="arr">${I.arrow}</span></a>` : ''}${acct.cloud ? `<button type="button" class="btn ghost small" data-act="logout">Выйти</button>` : `<a class="btn blue small" href="#login">Войти и сохранить прогресс <span class="arr">${I.arrow}</span></a>`}</div>
+        <div class="me-actions">${isTeacher() ? `<a class="btn small" href="#teach">Кабинет учителя <span class="arr">${I.arrow}</span></a><a class="btn small ghost" href="#edit">Редактор задач</a>` : ''}${acct.cloud ? `<button type="button" class="btn ghost small" data-act="logout">Выйти</button>` : `<a class="btn blue small" href="#login">Войти и сохранить прогресс <span class="arr">${I.arrow}</span></a>`}</div>
       </header>
       ${acct.cloud ? myClassShell() : ''}
 
@@ -3861,7 +3864,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   let tSeq = 0, tGroup = null, hwDraft = null;
   const teachShell = () => `<div class="page wrap t-page" id="tpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
   const tMsg = (title, text, href, label) => `<div class="t-empty" style="margin-top:30px"><b>${esc(title)}</b>${esc(text)}${href ? `<div class="cta-row"><a class="btn small" href="${href}">${label}</a></div>` : ''}</div>`;
-  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя"><a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip" href="#edit">Редактор задач</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a>` : ''}</nav>`;
+  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя"><a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip ${cur === 'edit' ? 'on' : ''}" href="#edit">Редактор задач</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a>` : ''}</nav>`;
   async function loadTeach(h) {
     const seq = ++tSeq;
     const put = html => { const box = $('#tpage'); if (seq !== tSeq || !box) return false; box.innerHTML = html; reveal(box); return true; };
@@ -3918,7 +3921,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
           <div>${order.map(k => { const x = h.status[k], m = byId[k]; return m ? `<div class="who"><a href="#teach-s-${k}">${esc(m.name)}</a>${barHTML(x[0], x[1])}${stDone(x) ? dueHTML(h.due, x[2], true) : `<span class="hw-meta">${x[0]} из ${x[1]}</span>`}</div>` : ''; }).join('') || '<p class="muted" style="margin:0">В группе пока нет учеников.</p>'}</div>
           <div class="acts"><a class="btn small blue" href="#teach-hwv-${h.id}">Статистика по ученикам</a><a class="btn small" href="#teach-hw-${g.id}-${h.id}">Изменить</a><button type="button" class="btn small ghost" data-tact="del-hw" data-id="${h.id}">Удалить</button></div></div></details>`;
     };
-    return `<a class="t-back" href="${acct.role === 'admin' && g.teacher_id !== acct.uid ? '#teach-all' : '#teach'}">← Все группы</a>
+    return `${tTabs('')}<a class="t-back" href="${acct.role === 'admin' && g.teacher_id !== acct.uid ? '#teach-all' : '#teach'}">← Все группы</a>
       <header class="t-head"><div><span class="eyebrow">Группа${g.teacher_id !== acct.uid ? ' · учитель ' + esc(g.teacher) : ''}</span><h1>${esc(g.name)}</h1>
           <p>${ms.length} ${plural(ms.length, 'ученик', 'ученика', 'учеников')} · ${hws.length} ${plural(hws.length, 'задание', 'задания', 'заданий')}</p></div>
         <div class="code-box"><span class="lbl">Код для учеников</span><b>${esc(g.code)}</b><button type="button" class="btn small ghost" data-tact="copy-code" data-code="${esc(g.code)}">Копировать</button></div></header>
