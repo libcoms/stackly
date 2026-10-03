@@ -15,10 +15,13 @@ apt-get install -y -q nginx python3 sqlite3 ufw ca-certificates openssl
 
 echo "== 2/7 Пользователь и папки"
 id stackly >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin stackly
-install -d -m 755 /opt/stackly/app /var/www/stackly /var/www/letsencrypt
+install -d -m 755 /opt/stackly/app /opt/stackly/content /var/www/stackly /var/www/letsencrypt
 install -d -m 750 -o stackly -g stackly /var/lib/stackly
 install -d -m 700 /etc/stackly /var/backups/stackly
 install -m 644 "$HERE/app/stackly_api.py" /opt/stackly/app/stackly_api.py
+# закрытые материалы — вне папки сайта: их отдаёт API только вошедшим
+cp -r "$HERE/content/." /opt/stackly/content/
+chmod -R a+rX /opt/stackly/content
 cp -r "$HERE/public/." /var/www/stackly/
 chmod -R a+rX /var/www/stackly
 

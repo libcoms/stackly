@@ -13,8 +13,12 @@ if [ -f /var/lib/stackly/stackly.db ]; then
   find /var/backups/stackly -name 'before-update-*.db' -mtime +14 -delete
 fi
 
-echo "== Сайт и API"
+echo "== Сайт, материалы и API"
 install -m 644 "$HERE/app/stackly_api.py" /opt/stackly/app/stackly_api.py
+# закрытые материалы — вне папки сайта: их отдаёт API только вошедшим
+install -d -m 755 /opt/stackly/content
+rsync -a --delete "$HERE/content/" /opt/stackly/content/ 2>/dev/null || cp -r "$HERE/content/." /opt/stackly/content/
+chmod -R a+rX /opt/stackly/content
 rsync -a --delete "$HERE/public/" /var/www/stackly/ 2>/dev/null || cp -r "$HERE/public/." /var/www/stackly/
 chmod -R a+rX /var/www/stackly
 

@@ -9,6 +9,7 @@
   STACKLY_HOST/PORT адрес, где слушать           (127.0.0.1 / 8090)
   STACKLY_ORIGIN    https://ваш-домен — с него принимаются изменяющие запросы
   STACKLY_COOKIE_SECURE 1 — cookie только по HTTPS (выключать лишь для локальной проверки)
+  STACKLY_CONTENT   папка с закрытыми материалами (content/ рядом с app/, на сервере /opt/stackly/content)
   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM — почта для восстановления пароля
 """
 import base64, hashlib, hmac, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
@@ -23,6 +24,9 @@ HOST = os.environ.get('STACKLY_HOST', '127.0.0.1')
 PORT = int(os.environ.get('STACKLY_PORT', '8090'))
 ORIGIN = os.environ.get('STACKLY_ORIGIN', '').rstrip('/')
 COOKIE_SECURE = os.environ.get('STACKLY_COOKIE_SECURE', '1') == '1'
+# методичка, шпаргалка и банк задач — отдаются только вошедшим
+CARD_FIELDS = ('title', 'short', 'lead', 'tool', 'level', 'time')   # поля карточки задания, которые видит гость
+CONTENT_DIR = os.environ.get('STACKLY_CONTENT') or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'content')
 COOKIE = 'stackly_session'
 SESSION_DAYS = 30
 RESET_MINUTES = 60
@@ -132,6 +136,21 @@ _DUMMY = hash_password(secrets.token_hex(8))   # чтобы проверка н�
 
 def sha(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
+
+# ---------------------------------------------------------------- закрытые материалы
+_content, _content_lock = {}, threading.Lock()
+
+def content_file(name):
+    """Тело файла из CONTENT_DIR и его ETag; перечитывается, только когда файл поменялся."""
+    path = os.path.join(CONTENT_DIR, name)
+    mtime = os.stat(path).st_mtime_ns
+    with _content_lock:
+        c = _content.get(name)
+        if c is None or c[0] != mtime:
+            with open(path, 'rb') as f:
+                body = f.read()
+            c = _content[name] = (mtime, body, '"%s"' % hashlib.sha256(body).hexdigest()[:32])
+    return c[1], c[2]
 
 # ---------------------------------------------------------------- ограничение попыток
 _hits, _hits_lock = {}, threading.Lock()
@@ -377,6 +396,7 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/account/delete'): self.delete_account,
             ('GET', '/api/progress'): self.get_progress,
             ('PUT', '/api/progress'): self.put_progress,
+            ('GET', '/api/content/ege.js'): self.content_js,
             # ученик
             ('GET', '/api/me/groups'): self.my_groups,
             ('POST', '/api/me/groups/join'): self.join_group,
@@ -530,6 +550,23 @@ class Handler(BaseHTTPRequestHandler):
         if not check_password(pw, u['pw_hash']):
             hit(key)
             raise ApiError(400, 'bad_credentials', message)
+
+    def content_js(self):
+        self.current_user()
+        body, etag = content_file('ege.js')
+        fresh = self.headers.get('If-None-Match') == etag
+        self.send_response(304 if fresh else 200)
+        self.send_header('Content-Type', 'text/javascript; charset=utf-8')
+        # браузер хранит копию, но каждый раз сверяется с сервером — после выхода получит 401
+        self.send_header('Cache-Control', 'private, no-cache')
+        self.send_header('Vary', 'Cookie')
+        self.send_header('ETag', etag)
+        if fresh:
+            self.end_headers()
+            return
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def get_progress(self):
         u = self.current_user()
@@ -803,6 +840,16 @@ class Handler(BaseHTTPRequestHandler):
 
     # --- редактор: общий банк задач, методичка, картинки
     def content(self):
+        if not self.current_user(required=False):
+            # гостю — только правки учебника Python и карточек заданий: задачи и разборы закрыты
+            lessons = {'ege': {}, 'py': {}}
+            for r in db().execute('SELECT kind, key, data, updated FROM lessons'):
+                d = json.loads(r['data'])
+                if r['kind'] == 'ege':
+                    d = {k: d[k] for k in CARD_FIELDS if k in d}
+                lessons[r['kind']][str(r['key'])] = dict(d, updated=r['updated'])
+            v = max([x['updated'] for k in lessons for x in lessons[k].values()] + [0])
+            return self.send_json(200, {'v': v, 'problems': [], 'lessons': lessons})
         rows = db().execute('SELECT p.*, u.name AS author FROM problems p LEFT JOIN users u ON u.id = p.author_id '
                             'WHERE p.hidden = 0 OR p.builtin = 1 ORDER BY p.task, p.num').fetchall()
         problems = [{k: r[k] for k in ('id', 'num', 'task', 'level', 'title', 'body', 'answer', 'solution', 'note', 'data',
