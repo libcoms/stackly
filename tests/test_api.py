@@ -271,5 +271,85 @@ class ClassroomTest(ServerCase):
         self.assertEqual(codes[-1], 429)
 
 
+class ContentTest(ServerCase):
+    """Редактор: задачи учителей, правки встроенных задач и методички, картинки."""
+    set_role = ClassroomTest.set_role
+
+    def user(self, role):
+        c, email = self.register()
+        if role != 'student':
+            self.set_role(email, role)
+        return c
+
+    P = {'task': 5, 'level': 'П', 'title': 'Моя задача', 'body': 'Найдите **N**.', 'answer': '42', 'solution': 'print(42)'}
+
+    def content(self, c):
+        return c.call('GET', '/content')[1]
+
+    def test_teacher_problem_lifecycle(self):
+        t, other, s = self.user('teacher'), self.user('teacher'), self.user('student')
+        self.assertEqual(s.call('POST', '/content/problem', self.P)[0], 403)
+        st, r = t.call('POST', '/content/problem', self.P)
+        self.assertEqual(st, 200, r)
+        pid = r['id']
+        self.assertTrue(pid.startswith('u'))
+        p = next(x for x in self.content(Client(self.base))['problems'] if x['id'] == pid)
+        self.assertGreaterEqual(p['num'], 101)
+        self.assertEqual((p['answer'], p['builtin']), ('42', False))
+        # второй учитель не может править чужую, автор — может
+        self.assertEqual(other.call('POST', '/content/problem', dict(self.P, id=pid, title='Взлом'))[0], 403)
+        self.assertEqual(t.call('POST', '/content/problem', dict(self.P, id=pid, title='Новое название'))[0], 200)
+        self.assertEqual(next(x for x in self.content(t)['problems'] if x['id'] == pid)['title'], 'Новое название')
+        # номер следующей задачи не повторяется даже после удаления
+        self.assertEqual(t.call('POST', '/content/problem/delete', {'id': pid})[0], 200)
+        self.assertNotIn(pid, [x['id'] for x in self.content(t)['problems']])
+        pid2 = t.call('POST', '/content/problem', self.P)[1]['id']
+        self.assertNotEqual(pid, pid2)
+
+    def test_validation(self):
+        t = self.user('teacher')
+        for bad, code in ((dict(self.P, task=30), 'bad_task'), (dict(self.P, level='X'), 'bad_level'), (dict(self.P, answer=''), 'bad_answer'),
+                          (dict(self.P, data='1 2 3', dname='../x'), 'bad_dname')):
+            st, r = t.call('POST', '/content/problem', bad)
+            self.assertEqual((st, r['error']), (400, code))
+
+    def test_builtin_override_admin_only(self):
+        t, a = self.user('teacher'), self.user('admin')
+        self.assertEqual(t.call('POST', '/content/problem', dict(self.P, id='1-1'))[0], 403)
+        self.assertEqual(a.call('POST', '/content/problem', dict(self.P, id='1-1', keep_extra=True))[0], 200)
+        p = next(x for x in self.content(a)['problems'] if x['id'] == '1-1')
+        self.assertEqual((p['builtin'], p['keep_extra'], p['num']), (True, True, None))
+        a.call('POST', '/content/problem/delete', {'id': '1-1'})               # скрыть
+        self.assertTrue(next(x for x in self.content(a)['problems'] if x['id'] == '1-1')['hidden'])
+        a.call('POST', '/content/problem/delete', {'id': '1-1', 'restore': True})   # вернуть исходную
+        self.assertNotIn('1-1', [x['id'] for x in self.content(a)['problems']])
+
+    def test_lessons(self):
+        t, a = self.user('teacher'), self.user('admin')
+        les = {'kind': 'ege', 'key': 5, 'data': {'title': 'Новый заголовок', 'theory': 'Текст **жирный**', 'steps': ['раз', 'два']}}
+        self.assertEqual(t.call('POST', '/content/lesson', les)[0], 403)
+        self.assertEqual(a.call('POST', '/content/lesson', les)[0], 200)
+        self.assertEqual(self.content(a)['lessons']['ege']['5']['title'], 'Новый заголовок')
+        self.assertEqual(a.call('POST', '/content/lesson', dict(les, key=99))[0], 400)
+        a.call('POST', '/content/lesson/reset', {'kind': 'ege', 'key': 5})
+        self.assertEqual(self.content(a)['lessons']['ege'], {})
+
+    def test_media(self):
+        import base64
+        t, s = self.user('teacher'), self.user('student')
+        png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==')
+        body = {'type': 'image/png', 'data': base64.b64encode(png).decode()}
+        self.assertEqual(s.call('POST', '/media', body)[0], 403)
+        st, r = t.call('POST', '/media', body)
+        self.assertEqual(st, 201, r)
+        with urllib.request.urlopen(f'{self.base}/media/{r["id"]}') as resp:
+            self.assertEqual((resp.headers['Content-Type'], resp.read()), ('image/png', png))
+            self.assertEqual(resp.headers['X-Content-Type-Options'], 'nosniff')
+        # SVG и подмена типа не проходят
+        svg = base64.b64encode(b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>').decode()
+        self.assertEqual(t.call('POST', '/media', {'type': 'image/svg+xml', 'data': svg})[0], 400)
+        self.assertEqual(t.call('POST', '/media', {'type': 'image/png', 'data': svg})[0], 400)
+
+
 if __name__ == '__main__':
     unittest.main()

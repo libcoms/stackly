@@ -27,6 +27,10 @@ COOKIE = 'stackly_session'
 SESSION_DAYS = 30
 RESET_MINUTES = 60
 MAX_BODY = 256 * 1024
+MAX_CONTENT_BODY = 3 * 1024 * 1024     # задачи с файлом данных и картинки (base64)
+MAX_IMAGE = 1536 * 1024
+IMAGE_TYPES = {'image/png': b'\x89PNG', 'image/jpeg': b'\xff\xd8\xff', 'image/gif': b'GIF8', 'image/webp': b'RIFF'}
+MEDIA_RE = re.compile(r'^/api/media/([A-Za-z0-9_-]{8,40})$')
 MAX_PROGRESS = 200 * 1024
 ROLES = ('student', 'teacher', 'admin')
 CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'      # без похожих 0/O и 1/I
@@ -86,6 +90,20 @@ def migrate():
         students TEXT NOT NULL DEFAULT '[]', due INTEGER, created INTEGER NOT NULL, updated INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS homework_group ON homework(group_id);
       -- когда ученик закрыл все пункты ДЗ (фиксируется при сохранении прогресса)
+      -- задачи, созданные на сайте (id «u<номер>», номера с 101) и правки встроенных (builtin = 1, id как в банке)
+      CREATE TABLE IF NOT EXISTS problems (
+        id TEXT PRIMARY KEY, num INTEGER UNIQUE, author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        task INTEGER NOT NULL, level TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, answer TEXT NOT NULL,
+        solution TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', data TEXT NOT NULL DEFAULT '',
+        dname TEXT NOT NULL DEFAULT '', keep_extra INTEGER NOT NULL DEFAULT 0, builtin INTEGER NOT NULL DEFAULT 0,
+        hidden INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+      -- правки методички: kind = 'ege' (номер задания) или 'py' (тема Python), data — JSON полей
+      CREATE TABLE IF NOT EXISTS lessons (
+        kind TEXT NOT NULL, key INTEGER NOT NULL, data TEXT NOT NULL,
+        author_id INTEGER REFERENCES users(id) ON DELETE SET NULL, updated INTEGER NOT NULL, PRIMARY KEY (kind, key));
+      CREATE TABLE IF NOT EXISTS media (
+        id TEXT PRIMARY KEY, owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        type TEXT NOT NULL, data BLOB NOT NULL, created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS homework_done (
         hw_id INTEGER NOT NULL REFERENCES homework(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -289,7 +307,7 @@ class Handler(BaseHTTPRequestHandler):
         return '; '.join(parts)
 
     # --- разбор запроса
-    def body(self):
+    def body(self, limit=MAX_BODY):
         if not (self.headers.get('Content-Type') or '').startswith('application/json'):
             raise ApiError(415, 'bad_type', 'Ожидается JSON')
         try:
@@ -298,7 +316,7 @@ class Handler(BaseHTTPRequestHandler):
             n = -1
         if n < 0:
             raise ApiError(400, 'bad_length', 'Некорректный запрос')
-        if n > MAX_BODY:
+        if n > limit:
             raise ApiError(413, 'too_large', 'Слишком большой запрос')
         try:
             data = json.loads(self.rfile.read(n) or b'{}')
@@ -378,8 +396,17 @@ class Handler(BaseHTTPRequestHandler):
             # администратор
             ('GET', '/api/admin/users'): self.a_users,
             ('POST', '/api/admin/role'): self.a_role,
+            # редактор задач и методички
+            ('GET', '/api/content'): self.content,
+            ('POST', '/api/content/problem'): self.c_problem_save,
+            ('POST', '/api/content/problem/delete'): self.c_problem_delete,
+            ('POST', '/api/content/lesson'): self.c_lesson_save,
+            ('POST', '/api/content/lesson/reset'): self.c_lesson_reset,
+            ('POST', '/api/media'): self.c_media_upload,
         }
         fn = handlers.get((method, path))
+        if fn is None and method == 'GET' and MEDIA_RE.match(path):
+            fn = lambda: self.media(MEDIA_RE.match(path).group(1))
         try:
             if fn is None:
                 raise ApiError(404, 'not_found', 'Нет такого адреса')
@@ -773,6 +800,175 @@ class Handler(BaseHTTPRequestHandler):
         self.own_group(u, h['group_id'])
         db().execute('DELETE FROM homework WHERE id = ?', (h['id'],))
         self.send_json(200, {'ok': True})
+
+    # --- редактор: общий банк задач, методичка, картинки
+    def content(self):
+        rows = db().execute('SELECT p.*, u.name AS author FROM problems p LEFT JOIN users u ON u.id = p.author_id '
+                            'WHERE p.hidden = 0 OR p.builtin = 1 ORDER BY p.task, p.num').fetchall()
+        problems = [{k: r[k] for k in ('id', 'num', 'task', 'level', 'title', 'body', 'answer', 'solution', 'note', 'data',
+                                       'dname', 'author', 'author_id', 'updated')}
+                    | {'keep_extra': bool(r['keep_extra']), 'builtin': bool(r['builtin']), 'hidden': bool(r['hidden'])} for r in rows]
+        lessons = {'ege': {}, 'py': {}}
+        for r in db().execute('SELECT kind, key, data, updated FROM lessons'):
+            lessons[r['kind']][str(r['key'])] = dict(json.loads(r['data']), updated=r['updated'])
+        v = max([p['updated'] for p in problems] + [x['updated'] for k in lessons for x in lessons[k].values()] + [0])
+        self.send_json(200, {'v': v, 'problems': problems, 'lessons': lessons})
+
+    @staticmethod
+    def text_field(d, key, lo, hi, label, strip=True):
+        v = str(d.get(key, '') or '')
+        v = v.strip() if strip else v
+        if not lo <= len(v) <= hi:
+            raise ApiError(400, 'bad_' + key, f'{label}: от {lo} до {hi} символов' if lo else f'{label}: не больше {hi} символов')
+        return v
+
+    def c_problem_save(self):
+        u = self.teacher()
+        d = self.body(MAX_CONTENT_BODY)
+        try:
+            task = int(d.get('task'))
+        except (TypeError, ValueError):
+            task = 0
+        if not 1 <= task <= 27:
+            raise ApiError(400, 'bad_task', 'Номер задания ЕГЭ — от 1 до 27')
+        level = str(d.get('level', ''))
+        if level not in ('Б', 'П', 'В'):
+            raise ApiError(400, 'bad_level', 'Укажите сложность')
+        f = {'task': task, 'level': level,
+             'title': re.sub(r'\s+', ' ', self.text_field(d, 'title', 1, 120, 'Название')),
+             'body': self.text_field(d, 'body', 1, 20000, 'Условие'),
+             'answer': self.text_field(d, 'answer', 1, 2000, 'Ответ'),
+             'solution': self.text_field(d, 'solution', 0, 20000, 'Решение', strip=False).strip('\n'),
+             'note': self.text_field(d, 'note', 0, 2000, 'Пояснение'),
+             'data': self.text_field(d, 'data', 0, 600_000, 'Файл с данными', strip=False),
+             'dname': self.text_field(d, 'dname', 0, 60, 'Имя файла'),
+             'keep_extra': 1 if d.get('keep_extra') else 0}
+        if f['data'] and not re.match(r'^[\w.-]{1,60}$', f['dname']):
+            raise ApiError(400, 'bad_dname', 'Имя файла — латиница, цифры, точка, например 24.txt')
+        if not f['data']:
+            f['dname'] = ''
+        now, pid = int(time.time()), str(d.get('id') or '')
+        cols = ', '.join(f'{k} = ?' for k in f)
+        if pid and not pid.startswith('u'):
+            # правка встроенной задачи — только администратор; исходник остаётся в коде сайта
+            if u['role'] != 'admin':
+                raise ApiError(403, 'forbidden', 'Встроенные задачи меняет администратор — сделайте копию')
+            if not BANK_ID_RE.match(pid):
+                raise ApiError(400, 'bad_request', 'Некорректная задача')
+            db().execute('INSERT INTO problems (id, author_id, task, level, title, body, answer, created, updated, builtin) '
+                         'VALUES (?,?,?,?,?,?,?,?,?,1) ON CONFLICT(id) DO NOTHING', (pid, u['id'], task, level, f['title'], f['body'], f['answer'], now, now))
+            db().execute(f'UPDATE problems SET {cols}, hidden = 0, updated = ? WHERE id = ?', (*f.values(), now, pid))
+        elif pid:
+            p = db().execute('SELECT * FROM problems WHERE id = ? AND hidden = 0', (pid,)).fetchone()
+            if not p:
+                raise ApiError(404, 'not_found', 'Задача не найдена')
+            if p['author_id'] != u['id'] and u['role'] != 'admin':
+                raise ApiError(403, 'forbidden', 'Это задача другого учителя — сделайте копию')
+            db().execute(f'UPDATE problems SET {cols}, updated = ? WHERE id = ?', (*f.values(), now, pid))
+        else:
+            if db().execute('SELECT COUNT(*) FROM problems WHERE author_id = ? AND builtin = 0 AND created > ?',
+                            (u['id'], now - 86400)).fetchone()[0] >= 300:
+                raise ApiError(429, 'rate_limited', 'Слишком много новых задач за сутки')
+            num = max(100, db().execute('SELECT MAX(num) FROM problems').fetchone()[0] or 0) + 1
+            pid = f'u{num}'
+            db().execute(f'INSERT INTO problems (id, num, author_id, created, updated, {", ".join(f)}) VALUES (?,?,?,?,?,{",".join("?" * len(f))})',
+                         (pid, num, u['id'], now, now, *f.values()))
+        self.send_json(200, {'id': pid})
+
+    def c_problem_delete(self):
+        u = self.teacher()
+        d = self.body()
+        pid, now = str(d.get('id', '')), int(time.time())
+        if not BANK_ID_RE.match(pid):
+            raise ApiError(400, 'bad_request', 'Некорректная задача')
+        if not pid.startswith('u'):
+            if u['role'] != 'admin':
+                raise ApiError(403, 'forbidden', 'Встроенные задачи меняет администратор')
+            if d.get('restore'):          # вернуть исходный вариант из кода сайта
+                db().execute('DELETE FROM problems WHERE id = ? AND builtin = 1', (pid,))
+            else:                         # скрыть из банка
+                db().execute("INSERT INTO problems (id, author_id, task, level, title, body, answer, builtin, hidden, created, updated) "
+                             "VALUES (?,?,1,'Б','—','—','—',1,1,?,?) ON CONFLICT(id) DO UPDATE SET hidden = 1, updated = excluded.updated",
+                             (pid, u['id'], now, now))
+        else:
+            p = db().execute('SELECT * FROM problems WHERE id = ?', (pid,)).fetchone()
+            if not p:
+                raise ApiError(404, 'not_found', 'Задача не найдена')
+            if p['author_id'] != u['id'] and u['role'] != 'admin':
+                raise ApiError(403, 'forbidden', 'Это задача другого учителя')
+            # не удаляем насовсем: на задачу могут ссылаться выданные ДЗ, номер не переиспользуется
+            db().execute('UPDATE problems SET hidden = 1, updated = ? WHERE id = ?', (now, pid))
+        self.send_json(200, {'ok': True})
+
+    LESSON_FIELDS = {
+        'ege': {'title': 120, 'short': 120, 'lead': 2000, 'level': 1, 'time': 3, 'tool': 120, 'theory': 30000, 'tip': 2000,
+                'types': 6000, 'formulas': 6000, 'steps': 6000, 'traps': 6000, 'code': 30000, 'py': 200},
+        'py': {'title': 120, 'text': 30000, 'code': 30000, 'out': 6000, 'note': 2000, 'ege': 200},
+    }
+
+    def c_lesson_save(self):
+        u = self.admin()
+        d = self.body(MAX_CONTENT_BODY)
+        kind, key = str(d.get('kind', '')), self.int_arg(d, 'key')
+        if kind not in self.LESSON_FIELDS or not (1 <= key <= (27 if kind == 'ege' else 500)):
+            raise ApiError(400, 'bad_request', 'Некорректный раздел')
+        raw = d.get('data') if isinstance(d.get('data'), dict) else {}
+        data = {}
+        for k, hi in self.LESSON_FIELDS[kind].items():
+            if k not in raw:
+                continue
+            v = raw[k]
+            # списки строк и блоки кода приходят как JSON-структуры — проверяем общий размер
+            size = len(json.dumps(v, ensure_ascii=False))
+            if size > hi + 200 or not isinstance(v, (str, int, list)):
+                raise ApiError(400, 'bad_' + k, f'Поле «{k}» слишком большое')
+            data[k] = v
+        if not str(data.get('title', 'x')).strip():
+            raise ApiError(400, 'bad_title', 'Название не может быть пустым')
+        db().execute('INSERT INTO lessons VALUES (?,?,?,?,?) ON CONFLICT(kind, key) DO UPDATE SET data = excluded.data, '
+                     'author_id = excluded.author_id, updated = excluded.updated',
+                     (kind, key, json.dumps(data, ensure_ascii=False), u['id'], int(time.time())))
+        self.send_json(200, {'ok': True})
+
+    def c_lesson_reset(self):
+        self.admin()
+        d = self.body()
+        db().execute('DELETE FROM lessons WHERE kind = ? AND key = ?', (str(d.get('kind', '')), self.int_arg(d, 'key')))
+        self.send_json(200, {'ok': True})
+
+    def c_media_upload(self):
+        u = self.teacher()
+        key = f'media:{u["id"]}'
+        if too_many(key, 120, 3600):
+            raise ApiError(429, 'rate_limited', 'Слишком много картинок за час')
+        d = self.body(MAX_CONTENT_BODY)
+        kind = str(d.get('type', ''))
+        try:
+            raw = base64.b64decode(str(d.get('data', '')), validate=True)
+        except ValueError:
+            raw = b''
+        # только растровые картинки и только если содержимое совпадает с типом (SVG не принимаем — в нём может быть скрипт)
+        if kind not in IMAGE_TYPES or not raw.startswith(IMAGE_TYPES[kind]) or (kind == 'image/webp' and raw[8:12] != b'WEBP'):
+            raise ApiError(400, 'bad_image', 'Поддерживаются картинки PNG, JPEG, WebP и GIF')
+        if len(raw) > MAX_IMAGE:
+            raise ApiError(413, 'too_large', 'Картинка больше 1,5 МБ — уменьшите её')
+        hit(key)
+        mid = secrets.token_urlsafe(12)
+        db().execute('INSERT INTO media VALUES (?,?,?,?,?)', (mid, u['id'], kind, raw, int(time.time())))
+        self.send_json(201, {'id': mid})
+
+    def media(self, mid):
+        r = db().execute('SELECT type, data FROM media WHERE id = ?', (mid,)).fetchone()
+        if not r:
+            raise ApiError(404, 'not_found', 'Картинка не найдена')
+        self.send_response(200)
+        self.send_header('Content-Type', r['type'])
+        self.send_header('Content-Length', str(len(r['data'])))
+        self.send_header('Cache-Control', 'public, max-age=31536000, immutable')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Content-Security-Policy', "default-src 'none'; sandbox")
+        self.end_headers()
+        self.wfile.write(r['data'])
 
     # --- администратор
     def admin(self):

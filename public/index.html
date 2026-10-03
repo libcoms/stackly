@@ -882,6 +882,50 @@ button.hwi { font-family: inherit; }
 .mx.ok { background: var(--ok-soft); color: var(--ok); }
 .mx.bad { background: var(--bad-soft); color: var(--bad); }
 .legend .mx { display: inline-grid; }
+/* картинки и заголовки из разметки редактора */
+.mimg { display: inline-block; max-width: 100%; height: auto; border-radius: 12px; vertical-align: middle; }
+.mfig { margin: 12px 0; display: grid; gap: 6px; justify-items: start; }
+.mfig .mimg { border: 1px solid var(--line); background: #fff; }
+.mfig figcaption { font-size: 13px; color: var(--mute); }
+.md-h { font-size: 17px; font-weight: 800; margin: 18px 0 8px; }
+.pauth { font-size: 12px; color: var(--mute); white-space: nowrap; }
+/* редактор */
+.ed-list { display: grid; gap: 4px; }
+.ed-row { display: grid; grid-template-columns: 60px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); background: var(--paper); }
+.ed-row .pnum { justify-self: start; }
+.ed-t b { display: block; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.ed-t small { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; color: var(--mute); font-size: 12.5px; margin-top: 2px; }
+.ed-t .tag { font-size: 11.5px; padding: 3px 8px; border-radius: 999px; background: var(--paper-2); }
+.tag.ed { background: var(--lime-soft); color: var(--ink); }
+.tag.own { background: var(--blue-soft); color: var(--blue-ink); }
+.ed-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.ed-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.ed-three { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.ed-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ed-split > .fld { min-width: 0; }
+.fld textarea.ed-body { min-height: 320px; font: 15px/1.6 var(--f-body) !important; }
+.ed-prev { border: 1.5px dashed var(--line); border-radius: 13px; padding: 14px 16px; min-height: 120px; max-height: 640px; overflow: auto; color: var(--ink-2); background: var(--paper); max-width: none; }
+.ed-prev.prose { font-size: 15px; }
+.fld textarea.mono { font: 13.5px/1.55 var(--f-mono); white-space: pre; overflow-x: auto; }
+.ed-check { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--ink-2); }
+.ed-check input { width: 18px; height: 18px; accent-color: var(--blue); }
+.ed-data { border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; }
+.ed-data > summary { cursor: pointer; font: 700 14.5px var(--f-display); }
+.ed-data[open] > summary { margin-bottom: 12px; }
+.ed-data > * + * { margin-top: 12px; }
+.fld input[type=file] { padding: 9px 12px; font-size: 14px; }
+.md-tools { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px; border: 1.5px solid var(--line); border-bottom: 0; border-radius: 13px 13px 0 0; background: var(--paper-2); }
+.md-tools + textarea { border-top-left-radius: 0; border-top-right-radius: 0; }
+.md-tools button, .md-img { border: 1px solid transparent; background: none; color: var(--ink-2); padding: 6px 9px; border-radius: 8px; font: 600 13px/1 var(--f-body); cursor: pointer; }
+.md-tools button:hover, .md-img:hover { background: var(--paper); border-color: var(--line); color: var(--ink); }
+.md-img { color: var(--blue-ink); }
+.md-img.busy { opacity: .5; pointer-events: none; }
+.md-help { margin-left: auto; position: relative; }
+.md-help > summary { list-style: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--f-display); color: var(--mute); border: 1px solid var(--line); background: var(--paper); }
+.md-help > summary::-webkit-details-marker { display: none; }
+.md-help > div { position: absolute; right: 0; top: 32px; z-index: 30; width: min(380px, 80vw); padding: 12px 14px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 13px; line-height: 1.8; color: var(--ink-2); }
+@media (max-width: 960px) { .ed-split { grid-template-columns: minmax(0, 1fr); } .fld textarea.ed-body { min-height: 220px; } }
+@media (max-width: 560px) { .ed-row { grid-template-columns: minmax(0, 1fr); } .ed-acts { justify-content: flex-start; } }
 @media (max-width: 560px) {
   .hw-ege-h { grid-template-columns: auto minmax(0, 1fr); }
   .hw-ege-h .study-btn { grid-column: 1 / -1; justify-self: start; }
@@ -3081,7 +3125,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     const isS = solved.has(p.id), multi = p.answer.includes('\n');
     const lines = p.data ? p.data.split('\n').length : 0, kb = p.data ? (new Blob([p.data]).size / 1024).toFixed(1) : 0;
     return `<article class="prob ${isS ? 'solved' : ''}" style="--i:${Math.min(i, 8)}" data-pid="${p.id}">
-      <div class="prob-head"><span class="pn"><em>№</em>${p.task}</span><span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${isS ? '<span class="badge-ok">решено</span>' : ''}
+      <div class="prob-head"><span class="pn"><em>№</em>${p.task}</span><span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${p.src && !p.src.builtin ? `<span class="pauth">автор: ${esc(p.src.author || 'учитель')}</span>` : ''}${isS ? '<span class="badge-ok">решено</span>' : ''}
         <span class="diff"><span>${lvWord[p.level]}</span>${[1, 2, 3].map(k => `<i class="${k <= lvDots[p.level] ? 'on' : ''}"></i>`).join('')}</span></div>
       <div class="prob-body">${p.text}${p.extra ? `<div class="extra">${p.extra}</div>` : ''}
         ${p.data ? `<div class="datafile"><span class="ico">TXT</span><span><span class="nm">${esc(p.dname)}</span><br><span class="sz">${lines} ${plural(lines, 'строка', 'строки', 'строк')} · ${kb} КБ</span></span>
@@ -3170,6 +3214,158 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
 
   /* ═════════════ АККАУНТ: почта и пароль, данные на сервере stackly ═════════════ */
   const API = '/api';
+
+  /* ═════════════ СОДЕРЖИМОЕ ИЗ РЕДАКТОРА ═════════════ */
+  // Простая разметка → безопасный HTML: сначала всё экранируется, потом разбирается разметка.
+  //   **жирный**  *курсив*  `код`  x^2^  a~1~  - список  1. список  | таблица |  ```алгоритм```  ![подпись](media:ID)
+  function mdInline(s) {
+    // код и экранированные символы (\* \^ \~ \` \| \\) откладываем, чтобы разметка их не трогала
+    const keep = [], hold = h => `\u0000${keep.push(h) - 1}\u0000`;
+    s = String(s).replace(/`([^`\n]+)`/g, (_, c) => hold(`<code>${esc(c)}</code>`)).replace(/\\([\\*^~`|])/g, (_, c) => hold(esc(c)));
+    const out = esc(s)
+      .replace(/!\[([^\]\n]*)\]\(media:([A-Za-z0-9_-]{8,40})\)/g, (_, alt, id) => `<img class="mimg" src="/api/media/${id}" alt="${alt}" loading="lazy">`)
+      .replace(/\*\*(\S(?:[^*\n]*?\S)?)\*\*/g, '<b>$1</b>')
+      .replace(/(^|[^*\w])\*(\S(?:[^*\n]*?\S)?)\*(?![*\w])/g, '$1<i>$2</i>')
+      .replace(/\^(\S(?:[^^\n]{0,30}\S)?)\^/g, '<sup>$1</sup>')
+      .replace(/~(\S(?:[^~\n]{0,30}\S)?)~/g, '<sub>$1</sub>');
+    return out.replace(/\u0000(\d+)\u0000/g, (_, i) => keep[i]);
+  }
+  const MD_BLOCK = /^(```|\s*\||\s*[-•]\s+|\s*\d+[.)]\s+|#{2,3}\s|!\[[^\]\n]*\]\(media:[\w-]+\)\s*$)/;
+  function mdTable(rows) {
+    const cells = r => r.trim().replace(/^\|/, '').replace(/(^|[^\\])\|$/, '$1').split(/(?<!\\)\|/).map(c => c.trim());
+    const sep = rows.length > 1 && /^\s*\|?(\s*:?-{2,}:?\s*\|)+\s*:?-*:?\s*\|?\s*$/.test(rows[1]);
+    const head = sep ? cells(rows[0]) : null, body = (sep ? rows.slice(2) : rows).map(cells);
+    return `<div class="tblwrap"><table class="db">${head ? `<tr>${head.map(c => `<th>${mdInline(c)}</th>`).join('')}</tr>` : ''}${body.map(r => `<tr>${r.map(c => `<td>${mdInline(c)}</td>`).join('')}</tr>`).join('')}</table></div>`;
+  }
+  function md(src) {
+    const L = String(src || '').replace(/\r/g, '').split('\n');
+    let html = '', i = 0;
+    const take = re => { const out = []; while (i < L.length && re.test(L[i])) out.push(L[i++]); return out; };
+    while (i < L.length) {
+      const l = L[i];
+      if (!l.trim()) { i++; continue; }
+      if (/^```/.test(l)) { i++; const buf = []; while (i < L.length && !/^```/.test(L[i])) buf.push(L[i++]); i++; html += `<pre class="algo">${esc(buf.join('\n'))}</pre>`; continue; }
+      if (/^\s*\|/.test(l)) { html += mdTable(take(/^\s*\|/)); continue; }
+      if (/^\s*[-•]\s+/.test(l)) { html += `<ul>${take(/^\s*[-•]\s+/).map(x => `<li>${mdInline(x.replace(/^\s*[-•]\s+/, ''))}</li>`).join('')}</ul>`; continue; }
+      if (/^\s*\d+[.)]\s+/.test(l)) { html += `<ol>${take(/^\s*\d+[.)]\s+/).map(x => `<li>${mdInline(x.replace(/^\s*\d+[.)]\s+/, ''))}</li>`).join('')}</ol>`; continue; }
+      if (/^#{2,3}\s/.test(l)) { html += `<h4 class="md-h">${mdInline(l.replace(/^#+\s+/, ''))}</h4>`; i++; continue; }
+      const fig = l.match(/^!\[([^\]\n]*)\]\(media:([A-Za-z0-9_-]{8,40})\)\s*$/);
+      if (fig) { html += `<figure class="mfig"><img class="mimg" src="/api/media/${fig[2]}" alt="${esc(fig[1])}" loading="lazy">${fig[1] ? `<figcaption>${esc(fig[1])}</figcaption>` : ''}</figure>`; i++; continue; }
+      const buf = [l]; i++;
+      while (i < L.length && L[i].trim() && !MD_BLOCK.test(L[i])) buf.push(L[i++]);
+      html += `<p>${buf.map(mdInline).join('<br>')}</p>`;
+    }
+    return html;
+  }
+  // встроенный HTML методички и банка → разметка (только для своего, доверенного содержимого)
+  function htmlToMd(html) {
+    const doc = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html');
+    const txt = c => c.textContent.replace(/\s*\n\s*/g, ' ').replace(/[\\*^~`]/g, '\\$&');
+    const inl = n => [...n.childNodes].map(c => {
+      if (c.nodeType === 3) return txt(c);
+      if (c.nodeType !== 1) return '';
+      const t = c.tagName.toLowerCase();
+      if (t === 'br') return '\n';
+      if (t === 'code' || c.classList.contains('chip')) return '`' + c.textContent.replace(/`/g, "'") + '`';
+      const k = inl(c);
+      if (!k.trim()) return k;
+      if (t === 'b' || t === 'strong') return `**${k.trim()}**`;
+      if (t === 'i' || t === 'em') return `*${k.trim()}*`;
+      if (t === 'sup') return `^${k.trim()}^`;
+      if (t === 'sub') return `~${k.trim()}~`;
+      return k;
+    }).join('');
+    const out = []; let para = '';
+    const flush = () => { const t = para.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n').replace(/\n{3,}/g, '\n\n').trim(); if (t) out.push(t); para = ''; };
+    const walk = n => {
+      for (const c of n.childNodes) {
+        const t = c.nodeType === 1 ? c.tagName.toLowerCase() : '';
+        if (t === 'p') { flush(); para = inl(c); flush(); }
+        else if (t === 'ul' || t === 'ol') { flush(); out.push([...c.children].map((li, i) => (t === 'ul' ? '- ' : `${i + 1}. `) + inl(li).replace(/\s*\n\s*/g, ' ').trim()).join('\n')); }
+        else if (t === 'table') {
+          flush();
+          const trs = [...c.querySelectorAll('tr')], row = tr => '| ' + [...tr.children].map(td => inl(td).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ').trim()).join(' | ') + ' |';
+          const lines = trs.map(row);
+          if (trs[0] && [...trs[0].children].every(x => x.tagName === 'TH')) lines.splice(1, 0, '|' + ' --- |'.repeat(trs[0].children.length));
+          out.push(lines.join('\n'));
+        }
+        else if (t === 'pre') { flush(); out.push('```\n' + c.textContent.replace(/\n$/, '') + '\n```'); }
+        else if (t === 'div' && c.classList.contains('f')) { flush(); para = inl(c); flush(); }
+        else if (t === 'div') { flush(); walk(c); flush(); }
+        else para += c.nodeType === 3 ? txt(c) : inl({ childNodes: [c] });
+      }
+    };
+    walk(doc.body.firstChild); flush();
+    return out.join('\n\n');
+  }
+  const mdLine = s => mdInline(String(s || '').replace(/\n+/g, ' '));
+  // «### Название» начинает новую вкладку с кодом
+  function parseCode(src, def = 'Решение') {
+    const blocks = []; let cur = null;
+    for (const line of String(src || '').replace(/\r/g, '').split('\n')) {
+      const m = line.match(/^###\s+(.*)$/);
+      if (m) { cur = { t: m[1].trim() || def, c: [] }; blocks.push(cur); }
+      else { if (!cur) { cur = { t: def, c: [] }; blocks.push(cur); } cur.c.push(line); }
+    }
+    return blocks.map(b => ({ t: b.t, c: b.c.join('\n').replace(/^\n+|\s+$/g, '') })).filter(b => b.c);
+  }
+  const codeToText = list => (list || []).map(b => `### ${b.t}\n${b.c}`).join('\n\n');
+
+  // исходное содержимое из кода сайта: к нему возвращаемся при сбросе правок
+  const ORIG = { bank: BANK.map(p => ({ ...p })), ege: Object.fromEntries(EGE.map(t => [t.n, JSON.parse(JSON.stringify(t))])), py: Object.fromEntries(PY.map(t => [t.id, JSON.parse(JSON.stringify(t))])) };
+  let CONTENT = { v: 0, problems: [], lessons: { ege: {}, py: {} } };
+  const strList = (v, max = 40) => (Array.isArray(v) ? v : []).map(x => String(x)).slice(0, max);
+  function applyEge(t, o) {
+    for (const k of ['title', 'short', 'lead', 'tool', 'tip']) if (typeof o[k] === 'string' && o[k].trim()) t[k] = o[k];
+    if (['Б', 'П', 'В'].includes(o.level)) t.level = o.level;
+    if (+o.time > 0) t.time = Math.min(+o.time, 240);
+    if (typeof o.theory === 'string') t.theory = md(o.theory);
+    if (Array.isArray(o.types)) t.types = o.types.filter(Array.isArray).map(([a, b]) => [String(a || ''), String(b || '')]);
+    if (Array.isArray(o.formulas)) t.formulas = o.formulas.filter(Array.isArray).map(([f, d]) => [mdLine(f), String(d || '')]);
+    if (Array.isArray(o.steps)) t.steps = strList(o.steps).map(mdLine);
+    if (Array.isArray(o.traps)) t.traps = strList(o.traps);
+    if (Array.isArray(o.code)) t.code = o.code.filter(b => b && b.c).map(b => ({ t: String(b.t || 'Решение'), c: String(b.c) }));
+    if (Array.isArray(o.py)) t.py = o.py.map(Number).filter(x => pyBy[x]);
+  }
+  function applyPy(t, o) {
+    if (typeof o.title === 'string' && o.title.trim()) t.title = o.title;
+    if (typeof o.text === 'string') t.text = md(o.text);
+    if (Array.isArray(o.code)) t.code = o.code.filter(b => b && b.c).map(b => ({ t: String(b.t || 'Пример'), c: String(b.c) }));
+    if (typeof o.out === 'string') t.out = o.out;
+    if (typeof o.note === 'string') t.note = o.note;
+    if (Array.isArray(o.ege)) t.ege = o.ege.map(Number).filter(x => x >= 1 && x <= 27);
+  }
+  // накладываем правки на встроенное: задачи учителей, изменённые и скрытые встроенные, методичка
+  function applyContent(c) {
+    if (!c || !Array.isArray(c.problems)) return;
+    CONTENT = c;
+    const over = Object.fromEntries(c.problems.filter(p => p.builtin).map(p => [p.id, p]));
+    const toBank = (p, base) => ({ ...(base || {}), id: p.id, task: p.task, level: p.level, title: p.title, text: md(p.body), extra: base && p.keep_extra ? base.extra : '',
+      code: p.solution || '', answer: p.answer, note: p.note || '', data: p.data || '', dname: p.dname || '', src: p });
+    const list = ORIG.bank.filter(p => !(over[p.id] && over[p.id].hidden)).map(p => over[p.id] ? toBank(over[p.id], p) : { ...p });
+    const custom = c.problems.filter(p => !p.builtin && !p.hidden).map(p => toBank(p, null));
+    for (const k in pnum) delete pnum[k];
+    ORIG.bank.forEach((p, i) => pnum[p.id] = i + 1);
+    custom.forEach(p => pnum[p.id] = p.src.num);
+    BANK.length = 0; BANK.push(...list, ...custom.sort((a, b) => pnum[a.id] - pnum[b.id]));
+    BANK.sort((a, b) => a.task - b.task || pnum[a.id] - pnum[b.id]);
+    const L = c.lessons || {};
+    for (const t of EGE) { const n = t.n, o = (L.ege || {})[n]; for (const k of Object.keys(t)) delete t[k]; Object.assign(t, JSON.parse(JSON.stringify(ORIG.ege[n]))); if (o) applyEge(t, o); }
+    for (const t of PY) { const id = t.id, o = (L.py || {})[id]; for (const k of Object.keys(t)) delete t[k]; Object.assign(t, JSON.parse(JSON.stringify(ORIG.py[id]))); if (o) applyPy(t, o); }
+    buildIndex();
+  }
+  // свежая версия с сервера; force — дождаться и применить даже без смены версии
+  let contentReq = null;
+  function loadContent(force) {
+    if (contentReq && !force) return contentReq;
+    contentReq = fetch(API + '/content', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).then(c => {
+      if (!c) return false;
+      const changed = force || c.v !== CONTENT.v || (c.problems || []).length !== CONTENT.problems.length;
+      if (changed) { applyContent(c); try { store.set('content', c); } catch (e) { } }
+      return changed;
+    }).catch(() => false);
+    return contentReq;
+  }
   const acct = { checked: false, available: true, cloud: false, readOnly: false, uid: null, name: '', email: '', avatar: '', saveT: null, sync: 'ok', mode: 'login', resetToken: '' };
   const DAY = d => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
   function normStats(s) {
@@ -3252,7 +3448,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     try { const r = await api('/auth/me'); setUser(r.user); await connect(true); }
     catch (e) { /* не вошли — работаем в гостевом режиме */ }
     acct.checked = true; renderAcctBtn();
-    if (/^#(login|me|teach|admin|hw)/.test(location.hash)) route();
+    if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash)) route();
   }
   async function logout() {
     try { await api('/auth/logout', 'POST', {}); } catch (e) { }
@@ -3665,7 +3861,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   let tSeq = 0, tGroup = null, hwDraft = null;
   const teachShell = () => `<div class="page wrap t-page" id="tpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
   const tMsg = (title, text, href, label) => `<div class="t-empty" style="margin-top:30px"><b>${esc(title)}</b>${esc(text)}${href ? `<div class="cta-row"><a class="btn small" href="${href}">${label}</a></div>` : ''}</div>`;
-  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя"><a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a>` : ''}</nav>`;
+  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя"><a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip" href="#edit">Редактор задач</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a>` : ''}</nav>`;
   async function loadTeach(h) {
     const seq = ++tSeq;
     const put = html => { const box = $('#tpage'); if (seq !== tSeq || !box) return false; box.innerHTML = html; reveal(box); return true; };
@@ -3686,6 +3882,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
       }
       else if ((m = h.match(/^teach-s-(\d+)$/))) put(tStudentHTML(await api('/teach/student?id=' + m[1])));
       else if ((m = h.match(/^teach-hwv-(\d+)$/))) put(tHwStatsHTML(await api('/teach/homework?id=' + m[1])));
+      else if (/^edit/.test(h)) { if (put(await loadEditor(h))) ePreview(); }
       else if (h === 'admin') {
         if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
         put(tAdminHTML(await api('/admin/users')));
@@ -3893,6 +4090,235 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Пользователь</th><th>Роль</th><th>Регистрация</th><th>Заходил</th><th>Группы</th></tr></thead><tbody id="usrbody">${usersRows(r.users)}</tbody></table></div></section>`;
   }
 
+  /* ═════════════ РЕДАКТОР ЗАДАЧ И МЕТОДИЧКИ ═════════════ */
+  const eF = { q: '', scope: 'all', task: 0 };
+  const isOwnProblem = p => !!(p.src && !p.src.builtin && p.src.author_id === acct.uid);
+  const canEditProblem = p => acct.role === 'admin' || isOwnProblem(p);
+  const eTabs = cur => `<nav class="t-tabs" aria-label="Редактор"><a class="chip ${cur === 'bank' ? 'on' : ''}" href="#edit">Задачи</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'ege' ? 'on' : ''}" href="#edit-ege">Разборы заданий</a><a class="chip ${cur === 'py' ? 'on' : ''}" href="#edit-py">Темы Python</a>` : ''}<a class="chip" href="#teach">← Группы</a></nav>`;
+  const problemBadge = p => !p.src ? '<span class="tag">встроенная</span>' : p.src.builtin ? '<span class="tag ed">встроенная · изменена</span>' : `<span class="tag own">${isOwnProblem(p) ? 'ваша' : esc(p.src.author || 'учитель')}</span>`;
+  function eListRows() {
+    const nums = parseNums(eF.q), q = eF.q.trim().toLowerCase();
+    const list = BANK.filter(p => nums ? nums.has(pnum[p.id]) : (!eF.task || p.task === eF.task) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q))
+      && (eF.scope === 'all' || (eF.scope === 'mine' ? isOwnProblem(p) : eF.scope === 'custom' ? p.src && !p.src.builtin : !p.src || p.src.builtin)));
+    return list.length ? list.map(p => `<div class="ed-row"><span class="pnum">#${pnum[p.id]}</span><span class="ed-t"><b>${esc(p.title)}</b><small>№${p.task} · ${lvWord[p.level]} ${problemBadge(p)}</small></span>
+        <span class="ed-acts"><a class="btn small ghost" href="#p-${p.id}">Открыть</a>${canEditProblem(p) ? `<a class="btn small" href="#edit-p-${p.id}">Изменить</a>` : ''}<a class="btn small ghost" href="#edit-p-copy-${p.id}" title="Новая задача на основе этой">Копия</a></span></div>`).join('')
+      : '<div class="t-empty"><b>Ничего не найдено</b>Проверьте номер или сбросьте фильтры.</div>';
+  }
+  function eListHTML() {
+    const mine = BANK.filter(isOwnProblem).length;
+    return `<header class="t-head"><div><span class="eyebrow">Редактор</span><h1>Банк задач</h1>
+        <p>Встроенные задачи — #1–#${ORIG.bank.length}${acct.role === 'admin' ? ', их можете менять вы как администратор' : ' (их меняет администратор, но можно сделать копию и поправить её)'}. Новые задачи получают постоянные номера с #101 и сразу появляются в банке и в подборе для ДЗ.</p></div>${eTabs('bank')}</header>
+      <section class="t-sec"><div class="form-acts" style="margin-bottom:14px"><a class="btn blue" href="#edit-p-new">Новая задача <span class="arr">${I.arrow}</span></a><span class="muted" style="font-size:14px">ваших задач: ${mine}</span></div>
+        <div class="pk-bar"><input id="eq" type="search" value="${esc(eF.q)}" placeholder="#17, 101-105 или слова из условия" aria-label="Поиск задач" autocomplete="off">
+          <div class="seg">${[['all', 'Все'], ['mine', 'Мои'], ['custom', 'Учителей'], ['builtin', 'Встроенные']].map(([v, n]) => `<button type="button" class="${eF.scope === v ? 'on' : ''}" data-escope="${v}">${n}</button>`).join('')}</div></div>
+        <div class="pick-nums" style="margin:12px 0"><button type="button" class="chip ${!eF.task ? 'on' : ''}" data-etask="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${eF.task === t.n ? 'on' : ''}" data-etask="${t.n}" title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
+        <div id="elist" class="ed-list">${eListRows()}</div></section>`;
+  }
+  // панель разметки над полем ввода: вставка вокруг выделения, картинка — загрузкой
+  const mdTools = id => `<div class="md-tools" data-for="${id}">
+      <button type="button" data-md="b" title="Жирный"><b>Ж</b></button><button type="button" data-md="i" title="Курсив"><i>К</i></button><button type="button" data-md="code" title="Код">&lt;/&gt;</button>
+      <button type="button" data-md="sup" title="Верхний индекс">x²</button><button type="button" data-md="sub" title="Нижний индекс">x₂</button>
+      <button type="button" data-md="ul" title="Список">• список</button><button type="button" data-md="ol" title="Нумерованный список">1. список</button>
+      <button type="button" data-md="table" title="Таблица">таблица</button><button type="button" data-md="pre" title="Блок текста моноширинным шрифтом">алгоритм</button>
+      <label class="md-img" title="Картинка: схема, граф, рисунок">картинка<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-mdimg="${id}" hidden></label>
+      <details class="md-help"><summary>?</summary><div><code>**жирный**</code> <code>*курсив*</code> <code>\`код\`</code> <code>2^10^</code> <code>log~2~</code><br>
+        Строки с <code>- </code> или <code>1. </code> — списки, с <code>|</code> — таблица (вторая строка <code>|---|---|</code> делает первую заголовком).<br>
+        Пустая строка — новый абзац. <code>\`\`\`</code> до и после — блок моноширинного текста.</div></details></div>`;
+  const field2 = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><input name="${name}" value="${esc(val)}" ${extra}></label>`;
+  const area = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><textarea name="${name}" ${extra}>${esc(val)}</textarea></label>`;
+
+  function eProblemHTML(p, mode) {
+    const src = p && p.src, orig = p && ORIG.bank.find(x => x.id === p.id);
+    const body = !p ? '' : src ? src.body : htmlToMd(orig ? orig.text : p.text);
+    const v = p ? { task: p.task, level: p.level, title: mode === 'copy' ? p.title + ' (копия)' : p.title, answer: p.answer, sol: p.code || '', note: p.note || '', data: p.data || '', dname: p.dname || '' }
+      : { task: eF.task || 1, level: 'Б', title: '', answer: '', sol: '', note: '', data: '', dname: '' };
+    const builtin = p && !p.id.startsWith('u') && mode !== 'copy';
+    const keep = builtin && orig && orig.extra ? (src ? src.keep_extra : true) : false;
+    return `<a class="t-back" href="#edit">← Банк задач</a>
+      <header class="t-head"><div><span class="eyebrow">Редактор${p && mode !== 'copy' ? ` · задача #${pnum[p.id]}` : ''}</span><h1>${mode === 'new' ? 'Новая задача' : mode === 'copy' ? 'Копия задачи' : 'Изменить задачу'}</h1>
+        ${builtin ? `<p>Это встроенная задача. Изменения сохраняются поверх неё — исходный вариант можно вернуть в любой момент.</p>` : mode === 'copy' ? `<p>Новая задача с постоянным номером от #101. Исходная остаётся как была.${orig && orig.extra ? ' Иллюстрация не копируется — загрузите картинку кнопкой «картинка».' : ''}</p>` : ''}</div></header>
+      <form class="ed-form t-sec" data-eform="problem" data-id="${p && mode === 'edit' ? p.id : ''}" novalidate>
+        <div class="ed-three"><label class="fld"><span>Задание ЕГЭ</span><select name="task">${EGE.map(t => `<option value="${t.n}" ${v.task === t.n ? 'selected' : ''}>${t.n}. ${esc(t.title)}</option>`).join('')}</select></label>
+          <label class="fld"><span>Сложность</span><select name="level">${[['Б', 'базовая'], ['П', 'средняя'], ['В', 'сложная']].map(([k, n]) => `<option value="${k}" ${v.level === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
+        ${field2('title', 'Название', v.title, 'maxlength="120" placeholder="Например: Длина дороги ГЕ"')}
+        <div class="ed-split"><div class="fld"><span>Условие</span>${mdTools('e-body')}<textarea id="e-body" name="body" class="ed-body" placeholder="Текст условия. **Жирным** — важные числа, таблицы — через |">${esc(body)}</textarea></div>
+          <div class="fld"><span>Как увидит ученик</span><div class="ed-prev prob-body" id="e-prev"></div></div></div>
+        ${builtin && orig && orig.extra ? `<label class="ed-check"><input type="checkbox" name="keep_extra" ${keep ? 'checked' : ''}> Оставить исходную иллюстрацию (схему или таблицу под условием)</label>` : ''}
+        <div class="ed-three">${field2('answer', 'Ответ', v.answer, 'maxlength="2000" placeholder="Для нескольких чисел — через пробел"')}${field2('note', 'Пояснение к ответу (необязательно)', v.note, 'maxlength="2000"')}</div>
+        ${area('solution', 'Решение на Python (необязательно) — ученик откроет его кнопкой «Решение»', v.sol, 'class="mono" spellcheck="false" rows="8"')}
+        <details class="ed-data" ${v.data ? 'open' : ''}><summary>Файл с данными для задачи ${v.data ? `· ${esc(v.dname)}, ${v.data.split('\n').length} строк` : '(для заданий 9, 17, 24, 26, 27)'}</summary>
+          <div class="ed-three"><label class="fld"><span>Загрузить .txt / .csv</span><input type="file" accept=".txt,.csv,text/plain" data-efile></label>${field2('dname', 'Имя файла для ученика', v.dname, 'maxlength="60" placeholder="24.txt"')}</div>
+          ${area('data', 'Содержимое файла', v.data, 'class="mono" spellcheck="false" rows="6"')}</details>
+        <div class="form-msg" role="alert"></div>
+        <div class="form-acts"><button class="btn blue" type="submit">${mode === 'edit' ? 'Сохранить' : 'Создать задачу'}</button><a class="btn ghost" href="#edit">Отмена</a>
+          ${mode === 'edit' && builtin && src ? `<button type="button" class="btn small ghost" data-eact="restore" data-id="${p.id}">Вернуть исходную</button>` : ''}
+          ${mode === 'edit' ? `<button type="button" class="btn small danger-btn" data-eact="hide" data-id="${p.id}">${builtin ? 'Скрыть из банка' : 'Удалить задачу'}</button>` : ''}</div>
+      </form>`;
+  }
+  // разборы заданий и темы Python (только администратор)
+  function eLessonListHTML(kind) {
+    const L = (CONTENT.lessons || {})[kind] || {};
+    const rows = kind === 'ege' ? EGE.map(t => [t.n, `${t.n}. ${t.title}`, t.short, `#ege-${t.n}`])
+      : PY.map(t => [t.id, `${t.id}. ${t.title}`, BLOCKS.find(b => t.id >= b.from && t.id <= b.to).title, `#py-${t.id}`]);
+    return `<header class="t-head"><div><span class="eyebrow">Редактор методички</span><h1>${kind === 'ege' ? 'Разборы заданий' : 'Темы Python'}</h1>
+        <p>Изменения сохраняются поверх встроенного текста и сразу видны всем. Исходный вариант можно вернуть кнопкой «Сбросить» в форме.</p></div>${eTabs(kind)}</header>
+      <section class="t-sec ed-list">${rows.map(([k, title, sub, href]) => `<div class="ed-row"><span class="pnum">${kind === 'ege' ? '№' : 'Py'}${k}</span><span class="ed-t"><b>${esc(title)}</b><small>${esc(sub)} ${L[k] ? '<span class="tag ed">изменено</span>' : ''}</small></span>
+        <span class="ed-acts"><a class="btn small ghost" href="${href}">Открыть</a><a class="btn small" href="#edit-${kind}-${k}">Изменить</a></span></div>`).join('')}</section>`;
+  }
+  // пары «формула / пояснение» и «тип / описание»: блоки через пустую строку — первая строка и остальное
+  const pairLines = list => (list || []).map(([a, b]) => b ? `${a}\n${b}` : a).join('\n\n');
+  const parsePairs = s => String(s).replace(/\r/g, '').split(/\n\s*\n/).map(x => x.split('\n').map(l => l.trim()).filter(Boolean)).filter(x => x.length).map(([a, ...rest]) => [a, rest.join(' ')]);
+  const lines = s => String(s).split('\n').map(x => x.trim()).filter(Boolean);
+  function eLessonHTML(kind, key) {
+    const o = ((CONTENT.lessons || {})[kind] || {})[key], O = kind === 'ege' ? ORIG.ege[key] : ORIG.py[key];
+    if (!O) return tMsg('Не найдено', '', '#edit-' + kind, 'К списку');
+    // в форме — разметка: из сохранённой правки или переведённая из встроенного HTML
+    const val = k => o && o[k] !== undefined ? o[k] : null;
+    const head = `<a class="t-back" href="#edit-${kind}">← ${kind === 'ege' ? 'Разборы заданий' : 'Темы Python'}</a>
+      <header class="t-head"><div><span class="eyebrow">Редактор методички${o ? ' · есть правки' : ''}</span><h1>${kind === 'ege' ? `Задание ${key}` : `Тема ${key}`}</h1></div>
+        <a class="btn small ghost" href="${kind === 'ege' ? '#ege-' : '#py-'}${key}">Открыть на сайте</a></header>`;
+    const acts = `<div class="form-msg" role="alert"></div><div class="form-acts"><button class="btn blue" type="submit">Сохранить</button><a class="btn ghost" href="#edit-${kind}">Отмена</a>${o ? `<button type="button" class="btn small ghost" data-eact="reset-lesson" data-kind="${kind}" data-key="${key}">Сбросить к исходному</button>` : ''}</div>`;
+    if (kind === 'ege') {
+      const theory = val('theory') ?? htmlToMd(O.theory);
+      return head + `<form class="ed-form t-sec" data-eform="ege" data-key="${key}" novalidate>
+        <div class="ed-three">${field2('title', 'Название', val('title') ?? O.title, 'maxlength="120"')}${field2('short', 'Коротко (для подсказок и поиска)', val('short') ?? O.short, 'maxlength="120"')}</div>
+        <div class="ed-three"><label class="fld"><span>Уровень</span><select name="level">${['Б', 'П', 'В'].map(l => `<option value="${l}" ${(val('level') ?? O.level) === l ? 'selected' : ''}>${lvName[l]}</option>`).join('')}</select></label>
+          ${field2('time', 'Время, мин', val('time') ?? O.time, 'type="number" min="1" max="240"')}${field2('tool', 'Чем решать', val('tool') ?? O.tool, 'maxlength="120"')}</div>
+        ${area('lead', 'Суть задания (первый абзац)', val('lead') ?? O.lead, 'rows="3" maxlength="2000"')}
+        ${area('types', 'Типы заданий — блоками через пустую строку: первая строка — название, дальше — описание', pairLines(val('types') ?? O.types), 'rows="8"')}
+        <div class="ed-split"><div class="fld"><span>Теория</span>${mdTools('e-body')}<textarea id="e-body" name="theory" class="ed-body">${esc(theory)}</textarea></div>
+          <div class="fld"><span>Как увидит ученик</span><div class="ed-prev prose" id="e-prev"></div></div></div>
+        ${area('formulas', 'Формулы — блоками через пустую строку: первая строка — формула (можно 2^10^, log~2~), вторая — пояснение', pairLines(val('formulas') ?? O.formulas.map(([f, d]) => [htmlToMd(f), d])), 'rows="8"')}
+        ${area('steps', 'Ход решения — по шагу в строке', (val('steps') ?? O.steps.map(htmlToMd)).join('\n'), 'rows="6"')}
+        ${area('code', 'Решение на Python. Несколько вариантов — каждый начинается строкой «### Название»', codeToText(val('code') ?? O.code), 'class="mono" spellcheck="false" rows="12"')}
+        ${area('traps', 'Частые ошибки — по строке', (val('traps') ?? O.traps).join('\n'), 'rows="4"')}
+        ${area('tip', 'Совет', val('tip') ?? O.tip, 'rows="2" maxlength="2000"')}
+        ${field2('py', 'Темы Python к заданию — номера через запятую', (val('py') ?? O.py).join(', '))}
+        ${acts}</form>`;
+    }
+    const text = val('text') ?? htmlToMd(O.text);
+    return head + `<form class="ed-form t-sec" data-eform="py" data-key="${key}" novalidate>
+      <div class="ed-three">${field2('title', 'Название', val('title') ?? O.title, 'maxlength="120"')}${field2('ege', 'Задания ЕГЭ, где нужна тема — через запятую', (val('ege') ?? O.ege).join(', '))}</div>
+      <div class="ed-split"><div class="fld"><span>Объяснение</span>${mdTools('e-body')}<textarea id="e-body" name="text" class="ed-body">${esc(text)}</textarea></div>
+        <div class="fld"><span>Как увидит ученик</span><div class="ed-prev prose" id="e-prev"></div></div></div>
+      ${area('code', 'Примеры кода. Несколько вкладок — каждая начинается строкой «### Название»', codeToText(val('code') ?? O.code), 'class="mono" spellcheck="false" rows="12"')}
+      ${area('out', 'Вывод примера (необязательно)', val('out') ?? (O.out || ''), 'class="mono" rows="3"')}
+      ${area('note', '«Запомни» — главное в одной фразе', val('note') ?? O.note, 'rows="2" maxlength="2000"')}
+      ${acts}</form>`;
+  }
+  function ePreview() {
+    const ta = $('#e-body'), pv = $('#e-prev'); if (!ta || !pv) return;
+    const f = ta.form, keep = f.elements.keep_extra && f.elements.keep_extra.checked, orig = f.dataset.id && ORIG.bank.find(x => x.id === f.dataset.id);
+    pv.innerHTML = (md(ta.value) || '<p class="muted">Здесь появится условие</p>') + (keep && orig && orig.extra ? `<div class="extra">${orig.extra}</div>` : '');
+  }
+  async function loadEditor(h) {
+    await loadContent(true);
+    let m;
+    if (h === 'edit') return eListHTML();
+    if (h === 'edit-p-new') return eProblemHTML(null, 'new');
+    if ((m = h.match(/^edit-p-copy-([\w.-]+)$/))) { const p = BANK.find(x => x.id === m[1]); return p ? eProblemHTML(p, 'copy') : tMsg('Задача не найдена', '', '#edit', 'К банку'); }
+    if ((m = h.match(/^edit-p-([\w.-]+)$/))) {
+      const p = BANK.find(x => x.id === m[1]);
+      if (!p) return tMsg('Задача не найдена', 'Возможно, её удалили.', '#edit', 'К банку');
+      return canEditProblem(p) ? eProblemHTML(p, 'edit') : tMsg('Это не ваша задача', 'Её может изменить автор или администратор. Сделайте копию — и правьте её.', '#edit-p-copy-' + p.id, 'Сделать копию');
+    }
+    if ((m = h.match(/^edit-(ege|py)(?:-(\d+))?$/))) {
+      if (acct.role !== 'admin') return tMsg('Только для администратора', 'Методичку меняет администратор сайта.', '#edit', 'К задачам');
+      return m[2] ? eLessonHTML(m[1], +m[2]) : eLessonListHTML(m[1]);
+    }
+    return tMsg('Страница не найдена', '', '#edit', 'К задачам');
+  }
+  // картинка: уменьшаем до 1600 px по большей стороне, кодируем и загружаем
+  async function uploadImage(file) {
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) throw { message: 'Нужна картинка PNG, JPEG, WebP или GIF' };
+    const url = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(file); });
+    let data = url, type = file.type;
+    if (type !== 'image/gif') {
+      const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no({ message: 'Не получилось открыть картинку' }); i.src = url; });
+      const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      if (k < 1 || file.size > 900 * 1024) {
+        const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+        const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height);
+        const webp = c.toDataURL('image/webp', .9);
+        [data, type] = webp.startsWith('data:image/webp') ? [webp, 'image/webp'] : [c.toDataURL('image/jpeg', .9), 'image/jpeg'];
+      }
+    }
+    return (await api('/media', 'POST', { type, data: data.slice(data.indexOf(',') + 1) })).id;
+  }
+  function mdInsert(ta, kind) {
+    const a = ta.selectionStart, z = ta.selectionEnd, sel = ta.value.slice(a, z);
+    const wrap = { b: ['**', '**', 'жирный'], i: ['*', '*', 'курсив'], code: ['`', '`', 'код'], sup: ['^', '^', '2'], sub: ['~', '~', '2'] }[kind];
+    let ins, cur;
+    if (wrap) { const t = sel || wrap[2]; ins = wrap[0] + t + wrap[1]; cur = [a + wrap[0].length, a + wrap[0].length + t.length]; }
+    else {
+      const lead = a && ta.value[a - 1] !== '\n' ? '\n\n' : '';
+      ins = lead + ({ ul: (sel || 'пункт').split('\n').map(x => '- ' + x).join('\n'), ol: (sel || 'шаг').split('\n').map((x, i) => `${i + 1}. ${x}`).join('\n'),
+        table: '| Столбец 1 | Столбец 2 |\n| --- | --- |\n| 1 | 2 |', pre: '```\n' + (sel || 'алгоритм') + '\n```' }[kind] || sel) + '\n';
+      cur = [a + ins.length, a + ins.length];
+    }
+    ta.setRangeText(ins, a, z, 'end'); ta.setSelectionRange(cur[0], cur[1]); ta.focus(); ePreview();
+  }
+  async function submitEditor(f) {
+    const kind = f.dataset.eform, msg = f.querySelector('.form-msg'), btn = f.querySelector('[type=submit]'), E = f.elements;
+    msg.textContent = ''; msg.className = 'form-msg'; btn.disabled = true;
+    const nums = s => String(s).split(/[\s,;]+/).map(Number).filter(x => x > 0);
+    try {
+      if (kind === 'problem') {
+        const r = await api('/content/problem', 'POST', { id: f.dataset.id || undefined, task: +E.task.value, level: E.level.value, title: E.title.value, body: E.body.value,
+          answer: E.answer.value, note: E.note.value, solution: E.solution.value, data: E.data.value, dname: E.dname.value.trim(), keep_extra: !!(E.keep_extra && E.keep_extra.checked) });
+        await loadContent(true); toast(f.dataset.id ? 'Задача сохранена' : `Задача #${pnum[r.id] || ''} создана`); location.hash = 'p-' + r.id;
+      } else {
+        const key = +f.dataset.key, data = kind === 'ege'
+          ? { title: E.title.value.trim(), short: E.short.value.trim(), level: E.level.value, time: +E.time.value || 1, tool: E.tool.value.trim(), lead: E.lead.value.trim(),
+              types: parsePairs(E.types.value), theory: E.theory.value, formulas: parsePairs(E.formulas.value), steps: lines(E.steps.value), code: parseCode(E.code.value),
+              traps: lines(E.traps.value), tip: E.tip.value.trim(), py: nums(E.py.value) }
+          : { title: E.title.value.trim(), ege: nums(E.ege.value), text: E.text.value, code: parseCode(E.code.value, 'Пример'), out: E.out.value.replace(/\s+$/, ''), note: E.note.value.trim() };
+        await api('/content/lesson', 'POST', { kind, key, data });
+        await loadContent(true); toast('Сохранено'); location.hash = (kind === 'ege' ? 'ege-' : 'py-') + key;
+      }
+    } catch (e) { msg.textContent = e.message || 'Ошибка'; msg.className = 'form-msg bad'; btn.disabled = false; }
+  }
+  document.addEventListener('submit', e => { const f = e.target.closest('[data-eform]'); if (f) { e.preventDefault(); submitEditor(f); } });
+  let ePrevT;
+  document.addEventListener('input', e => {
+    if (e.target.id === 'e-body') { clearTimeout(ePrevT); ePrevT = setTimeout(ePreview, 120); }
+    else if (e.target.id === 'eq') { eF.q = e.target.value; const l = $('#elist'); if (l) l.innerHTML = eListRows(); }
+  });
+  document.addEventListener('change', async e => {
+    const t = e.target;
+    if (t.name === 'keep_extra') ePreview();
+    else if (t.dataset.mdimg !== undefined && t.files[0]) {
+      const ta = $('#' + t.dataset.mdimg), lbl = t.closest('.md-img'); lbl.classList.add('busy');
+      try { const id = await uploadImage(t.files[0]); const a = ta.selectionStart; const lead = a && ta.value[a - 1] !== '\n' ? '\n\n' : ''; ta.setRangeText(`${lead}![](media:${id})\n`, a, ta.selectionEnd, 'end'); ePreview(); toast('Картинка загружена'); }
+      catch (err) { toast(err.message || 'Не получилось загрузить картинку'); }
+      lbl.classList.remove('busy'); t.value = '';
+    } else if (t.dataset.efile !== undefined && t.files[0]) {
+      const file = t.files[0], f = t.form;
+      if (file.size > 580 * 1024) { toast('Файл больше 580 КБ — для сайта слишком большой'); t.value = ''; return; }
+      f.elements.data.value = (await file.text()).replace(/\r\n/g, '\n').replace(/\n+$/, '');
+      if (!f.elements.dname.value.trim()) f.elements.dname.value = file.name.replace(/[^\w.-]/g, '_').slice(0, 60);
+      toast(`Файл загружен: ${f.elements.data.value.split('\n').length} строк`);
+    }
+  });
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-md],[data-escope],[data-etask],[data-eact]'); if (!b) return;
+    if (b.dataset.md) return mdInsert($('#' + b.closest('.md-tools').dataset.for), b.dataset.md);
+    if (b.dataset.escope) { eF.scope = b.dataset.escope; $$('[data-escope]').forEach(x => x.classList.toggle('on', x === b)); $('#elist').innerHTML = eListRows(); return; }
+    if (b.dataset.etask) { eF.task = +b.dataset.etask; eF.q = ''; const q = $('#eq'); if (q) q.value = ''; $$('[data-etask]').forEach(x => x.classList.toggle('on', x === b)); $('#elist').innerHTML = eListRows(); return; }
+    const a = b.dataset.eact;
+    const ask = { hide: b.textContent.includes('Скрыть') ? 'Скрыть задачу из банка? Её можно будет вернуть кнопкой «Вернуть исходную».' : 'Удалить задачу? В уже выданных ДЗ она пропадёт.',
+      restore: 'Вернуть исходный вариант задачи? Ваши правки пропадут.', 'reset-lesson': 'Сбросить правки и вернуть исходный текст?' }[a];
+    if (ask && !confirm(ask)) return;
+    b.disabled = true;
+    try {
+      if (a === 'hide') await api('/content/problem/delete', 'POST', { id: b.dataset.id });
+      else if (a === 'restore') await api('/content/problem/delete', 'POST', { id: b.dataset.id, restore: true });
+      else if (a === 'reset-lesson') await api('/content/lesson/reset', 'POST', { kind: b.dataset.kind, key: +b.dataset.key });
+      await loadContent(true); toast('Готово');
+      location.hash = a === 'reset-lesson' ? 'edit-' + b.dataset.kind : 'edit';
+    } catch (err) { toast(err.message || 'Ошибка'); b.disabled = false; }
+  });
+
   /* ── события кабинета учителя и блока ДЗ ── */
   async function submitTeach(f) {
     const kind = f.dataset.tform, msg = f.querySelector('.form-msg') || f.parentElement.querySelector('.form-msg'), btn = f.querySelector('[type=submit]');
@@ -3983,11 +4409,12 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   });
 
   /* ═════════════ ПОИСК ═════════════ */
-  const index = [
+  let index = [];
+  function buildIndex() { index = [
     ...EGE.map(t => ({ k: 'Задание', ic: 'e', n: t.n, title: `${t.n}. ${t.title}`, sub: t.short, href: '#ege-' + t.n, text: (t.title + ' ' + t.short + ' ' + t.lead + ' ' + strip(t.theory) + ' ' + t.types.flat().join(' ')).toLowerCase() })),
     ...PY.map(t => ({ k: 'Python', ic: 'p', n: t.id, title: t.title, sub: 'тема ' + t.id, href: '#py-' + t.id, text: (t.title + ' ' + strip(t.text)).toLowerCase() })),
     ...BANK.map(p => ({ k: 'Задача', ic: '', n: p.task, title: `#${pnum[p.id]} ${p.title}`, sub: 'банк, задание ' + p.task, href: '#p-' + p.id, text: ('#' + pnum[p.id] + ' ' + p.title + ' ' + strip(p.text)).toLowerCase() })),
-  ];
+  ]; }
   function openSearch() {
     if ($('.scrim')) return;
     const s = document.createElement('div'); s.className = 'scrim';
@@ -4064,7 +4491,7 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
       const p = BANK.find(x => x.id === m[1]);
       Object.assign(bankF, { task: p.task, level: '', status: '', q: '' }); html = pageBank(); nav = 'bank'; focusPid = p.id; curNav = '';
     }
-    else if (/^(teach|admin)/.test(h)) { html = teachShell(); nav = 'teach'; }
+    else if (/^(teach|admin|edit)/.test(h)) { html = teachShell(); nav = 'teach'; }
     else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
     else if (h === 'login') { if (acct.cloud) { location.replace('#me'); return; } html = pageLogin(); nav = 'login'; }
@@ -4120,7 +4547,11 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
     // на телефоне меню прокручивается — подвигаем его к активному разделу
     const navEl = $('.nav'), navOn = $('.nav a.on');
     if (navEl && navEl.scrollWidth > navEl.clientWidth) navEl.scrollTo({ left: navOn ? navOn.offsetLeft - navEl.offsetLeft - navEl.clientWidth / 2 + navOn.offsetWidth / 2 : 0, behavior: reduce ? 'instant' : 'smooth' });
-    if (focusPid) { const el = $(`[data-pid="${focusPid}"]`); if (el) { jump(el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - 16); el.classList.add('flash'); } }
+    if (focusPid) {
+      // под шапкой может прилипать панель фильтров банка — карточка должна оказаться под ней
+      const el = $(`[data-pid="${focusPid}"]`), fl = $('.filters'), under = fl && getComputedStyle(fl).position === 'sticky' ? fl.offsetHeight : 0;
+      if (el) { jump(el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - under - 16); el.classList.add('flash'); }
+    }
     reveal($('#app'));
     if (nav === 'teach') loadTeach(h);
     if (nav === 'hw') loadHW(h); else curHW = 0;
@@ -4230,9 +4661,13 @@ print(dict(zip(names, row)))      # {'x': 1, 'y': 0, 'z': 1}` }],
   if (savedTheme) document.documentElement.dataset.theme = savedTheme;
   $('#searchbtn').innerHTML = I.search;
   themeIcon(); updScore(false); renderAcctBtn();
+  try { applyContent(store.get('content', null)); } catch (e) { }
+  buildIndex();
   initAccount();
   window.addEventListener('hashchange', route);
   route();
+  // задачи учителей и правки методички: если на сервере новее — перерисовываем (кроме открытой формы)
+  loadContent().then(changed => { if (changed && !/^#(edit|teach-hw)/.test(location.hash)) route(); });
 })();
 
 </script>
