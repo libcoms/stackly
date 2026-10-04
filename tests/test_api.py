@@ -295,7 +295,7 @@ class ContentTest(ServerCase):
         self.assertTrue(pid.startswith('u'))
         self.assertEqual(self.content(Client(self.base))['problems'], [])     # гостю задачи не отдаём
         p = next(x for x in self.content(s)['problems'] if x['id'] == pid)
-        self.assertGreaterEqual(p['num'], 101)
+        self.assertGreaterEqual(p['num'], 1001)
         self.assertEqual((p['answer'], p['builtin']), ('42', False))
         # второй учитель не может править чужую, автор — может
         self.assertEqual(other.call('POST', '/content/problem', dict(self.P, id=pid, title='Взлом'))[0], 403)
@@ -306,6 +306,18 @@ class ContentTest(ServerCase):
         self.assertNotIn(pid, [x['id'] for x in self.content(t)['problems']])
         pid2 = t.call('POST', '/content/problem', self.P)[1]['id']
         self.assertNotEqual(pid, pid2)
+
+    def test_old_custom_numbers_move_past_builtin_range(self):
+        # задачи учителей раньше нумеровались с 101 — теперь встроенный банк до 1000, их номера сдвигаются
+        con = sqlite3.connect(self.db)
+        con.execute("INSERT INTO problems (id, num, task, level, title, body, answer, created, updated) "
+                    "VALUES ('u150', 150, 1, 'Б', 'старая', 'x', '1', 0, 0)")
+        con.commit(); con.close()
+        subprocess.run([sys.executable, os.path.join(ROOT, 'app', 'stackly_api.py'), 'set-role', 'x@x.ru', 'student'],
+                       env=dict(os.environ, STACKLY_DB=self.db), capture_output=True)          # запуск = миграция
+        con = sqlite3.connect(self.db)
+        self.assertEqual(con.execute("SELECT num FROM problems WHERE id = 'u150'").fetchone()[0], 1050)
+        con.close()
 
     def test_validation(self):
         t = self.user('teacher')

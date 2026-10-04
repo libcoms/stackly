@@ -94,7 +94,7 @@ def migrate():
         students TEXT NOT NULL DEFAULT '[]', due INTEGER, created INTEGER NOT NULL, updated INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS homework_group ON homework(group_id);
       -- когда ученик закрыл все пункты ДЗ (фиксируется при сохранении прогресса)
-      -- задачи, созданные на сайте (id «u<номер>», номера с 101) и правки встроенных (builtin = 1, id как в банке)
+      -- задачи, созданные на сайте (id «u<номер>», номера с 1001) и правки встроенных (builtin = 1, id как в банке)
       CREATE TABLE IF NOT EXISTS problems (
         id TEXT PRIMARY KEY, num INTEGER UNIQUE, author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         task INTEGER NOT NULL, level TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, answer TEXT NOT NULL,
@@ -113,6 +113,8 @@ def migrate():
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         done_at INTEGER NOT NULL, PRIMARY KEY (hw_id, user_id));
     ''')
+    # номера задач учителей — с 1001 (до 1000 — встроенный банк); старые 101… сдвигаем один раз
+    db().execute('UPDATE problems SET num = num + 900 WHERE builtin = 0 AND num BETWEEN 101 AND 1000')
     cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
     if 'role' not in cols:
         db().execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'")
@@ -916,7 +918,7 @@ class Handler(BaseHTTPRequestHandler):
             if db().execute('SELECT COUNT(*) FROM problems WHERE author_id = ? AND builtin = 0 AND created > ?',
                             (u['id'], now - 86400)).fetchone()[0] >= 300:
                 raise ApiError(429, 'rate_limited', 'Слишком много новых задач за сутки')
-            num = max(100, db().execute('SELECT MAX(num) FROM problems').fetchone()[0] or 0) + 1
+            num = max(1000, db().execute('SELECT MAX(num) FROM problems').fetchone()[0] or 0) + 1
             pid = f'u{num}'
             db().execute(f'INSERT INTO problems (id, num, author_id, created, updated, {", ".join(f)}) VALUES (?,?,?,?,?,{",".join("?" * len(f))})',
                          (pid, num, u['id'], now, now, *f.values()))

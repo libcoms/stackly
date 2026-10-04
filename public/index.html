@@ -386,6 +386,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .gsvg { width: 100%; max-width: 300px; height: auto; display: block; }
 .gsvg .ge { stroke: var(--ink-2); stroke-width: 2; }
 .gsvg .gn { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
+.gsvg .ga { fill: var(--ink-2); }
 .gsvg .gt { fill: var(--ink); font: 700 13px var(--f-display); text-anchor: middle; }
 .dbgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
 .cap { font: 600 11.5px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--mute); margin: 14px 0 6px; }
@@ -1009,7 +1010,7 @@ window.LOOP_PATH = 'M-80.0 288.4 L-75.7 292.0 L-71.2 295.3 L-66.6 298.5 L-61.9 3
    Здесь — краткие карточки 27 заданий для главной, поиска и учебника Python, без разборов.
    Их проверяет тест tests/test_content.py: при правке заданий в content/ege.js обновите и карточки. */
 window.BANK = [];
-window.BANK_TOTAL = 62;
+window.BANK_TOTAL = 112;
 window.EGE = [
   {"n": 1, "title": "Графы и весовые матрицы", "short": "Граф ↔ таблица", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Вручную", "lead": "Дана схема дорог (граф с буквами) и таблица расстояний (с номерами). Нумерации не связаны. Нужно сопоставить вершины и найти длину дороги, сумму длин или количество вершин с каким-то свойством."},
   {"n": 2, "title": "Таблицы истинности", "short": "Логические функции", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Python", "lead": "Дана логическая функция от 3–4 переменных и фрагмент её таблицы истинности, где часть клеток пуста, а столбцы не подписаны. Нужно определить, какой переменной соответствует каждый столбец."},
@@ -2992,9 +2993,9 @@ function stacklyApp() {
   function eListHTML() {
     const mine = BANK.filter(isOwnProblem).length;
     return `<header class="t-head"><div><span class="eyebrow">Редактор</span><h1>Банк задач</h1>
-        <p>Встроенные задачи — #1–#${ORIG.bank.length}${acct.role === 'admin' ? ', их можете менять вы как администратор' : ' (их меняет администратор, но можно сделать копию и поправить её)'}. Новые задачи получают постоянные номера с #101 и сразу появляются в банке и в подборе для ДЗ.</p></div>${eTabs('bank')}</header>
+        <p>Встроенные задачи — #1–#${ORIG.bank.length}${acct.role === 'admin' ? ', их можете менять вы как администратор' : ' (их меняет администратор, но можно сделать копию и поправить её)'}. Новые задачи получают постоянные номера с #1001 и сразу появляются в банке и в подборе для ДЗ.</p></div>${eTabs('bank')}</header>
       <section class="t-sec"><div class="form-acts" style="margin-bottom:14px"><a class="btn blue" href="#edit-p-new">Новая задача <span class="arr">${I.arrow}</span></a><span class="muted" style="font-size:14px">ваших задач: ${mine}</span></div>
-        <div class="pk-bar"><input id="eq" type="search" value="${esc(eF.q)}" placeholder="#17, 101-105 или слова из условия" aria-label="Поиск задач" autocomplete="off">
+        <div class="pk-bar"><input id="eq" type="search" value="${esc(eF.q)}" placeholder="#17, 1001-1005 или слова из условия" aria-label="Поиск задач" autocomplete="off">
           <div class="seg">${[['all', 'Все'], ['mine', 'Мои'], ['custom', 'Учителей'], ['builtin', 'Встроенные']].map(([v, n]) => `<button type="button" class="${eF.scope === v ? 'on' : ''}" data-escope="${v}">${n}</button>`).join('')}</div></div>
         <div class="pick-nums" style="margin:12px 0"><button type="button" class="chip ${!eF.task ? 'on' : ''}" data-etask="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${eF.task === t.n ? 'on' : ''}" data-etask="${t.n}" title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
         <div id="elist" class="ed-list">${eListRows()}</div></section>`;
@@ -3021,7 +3022,7 @@ function stacklyApp() {
     const keep = builtin && orig && orig.extra ? (src ? src.keep_extra : true) : false;
     return `<a class="t-back" href="#edit">← Банк задач</a>
       <header class="t-head"><div><span class="eyebrow">Редактор${p && mode !== 'copy' ? ` · задача #${pnum[p.id]}` : ''}</span><h1>${mode === 'new' ? 'Новая задача' : mode === 'copy' ? 'Копия задачи' : 'Изменить задачу'}</h1>
-        ${builtin ? `<p>Это встроенная задача. Изменения сохраняются поверх неё — исходный вариант можно вернуть в любой момент.</p>` : mode === 'copy' ? `<p>Новая задача с постоянным номером от #101. Исходная остаётся как была.${orig && orig.extra ? ' Иллюстрация не копируется — загрузите картинку кнопкой «картинка».' : ''}</p>` : ''}</div></header>
+        ${builtin ? `<p>Это встроенная задача. Изменения сохраняются поверх неё — исходный вариант можно вернуть в любой момент.</p>` : mode === 'copy' ? `<p>Новая задача с постоянным номером от #1001. Исходная остаётся как была.${orig && orig.extra ? ' Иллюстрация не копируется — загрузите картинку кнопкой «картинка».' : ''}</p>` : ''}</div></header>
       <form class="ed-form t-sec" data-eform="problem" data-id="${p && mode === 'edit' ? p.id : ''}" novalidate>
         <div class="ed-three"><label class="fld"><span>Задание ЕГЭ</span><select name="task">${EGE.map(t => `<option value="${t.n}" ${v.task === t.n ? 'selected' : ''}>${t.n}. ${esc(t.title)}</option>`).join('')}</select></label>
           <label class="fld"><span>Сложность</span><select name="level">${[['Б', 'базовая'], ['П', 'средняя'], ['В', 'сложная']].map(([k, n]) => `<option value="${k}" ${v.level === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
