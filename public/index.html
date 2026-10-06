@@ -1010,7 +1010,7 @@ window.LOOP_PATH = 'M-80.0 288.4 L-75.7 292.0 L-71.2 295.3 L-66.6 298.5 L-61.9 3
    Здесь — краткие карточки 27 заданий для главной, поиска и учебника Python, без разборов.
    Их проверяет тест tests/test_content.py: при правке заданий в content/ege.js обновите и карточки. */
 window.BANK = [];
-window.BANK_TOTAL = 162;
+window.BANK_TOTAL = 262;
 window.EGE = [
   {"n": 1, "title": "Графы и весовые матрицы", "short": "Граф ↔ таблица", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Вручную", "lead": "Дана схема дорог (граф с буквами) и таблица расстояний (с номерами). Нумерации не связаны. Нужно сопоставить вершины и найти длину дороги, сумму длин или количество вершин с каким-то свойством."},
   {"n": 2, "title": "Таблицы истинности", "short": "Логические функции", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Python", "lead": "Дана логическая функция от 3–4 переменных и фрагмент её таблицы истинности, где часть клеток пуста, а столбцы не подписаны. Нужно определить, какой переменной соответствует каждый столбец."},
@@ -1702,6 +1702,7 @@ function stacklyApp() {
   const egeBy = Object.fromEntries(EGE.map(t => [t.n, t]));
   const pyBy = Object.fromEntries(PY.map(t => [t.id, t]));
   // у каждой задачи банка свой сквозной номер: #1, #2, … — по порядку в банке
+  const shownExtra = x => x && x.replace(/<!--[\s\S]*?-->/g, '').trim() ? x : '';
   const pnum = Object.fromEntries(BANK.map((p, i) => [p.id, i + 1]));
   // «17», «#17», «5-9», «3, 12, 30–33» → множество номеров; null, если это не список номеров
   function parseNums(q) {
@@ -1988,7 +1989,7 @@ function stacklyApp() {
     return `<article class="prob ${isS ? 'solved' : ''}" style="--i:${Math.min(i, 8)}" data-pid="${p.id}">
       <div class="prob-head"><span class="pn"><em>№</em>${p.task}</span><span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${p.src && !p.src.builtin ? `<span class="pauth">автор: ${esc(p.src.author || 'учитель')}</span>` : ''}${isS ? '<span class="badge-ok">решено</span>' : ''}
         <span class="diff"><span>${lvWord[p.level]}</span>${[1, 2, 3].map(k => `<i class="${k <= lvDots[p.level] ? 'on' : ''}"></i>`).join('')}</span></div>
-      <div class="prob-body">${p.text}${p.extra ? `<div class="extra">${p.extra}</div>` : ''}
+      <div class="prob-body">${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}
         ${p.data ? `<div class="datafile"><span class="ico">TXT</span><span><span class="nm">${esc(p.dname)}</span><br><span class="sz">${lines} ${plural(lines, 'строка', 'строки', 'строк')} · ${kb} КБ</span></span>
           <span class="acts"><button type="button" class="btn small ghost" data-preview="${p.id}">Показать</button><button type="button" class="btn small" data-copydata="${p.id}">Скопировать</button></span></div><div class="pv"></div>` : ''}
       </div>
@@ -2878,7 +2879,7 @@ function stacklyApp() {
     if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
     return BANK.filter(p => (!D.num || p.task === D.num) && (!D.lvl || p.level === D.lvl) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
   };
-  const pkPreview = p => `${p.text}${p.extra ? `<div class="extra">${p.extra}</div>` : ''}${p.data ? `<p class="muted" style="font-size:13px">К задаче прилагается файл ${esc(p.dname)} — ученик скопирует его со страницы задания.</p>` : ''}<p class="muted" style="font-size:13px;margin:8px 0 0">Ответ: <b>${esc(p.answer)}</b></p>`;
+  const pkPreview = p => `${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}${p.data ? `<p class="muted" style="font-size:13px">К задаче прилагается файл ${esc(p.dname)} — ученик скопирует его со страницы задания.</p>` : ''}<p class="muted" style="font-size:13px;margin:8px 0 0">Ответ: <b>${esc(p.answer)}</b></p>`;
   // список найденных задач; при поиске по номеру условие раскрыто сразу
   function renderPkList() {
     const D = hwDraft, box = $('#pklist'); if (!box) return;
@@ -3019,17 +3020,17 @@ function stacklyApp() {
     const v = p ? { task: p.task, level: p.level, title: mode === 'copy' ? p.title + ' (копия)' : p.title, answer: p.answer, sol: p.code || '', note: p.note || '', data: p.data || '', dname: p.dname || '' }
       : { task: eF.task || 1, level: 'Б', title: '', answer: '', sol: '', note: '', data: '', dname: '' };
     const builtin = p && !p.id.startsWith('u') && mode !== 'copy';
-    const keep = builtin && orig && orig.extra ? (src ? src.keep_extra : true) : false;
+    const keep = builtin && orig && shownExtra(orig.extra) ? (src ? src.keep_extra : true) : false;
     return `<a class="t-back" href="#edit">← Банк задач</a>
       <header class="t-head"><div><span class="eyebrow">Редактор${p && mode !== 'copy' ? ` · задача #${pnum[p.id]}` : ''}</span><h1>${mode === 'new' ? 'Новая задача' : mode === 'copy' ? 'Копия задачи' : 'Изменить задачу'}</h1>
-        ${builtin ? `<p>Это встроенная задача. Изменения сохраняются поверх неё — исходный вариант можно вернуть в любой момент.</p>` : mode === 'copy' ? `<p>Новая задача с постоянным номером от #1001. Исходная остаётся как была.${orig && orig.extra ? ' Иллюстрация не копируется — загрузите картинку кнопкой «картинка».' : ''}</p>` : ''}</div></header>
+        ${builtin ? `<p>Это встроенная задача. Изменения сохраняются поверх неё — исходный вариант можно вернуть в любой момент.</p>` : mode === 'copy' ? `<p>Новая задача с постоянным номером от #1001. Исходная остаётся как была.${orig && shownExtra(orig.extra) ? ' Иллюстрация не копируется — загрузите картинку кнопкой «картинка».' : ''}</p>` : ''}</div></header>
       <form class="ed-form t-sec" data-eform="problem" data-id="${p && mode === 'edit' ? p.id : ''}" novalidate>
         <div class="ed-three"><label class="fld"><span>Задание ЕГЭ</span><select name="task">${EGE.map(t => `<option value="${t.n}" ${v.task === t.n ? 'selected' : ''}>${t.n}. ${esc(t.title)}</option>`).join('')}</select></label>
           <label class="fld"><span>Сложность</span><select name="level">${[['Б', 'базовая'], ['П', 'средняя'], ['В', 'сложная']].map(([k, n]) => `<option value="${k}" ${v.level === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
         ${field2('title', 'Название', v.title, 'maxlength="120" placeholder="Например: Длина дороги ГЕ"')}
         <div class="ed-split"><div class="fld"><span>Условие</span>${mdTools('e-body')}<textarea id="e-body" name="body" class="ed-body" placeholder="Текст условия. **Жирным** — важные числа, таблицы — через |">${esc(body)}</textarea></div>
           <div class="fld"><span>Как увидит ученик</span><div class="ed-prev prob-body" id="e-prev"></div></div></div>
-        ${builtin && orig && orig.extra ? `<label class="ed-check"><input type="checkbox" name="keep_extra" ${keep ? 'checked' : ''}> Оставить исходную иллюстрацию (схему или таблицу под условием)</label>` : ''}
+        ${builtin && orig && shownExtra(orig.extra) ? `<label class="ed-check"><input type="checkbox" name="keep_extra" ${keep ? 'checked' : ''}> Оставить исходную иллюстрацию (схему или таблицу под условием)</label>` : ''}
         <div class="ed-three">${field2('answer', 'Ответ', v.answer, 'maxlength="2000" placeholder="Для нескольких чисел — через пробел"')}${field2('note', 'Пояснение к ответу (необязательно)', v.note, 'maxlength="2000"')}</div>
         ${area('solution', 'Решение на Python (необязательно) — ученик откроет его кнопкой «Решение»', v.sol, 'class="mono" spellcheck="false" rows="8"')}
         <details class="ed-data" ${v.data ? 'open' : ''}><summary>Файл с данными для задачи ${v.data ? `· ${esc(v.dname)}, ${v.data.split('\n').length} строк` : '(для заданий 9, 17, 24, 26, 27)'}</summary>
@@ -3095,7 +3096,7 @@ function stacklyApp() {
   function ePreview() {
     const ta = $('#e-body'), pv = $('#e-prev'); if (!ta || !pv) return;
     const f = ta.form, keep = f.elements.keep_extra && f.elements.keep_extra.checked, orig = f.dataset.id && ORIG.bank.find(x => x.id === f.dataset.id);
-    pv.innerHTML = (md(ta.value) || '<p class="muted">Здесь появится условие</p>') + (keep && orig && orig.extra ? `<div class="extra">${orig.extra}</div>` : '');
+    pv.innerHTML = (md(ta.value) || '<p class="muted">Здесь появится условие</p>') + (keep && orig && shownExtra(orig.extra) ? `<div class="extra">${orig.extra}</div>` : '');
   }
   async function loadEditor(h) {
     await loadContent(true);
