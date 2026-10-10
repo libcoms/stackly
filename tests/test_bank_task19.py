@@ -1,6 +1,7 @@
 """Задачи №19–21 банка: игру из скрытого описания (<!--spec:…-->) решаем здесь иначе, чем в генераторе, —
 послойной классификацией позиций (W1, L1, W2, L2) без рекурсии — и сверяем ответы всех трёх номеров.
-Заодно проверяем, что текст условия называет те же порог, кучи и диапазон S, и запускаем решения из задач."""
+Заодно проверяем, что условие игры (в задаче 19 комплекта) называет те же порог, кучи и диапазон S,
+что 20 и 21 ссылаются на игру из 19, и запускаем решения из задач."""
 import json, os, re, subprocess, sys, unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -68,20 +69,30 @@ class Task19BankTest(unittest.TestCase):
             with self.subTest(p['id']):
                 sp = json.loads(p['extra'][len('<!--spec:'):-len('-->')])
                 self.assertEqual(expected(sp, p['task']), p['answer'])
+                if p['task'] != 19:
+                    # 20 и 21 — комплект с задачей 19: та же игра, условие только в 19
+                    g = next(q for q in probs if q['id'] == '19-' + p['id'][3:])
+                    self.assertEqual(g['extra'], p['extra'])
+                    self.assertTrue(p['text'].startswith(f'<b>Задание {p["task"]}.</b> Для игры, описанной в задании 19, '))
+                    continue
                 t = p['text']
                 self.assertIn(f'<b>{sp["T"]}</b>', t)
                 self.assertIn(f'{sp["smin"]} ≤ S ≤ {sp["smax"]}', t)
                 if sp['heaps'] == 2:
                     self.assertIn(f'<b>{sp["a0"]}</b> камней', t)
                 self.assertEqual(len(re.findall(r'<b>(добавить|увеличить|убрать|уменьшить)', t)), len(sp['moves']))
-                self.assertIn(f'<b>Задание {p["task"]}.</b>', t)
+                self.assertIn('<b>Задание 19.</b>', t)
 
     def test_three_tasks_per_game(self):
-        ids = {p['id'] for p in bank()}
-        for p in bank():
-            m = re.match(r'(19|20|21)-g(\d+)$', p['id'])
+        B = bank()
+        ids = {p['id'] for p in B}
+        for p in B:
+            m = re.match(r'(19|20|21)-(g?\d+)$', p['id'])
             if m:
-                self.assertTrue({f'19-g{m[2]}', f'20-g{m[2]}', f'21-g{m[2]}'} <= ids)
+                self.assertTrue({f'19-{m[2]}', f'20-{m[2]}', f'21-{m[2]}'} <= ids)
+                if p['task'] != 19:   # сайт подставляет игру из задачи 19, поэтому условие её не повторяет
+                    self.assertTrue(p['text'].startswith(f'<b>Задание {p["task"]}.</b> Для игры, описанной в задании 19, '), p['id'])
+                    self.assertNotIn('Петя и Ваня', p['text'])
 
 
 if __name__ == '__main__':

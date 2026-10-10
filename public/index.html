@@ -436,6 +436,16 @@ table.mapping td, table.mapping th { text-align: left; }
 .prob-body p { margin: 0 0 10px; }
 .prob-body ul, .prob-body ol { margin: 0 0 10px; padding-left: 22px; }
 .prob-body b { color: var(--ink); }
+.pset { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 12px; font-size: 13px; }
+.pset .lbl { font-weight: 700; color: var(--mute); margin-right: 2px; }
+.pset > span:not(.lbl) { font: 700 12px/1 var(--f-mono); padding: 6px 8px; border-radius: 7px; background: var(--paper-2); color: var(--ink-2); white-space: nowrap; }
+.pset > span.ok { color: var(--ok); background: var(--ok-soft); }
+.pset > span.on { box-shadow: inset 0 0 0 1.5px var(--blue); }
+.pset a { font-weight: 700; color: var(--blue); text-decoration: none; white-space: nowrap; }
+.pset a:hover { text-decoration: underline; }
+.pgame { border: 1px solid var(--line); border-radius: 14px; background: var(--paper-2); margin: 0 0 12px; }
+.pgame summary { cursor: pointer; padding: 10px 14px; font-weight: 700; color: var(--ink); }
+.pgame > div { padding: 0 14px 12px; }
 .datafile { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 16px; border: 1.5px dashed var(--line); margin: 12px 0 10px; }
 .datafile .ico { width: 38px; height: 46px; border-radius: 7px; background: var(--paper-2); border: 1.5px solid var(--ink); position: relative; display: grid; place-items: end center; padding-bottom: 6px; font: 800 9px/1 var(--f-mono); color: var(--ink); }
 .datafile .ico::after { content: ""; position: absolute; top: -1.5px; right: -1.5px; width: 13px; height: 13px; background: var(--lime); border-radius: 0 7px 0 5px; box-shadow: inset 0 0 0 1.5px var(--ink); }
@@ -1983,13 +1993,27 @@ function stacklyApp() {
   const bankF = { task: 0, level: '', status: '', q: '' };
   const lvDots = { 'Б': 1, 'П': 2, 'В': 3 }, lvWord = { 'Б': 'базовая', 'П': 'средняя', 'В': 'сложная' };
   const norm = s => String(s).trim().toLowerCase().replace(/[,;]/g, ' ').split(/\s+/).filter(Boolean).join(' ');
+  // 19–21 — комплект, как на экзамене: игра описана в задании 19, а 20 и 21 спрашивают о той же игре.
+  // Задачи комплекта узнаём по id: 19-x, 20-x, 21-x
+  function gameSet(p) {
+    const m = /^(19|20|21)-([\w.-]+)$/.exec(p.id); if (!m) return null;
+    const set = [19, 20, 21].map(n => BANK.find(b => b.id === `${n}-${m[2]}`));
+    return set.every(Boolean) ? { key: m[2], set } : null;
+  }
+  const gameText = p => p.text.split('<br><br><b>Задание 19.</b>')[0];
+  function setHTML(p) {
+    const g = gameSet(p); if (!g) return '';
+    const [g19] = g.set;
+    return `<div class="pset"><span class="lbl">Комплект 19–21</span>${g.set.map(q => `<span class="${q.id === p.id ? 'on' : ''} ${solved.has(q.id) ? 'ok' : ''}">№${q.task} · #${pnum[q.id]}${solved.has(q.id) ? ' ✓' : ''}</span>`).join('')}<a href="#set-${g.key}">Решать комплектом →</a></div>`
+      + (p.task === 19 ? '' : `<details class="pgame"><summary>Игра из задания 19 (#${pnum[g19.id]})</summary><div>${gameText(g19)}</div></details>`);
+  }
   function probHTML(p, i) {
     const isS = solved.has(p.id), multi = p.answer.includes('\n');
     const lines = p.data ? p.data.split('\n').length : 0, kb = p.data ? (new Blob([p.data]).size / 1024).toFixed(1) : 0;
     return `<article class="prob ${isS ? 'solved' : ''}" style="--i:${Math.min(i, 8)}" data-pid="${p.id}">
       <div class="prob-head"><span class="pn"><em>№</em>${p.task}</span><span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${p.src && !p.src.builtin ? `<span class="pauth">автор: ${esc(p.src.author || 'учитель')}</span>` : ''}${isS ? '<span class="badge-ok">решено</span>' : ''}
         <span class="diff"><span>${lvWord[p.level]}</span>${[1, 2, 3].map(k => `<i class="${k <= lvDots[p.level] ? 'on' : ''}"></i>`).join('')}</span></div>
-      <div class="prob-body">${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}
+      <div class="prob-body">${setHTML(p)}${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}
         ${p.data ? `<div class="datafile"><span class="ico">TXT</span><span><span class="nm">${esc(p.dname)}</span><br><span class="sz">${lines} ${plural(lines, 'строка', 'строки', 'строк')} · ${kb} КБ</span></span>
           <span class="acts"><button type="button" class="btn small ghost" data-preview="${p.id}">Показать</button><button type="button" class="btn small" data-copydata="${p.id}">Скопировать</button></span></div><div class="pv"></div>` : ''}
       </div>
@@ -3377,7 +3401,15 @@ function stacklyApp() {
     }
     else if ((m = h.match(/^ege(?:-(\d+))?$/))) { html = pageEge(m[1] ? +m[1] : 1); nav = 'ege'; }
     else if ((m = h.match(/^py-(\d+)$/)) || h === 'python') { html = pagePython(); nav = 'python'; scrollTo = m ? +m[1] : null; }
-    else if ((m = h.match(/^bank(?:-(\d+))?$/))) { bankF.task = m[1] ? +m[1] : 0; html = pageBank(); nav = 'bank'; }
+    else if ((m = h.match(/^bank(?:-(\d+))?$/))) {
+      if (bankF.fromSet) { Object.assign(bankF, { q: '', fromSet: false }); curNav = ''; }   // из комплекта — снова весь банк
+      bankF.task = m[1] ? +m[1] : 0; html = pageBank(); nav = 'bank';
+    }
+    else if ((m = h.match(/^set-([\w.-]+)$/)) && BANK.some(p => p.id === '19-' + m[1]) && gameSet(BANK.find(p => p.id === '19-' + m[1]))) {
+      // комплект 19–21 одной игры: все три задачи подряд
+      const g = gameSet(BANK.find(p => p.id === '19-' + m[1]));
+      Object.assign(bankF, { task: 0, level: '', status: '', q: g.set.map(p => pnum[p.id]).join(', '), fromSet: true }); html = pageBank(); nav = 'bank'; curNav = '';
+    }
     else if ((m = h.match(/^p-([\w.-]+)$/)) && BANK.some(p => p.id === m[1])) {
       // ссылка на одну задачу (из домашнего задания): открываем её номер без фильтров
       const p = BANK.find(x => x.id === m[1]);
@@ -3543,7 +3575,7 @@ function stacklyApp() {
   });
   document.addEventListener('submit', e => { const f = e.target.closest('[data-check]'); if (f) { e.preventDefault(); checkAnswer(f); } });
   document.addEventListener('input', e => {
-    if (e.target.id === 'bankq') { bankF.q = e.target.value; renderProbs(); }
+    if (e.target.id === 'bankq') { bankF.q = e.target.value; bankF.fromSet = false; renderProbs(); }
     if (e.target.id === 'sideq') { sideQuery = e.target.value; const m = location.hash.match(/ege-(\d+)/); $('#sidelist').innerHTML = sideList(m ? +m[1] : 1); }
   });
   document.addEventListener('keydown', e => {
