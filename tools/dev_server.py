@@ -21,7 +21,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def proxy(self, method):
         n = int(self.headers.get('Content-Length') or 0)
         req = urllib.request.Request(API + self.path, data=self.rfile.read(n) if n else None, method=method)
-        for h in ('Content-Type', 'Cookie', 'Origin'):
+        for h in ('Content-Type', 'Cookie', 'Origin', 'User-Agent'):
             if self.headers.get(h):
                 req.add_header(h, self.headers[h])
         try:

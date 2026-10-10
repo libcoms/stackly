@@ -12,7 +12,7 @@
   STACKLY_CONTENT   папка с закрытыми материалами (content/ рядом с app/, на сервере /opt/stackly/content)
   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM — почта для восстановления пароля
 """
-import base64, hashlib, hmac, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
+import base64, calendar, hashlib, hmac, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
 from urllib.parse import parse_qs
 from email.message import EmailMessage
 from http import HTTPStatus
@@ -39,6 +39,14 @@ MAX_PROGRESS = 200 * 1024
 ROLES = ('student', 'teacher', 'admin')
 CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'      # без похожих 0/O и 1/I
 BANK_ID_RE = re.compile(r'^[\w.-]{1,40}$')
+# посещаемость: страницы сайта, которые считаем (ege-5, bank-19 — с номером задания)
+METRIC_PAGES = ('home', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin', 'other')
+PAGE_RE = re.compile(r'^([a-z]{2,8})(?:-(\d{1,2}))?$')
+HOST_RE = re.compile(r'^[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63}){1,5}$')
+BOT_RE = re.compile(r'bot|crawl|spider|slurp|headless|preview|monitor|curl|wget|python-requests', re.I)
+MOBILE_RE = re.compile(r'Mobi|Android|iPhone|iPad|iPod', re.I)
+METRIC_TZ = 3 * 3600          # дни считаем по Москве
+METRIC_KEEP_DAYS = 400
 EMAIL_RE = re.compile(r'^[^@\s]{1,64}@[^@\s]{1,190}\.[^@\s]{2,24}$')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -112,12 +120,45 @@ def migrate():
         hw_id INTEGER NOT NULL REFERENCES homework(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         done_at INTEGER NOT NULL, PRIMARY KEY (hw_id, user_id));
+
+      -- посещаемость: один просмотр страницы — одна строка. IP не хранится: vid — хеш IP и браузера
+      -- с солью дня (соль удаляется через два дня), поэтому посетителя можно узнать только в пределах суток.
+      -- entry = 1 — первый просмотр при открытии сайта (визит), ref — сайт, с которого пришли
+      CREATE TABLE IF NOT EXISTS hits (
+        ts INTEGER NOT NULL, day TEXT NOT NULL, vid TEXT NOT NULL, uid INTEGER, page TEXT NOT NULL,
+        entry INTEGER NOT NULL DEFAULT 0, ref TEXT NOT NULL DEFAULT '', dev TEXT NOT NULL DEFAULT '');
+      CREATE INDEX IF NOT EXISTS hits_day ON hits(day);
+      CREATE INDEX IF NOT EXISTS hits_ts ON hits(ts);
+      CREATE TABLE IF NOT EXISTS metric_salt (day TEXT PRIMARY KEY, salt TEXT NOT NULL);
     ''')
     # номера задач учителей — с 1001 (до 1000 — встроенный банк); старые 101… сдвигаем один раз
     db().execute('UPDATE problems SET num = num + 900 WHERE builtin = 0 AND num BETWEEN 101 AND 1000')
     cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
     if 'role' not in cols:
         db().execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'")
+
+# ---------------------------------------------------------------- посещаемость
+def metric_day(ts):
+    return time.strftime('%Y-%m-%d', time.gmtime(ts + METRIC_TZ))
+
+def day_start(day):
+    return calendar.timegm(time.strptime(day, '%Y-%m-%d')) - METRIC_TZ
+
+_salt, _salt_lock, _metrics_swept = {}, threading.Lock(), [0.0]
+
+def day_salt(day):
+    with _salt_lock:
+        if day not in _salt:
+            db().execute('INSERT OR IGNORE INTO metric_salt VALUES (?, ?)', (day, secrets.token_hex(16)))
+            db().execute('DELETE FROM metric_salt WHERE day < ?', (metric_day(time.time() - 2 * 86400),))
+            _salt.clear()
+            _salt[day] = db().execute('SELECT salt FROM metric_salt WHERE day = ?', (day,)).fetchone()[0]
+        return _salt[day]
+
+def sweep_metrics(now):
+    if now - _metrics_swept[0] > 3600:
+        _metrics_swept[0] = now
+        db().execute('DELETE FROM hits WHERE ts < ?', (int(now) - METRIC_KEEP_DAYS * 86400,))
 
 # ---------------------------------------------------------------- пароли и токены
 def hash_password(pw: str) -> str:
@@ -416,7 +457,9 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/teach/homework/delete'): self.t_hw_delete,
             ('GET', '/api/teach/homework'): self.t_hw_stats,
             # администратор
+            ('POST', '/api/hit'): self.page_hit,
             ('GET', '/api/admin/users'): self.a_users,
+            ('GET', '/api/admin/metrics'): self.a_metrics,
             ('POST', '/api/admin/role'): self.a_role,
             # редактор задач и методички
             ('GET', '/api/content'): self.content,
@@ -1018,6 +1061,72 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Security-Policy', "default-src 'none'; sandbox")
         self.end_headers()
         self.wfile.write(r['data'])
+
+    # --- посещаемость
+    def page_hit(self):
+        d = self.body(4096)
+        ua, ip, now = self.headers.get('User-Agent') or '', self.client_ip(), int(time.time())
+        m = PAGE_RE.match(str(d.get('p', '')))
+        if not m or m[1] not in METRIC_PAGES or (m[2] and m[1] not in ('ege', 'bank')) or BOT_RE.search(ua) or not ua:
+            return self.send_json(200, {'ok': False})
+        if too_many('hit:' + ip, 600, 60):     # класс за одним NAT — это десятки учеников с одного адреса
+            return self.send_json(200, {'ok': False})
+        hit('hit:' + ip)
+        entry = 1 if d.get('e') else 0
+        ref = str(d.get('r', '')).strip().lower()[:200] if entry else ''
+        ref = ref[4:] if ref.startswith('www.') else ref
+        if not HOST_RE.match(ref) or ORIGIN.endswith('//' + ref):
+            ref = ''
+        day = metric_day(now)
+        vid = hashlib.sha256(f'{day_salt(day)}|{ip}|{ua}'.encode()).hexdigest()[:20]
+        u = self.current_user(required=False)
+        db().execute('INSERT INTO hits VALUES (?,?,?,?,?,?,?,?)', (now, day, vid, u['id'] if u else None, m[0], entry, ref,
+                                                                   'mobile' if MOBILE_RE.search(ua) else 'desktop'))
+        sweep_metrics(now)
+        self.send_json(200, {'ok': True})
+
+    def a_metrics(self):
+        self.admin()
+        try:
+            days = int(self.query.get('days', 30))
+        except ValueError:
+            days = 30
+        days = days if days in (7, 30, 90, 365) else 30
+        now = int(time.time())
+        today = metric_day(now)
+        start = metric_day(day_start(today) - (days - 1) * 86400)
+        prev = metric_day(day_start(start) - days * 86400)
+        q = lambda sql, *a: db().execute(sql, a).fetchall()
+        by_day = {r['day']: r for r in q('SELECT day, COUNT(*) AS views, SUM(entry) AS visits, COUNT(DISTINCT vid) AS visitors, '
+                                          'COUNT(DISTINCT uid) AS users FROM hits WHERE day >= ? GROUP BY day', start)}
+        regs = {}
+        for r in q('SELECT created FROM users WHERE created >= ?', day_start(start)):
+            regs[metric_day(r['created'])] = regs.get(metric_day(r['created']), 0) + 1
+        series, t = [], day_start(start)
+        while metric_day(t) <= today:
+            dd, r = metric_day(t), by_day.get(metric_day(t))
+            series.append({'day': dd, 'views': r['views'] if r else 0, 'visits': r['visits'] if r else 0,
+                           'visitors': r['visitors'] if r else 0, 'users': r['users'] if r else 0, 'regs': regs.get(dd, 0)})
+            t += 86400
+        def totals(a, b):
+            r = q('SELECT COUNT(*) AS views, COALESCE(SUM(entry), 0) AS visits, COUNT(DISTINCT uid) AS users, '
+                  'COUNT(DISTINCT day || vid) AS visitor_days FROM hits WHERE day >= ? AND day < ?', a, b)[0]
+            regs = q('SELECT COUNT(*) AS n FROM users WHERE created >= ? AND created < ?', day_start(a), day_start(b))[0]['n']
+            return {**dict(r), 'regs': regs}
+        end = metric_day(day_start(today) + 86400)
+        self.send_json(200, {
+            'days': days, 'today': today, 'series': series,
+            'online': q('SELECT COUNT(DISTINCT vid) AS n FROM hits WHERE ts > ?', now - 300)[0]['n'],
+            'total': totals(start, end), 'prev': totals(prev, start),
+            'pages': [dict(r) for r in q('SELECT page, COUNT(*) AS views, COUNT(DISTINCT day || vid) AS visitors FROM hits '
+                                         'WHERE day >= ? GROUP BY page ORDER BY views DESC LIMIT 15', start)],
+            'refs': [dict(r) for r in q("SELECT ref, COUNT(*) AS visits FROM hits WHERE day >= ? AND entry = 1 AND ref != '' "
+                                        'GROUP BY ref ORDER BY visits DESC LIMIT 10', start)],
+            'direct': q("SELECT COUNT(*) AS n FROM hits WHERE day >= ? AND entry = 1 AND ref = ''", start)[0]['n'],
+            'devices': {r['dev']: r['visits'] for r in q('SELECT dev, COUNT(*) AS visits FROM hits WHERE day >= ? AND entry = 1 '
+                                                         'GROUP BY dev', start)},
+            'users_total': q('SELECT COUNT(*) AS n FROM users')[0]['n'],
+        })
 
     # --- администратор
     def admin(self):

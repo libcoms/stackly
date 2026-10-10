@@ -790,6 +790,24 @@ table.mapping td, table.mapping th { text-align: left; }
 .tbl td.name small { display: block; color: var(--mute); font-size: 12.5px; }
 .tbl tbody tr:hover { background: var(--paper-2); }
 .tbl .num { text-align: right; }
+.mchart { border: 1px solid var(--line); border-radius: 20px; padding: 16px 18px 12px; background: var(--paper); }
+.mchart-h { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: var(--mute); margin-bottom: 12px; }
+.mbars { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 2px; align-items: end; height: 180px; border-bottom: 1px solid var(--line); }
+.mbars span { height: 100%; display: flex; align-items: flex-end; outline: none; border-radius: 4px 4px 0 0; }
+.mbars span i { display: block; width: 100%; background: var(--blue); border-radius: 4px 4px 0 0; transform-origin: bottom; animation: growY .8s var(--ease) both; }
+.mbars span:hover, .mbars span:focus-visible { background: var(--paper-2); }
+.mbars span:hover i, .mbars span:focus-visible i { background: var(--ink); }
+.mbars span.now i { background: var(--blue-mid); }
+.maxis { display: flex; justify-content: space-between; font-size: 12px; color: var(--mute); margin-top: 6px; }
+.mtable { margin-top: 12px; }
+.mtable summary { cursor: pointer; font-weight: 700; font-size: 14px; color: var(--ink-2); padding: 6px 0; }
+.mtable .tbl-wrap { margin-top: 8px; max-height: 420px; overflow: auto; }
+.mgrid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 0 22px; }
+.mshare { display: inline-block; vertical-align: middle; width: 70px; height: 6px; border-radius: 3px; background: var(--paper-2); margin-right: 8px; overflow: hidden; }
+.mshare i { display: block; height: 100%; background: var(--blue); border-radius: 3px; }
+.filter-sub .grp.mper { flex-wrap: wrap; overflow: visible; }
+@media (max-width: 860px) { .mgrid { grid-template-columns: minmax(0, 1fr); } .mshare { width: 40px; } }
+@media (max-width: 560px) { .mgrid .mhide { display: none; } .mbars { height: 140px; gap: 1px; } }
 .tbl select { padding: 7px 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 14px var(--f-body); }
 .icon-x { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--mute); display: inline-grid; place-items: center; font-size: 16px; line-height: 1; }
 .icon-x:hover { color: var(--bad); border-color: var(--bad); }
@@ -2549,7 +2567,7 @@ function stacklyApp() {
         <div class="me-id">${avatarHTML('xl')}
           <div><span class="eyebrow">Личный кабинет</span><h1>${acct.cloud ? esc(acct.name || 'Ученик') : 'Гость'}</h1>
             <div class="me-meta">${syncBadge()}<span>в stackly с ${fmtDate(stats.since)}</span></div></div></div>
-        <div class="me-actions">${isTeacher() ? `<a class="btn small" href="#teach">Кабинет учителя <span class="arr">${I.arrow}</span></a><a class="btn small ghost" href="#edit">Редактор задач</a>` : ''}${acct.cloud ? `<button type="button" class="btn ghost small" data-act="logout">Выйти</button>` : `<a class="btn blue small" href="#login">Войти и сохранить прогресс <span class="arr">${I.arrow}</span></a>`}</div>
+        <div class="me-actions">${isTeacher() ? `<a class="btn small" href="#teach">Кабинет учителя <span class="arr">${I.arrow}</span></a><a class="btn small ghost" href="#edit">Редактор задач</a>` : ''}${acct.role === 'admin' ? `<a class="btn small ghost" href="#admin-stats">Посещаемость</a>` : ''}${acct.cloud ? `<button type="button" class="btn ghost small" data-act="logout">Выйти</button>` : `<a class="btn blue small" href="#login">Войти и сохранить прогресс <span class="arr">${I.arrow}</span></a>`}</div>
       </header>
       ${acct.cloud ? myClassShell() : ''}
 
@@ -2772,7 +2790,7 @@ function stacklyApp() {
   let tSeq = 0, tGroup = null, hwDraft = null;
   const teachShell = () => `<div class="page wrap t-page" id="tpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
   const tMsg = (title, text, href, label) => `<div class="t-empty" style="margin-top:30px"><b>${esc(title)}</b>${esc(text)}${href ? `<div class="cta-row"><a class="btn small" href="${href}">${label}</a></div>` : ''}</div>`;
-  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя"><a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip ${cur === 'edit' ? 'on' : ''}" href="#edit">Редактор задач</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a>` : ''}</nav>`;
+  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя"><a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip ${cur === 'edit' ? 'on' : ''}" href="#edit">Редактор задач</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a><a class="chip ${cur === 'stats' ? 'on' : ''}" href="#admin-stats">Посещаемость</a>` : ''}</nav>`;
   async function loadTeach(h) {
     const seq = ++tSeq;
     const put = html => { const box = $('#tpage'); if (seq !== tSeq || !box) return false; box.innerHTML = html; reveal(box); return true; };
@@ -2794,6 +2812,10 @@ function stacklyApp() {
       else if ((m = h.match(/^teach-s-(\d+)$/))) put(tStudentHTML(await api('/teach/student?id=' + m[1])));
       else if ((m = h.match(/^teach-hwv-(\d+)$/))) put(tHwStatsHTML(await api('/teach/homework?id=' + m[1])));
       else if (/^edit/.test(h)) { if (put(await loadEditor(h))) ePreview(); }
+      else if ((m = h.match(/^admin-stats(?:-(\d+))?$/))) {
+        if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
+        put(tMetricsHTML(await api('/admin/metrics?days=' + (m[1] || 30))));
+      }
       else if (h === 'admin') {
         if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
         put(tAdminHTML(await api('/admin/users')));
@@ -3006,6 +3028,64 @@ function stacklyApp() {
         <p>Всего ${r.total}. Роль «учитель» открывает кабинет учителя, «администратор» — ещё и этот раздел со всеми группами.</p></div>${tTabs('users')}</header>
       <section class="t-sec"><div class="t-create" style="margin-bottom:14px"><input id="usrq" type="search" placeholder="Поиск по имени или почте" aria-label="Поиск пользователей"></div>
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Пользователь</th><th>Роль</th><th>Регистрация</th><th>Заходил</th><th>Группы</th></tr></thead><tbody id="usrbody">${usersRows(r.users)}</tbody></table></div></section>`;
+  }
+
+  /* ═════════════ ПОСЕЩАЕМОСТЬ ═════════════ */
+  const PAGE_NAMES = { home: 'Главная', ege: 'Методичка', bank: 'Банк задач', task: 'Задача по ссылке', set: 'Комплект 19–21', python: 'Учебник Python',
+    cheat: 'Шпаргалка', login: 'Вход и регистрация', me: 'Личный кабинет', hw: 'Домашние задания', teach: 'Кабинет учителя', edit: 'Редактор', admin: 'Администратор', other: 'Другое' };
+  const pageName = p => { const [b, n] = p.split('-'); return n ? `${PAGE_NAMES[b]} · №${n}` : PAGE_NAMES[b] || p; };
+  const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
+  const dayLbl = (d, o = { day: 'numeric', month: 'short' }) => new Date(d + 'T12:00:00Z').toLocaleDateString('ru-RU', { ...o, timeZone: 'UTC' });
+  function delta(cur, prev) {
+    if (prev < 20) return '';                      // по горстке визитов проценты ничего не говорят
+    const v = Math.round((cur - prev) / prev * 100);
+    return `${v > 0 ? '+' : ''}${v}% к прошлому периоду`;
+  }
+  function tMetricsHTML(r) {
+    const S = r.series, today = S[S.length - 1], T = r.total, per = r.days;
+    // за год — по неделям, иначе по дням
+    const step = per > 90 ? 7 : 1, B = [];
+    for (let i = S.length; i > 0; i -= step) {
+      const part = S.slice(Math.max(0, i - step), i), sum = k => part.reduce((a, x) => a + x[k], 0);
+      B.unshift({ from: part[0].day, to: part[part.length - 1].day, visitors: sum('visitors'), visits: sum('visits'), views: sum('views'), regs: sum('regs') });
+    }
+    const max = Math.max(1, ...B.map(b => b.visitors));
+    const lbl = b => step === 1 ? dayLbl(b.from, { day: 'numeric', month: 'long', weekday: 'short' }) : `${dayLbl(b.from)} – ${dayLbl(b.to)}`;
+    const bars = B.map((b, i) => `<span tabindex="0" class="${i === B.length - 1 ? 'now' : ''}" data-tipt="${esc(lbl(b))}|посетителей ${b.visitors} · визитов ${b.visits} · просмотров ${b.views}${b.regs ? ` · регистраций ${b.regs}` : ''}" aria-label="${esc(lbl(b))}: посетителей ${b.visitors}"><i style="height:${b.visitors / max * 100}%"></i></span>`).join('');
+    const pv = r.pages.reduce((a, p) => a + p.views, 0) || 1;
+    const dev = r.devices || {}, devAll = (dev.mobile || 0) + (dev.desktop || 0) || 1;
+    const srcAll = r.refs.reduce((a, x) => a + x.visits, 0) + r.direct || 1;
+    const share = (n, all) => `<span class="mshare"><i style="width:${n / all * 100}%"></i></span>${Math.round(n / all * 100)}%`;
+    const periods = [[7, '7 дней'], [30, '30 дней'], [90, '90 дней'], [365, 'Год']];
+    return `<header class="t-head"><div><span class="eyebrow">Администратор</span><h1>Посещаемость</h1>
+        <p>Посетитель — один браузер за сутки, визит — открытие сайта, просмотр — переход на страницу. IP-адреса не хранятся, cookie для подсчёта не ставятся.</p></div>${tTabs('stats')}</header>
+      <div class="filter-sub" style="margin-top:18px"><span class="grp mper"><span class="lbl">Период</span>${periods.map(([d, n]) => `<a class="chip ${per === d ? 'on' : ''}" href="#admin-stats-${d}">${n}</a>`).join('')}</span></div>
+      <div class="kpis">
+        <div class="kpi accent"><span class="k-l">Сейчас на сайте</span><b>${fmtN(r.online)}</b><span class="k-s">за последние 5 минут</span></div>
+        <div class="kpi"><span class="k-l">Сегодня</span><b>${fmtN(today.visitors)} <small>${plural(today.visitors, 'посетитель', 'посетителя', 'посетителей')}</small></b><span class="k-s">${fmtN(today.visits)} ${plural(today.visits, 'визит', 'визита', 'визитов')} · ${fmtN(today.views)} ${plural(today.views, 'просмотр', 'просмотра', 'просмотров')}</span></div>
+        <div class="kpi"><span class="k-l">Визиты за период</span><b>${fmtN(T.visits)}</b><span class="k-s">${fmtN(T.views)} ${plural(T.views, 'просмотр', 'просмотра', 'просмотров')}. ${delta(T.visits, r.prev.visits)}</span></div>
+        <div class="kpi"><span class="k-l">Регистрации за период</span><b>${fmtN(T.regs)}</b><span class="k-s">заходили с аккаунтом: ${fmtN(T.users)} · всего пользователей ${fmtN(r.users_total)}</span></div>
+      </div>
+      <section class="t-sec"><h2>Посетители ${step === 1 ? 'по дням' : 'по неделям'}</h2>
+        <div class="mchart"><div class="mchart-h"><span>максимум ${fmtN(max)} за ${step === 1 ? 'день' : 'неделю'}</span><span>в среднем ${fmtN(Math.round(T.visitor_days / S.length))} в день</span></div>
+          <div class="mbars" style="--n:${B.length}" role="list" aria-label="Посетители ${step === 1 ? 'по дням' : 'по неделям'}">${bars}</div>
+          <div class="maxis"><span>${dayLbl(B[0].from)}</span>${B.length > 2 ? `<span>${dayLbl(B[Math.floor(B.length / 2)].from)}</span>` : ''}<span>${step === 1 ? 'сегодня' : dayLbl(B[B.length - 1].from)}</span></div></div>
+        <details class="mtable"><summary>Таблица по дням</summary><div class="tbl-wrap"><table class="tbl"><thead><tr><th>День</th><th class="num">Посетители</th><th class="num">Визиты</th><th class="num">Просмотры</th><th class="num">С аккаунтом</th><th class="num">Регистрации</th></tr></thead><tbody>
+          ${S.slice().reverse().map(x => `<tr><td>${esc(dayLbl(x.day, { day: 'numeric', month: 'long', weekday: 'short' }))}</td><td class="num">${x.visitors}</td><td class="num">${x.visits}</td><td class="num">${x.views}</td><td class="num">${x.users}</td><td class="num">${x.regs}</td></tr>`).join('')}
+        </tbody></table></div></details></section>
+      <div class="mgrid">
+        <section class="t-sec"><h2>Страницы</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Страница</th><th class="num">Просмотры</th><th class="num">Посетители</th><th class="mhide">Доля</th></tr></thead><tbody>
+          ${r.pages.map(p => `<tr><td class="name">${esc(pageName(p.page))}</td><td class="num">${fmtN(p.views)}</td><td class="num">${fmtN(p.visitors)}</td><td class="mhide">${share(p.views, pv)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">Пока нет данных</td></tr>'}
+        </tbody></table></div></section>
+        <section class="t-sec"><h2>Откуда приходят</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Источник</th><th class="num">Визиты</th><th>Доля</th></tr></thead><tbody>
+          <tr><td class="name">Прямые заходы и закладки</td><td class="num">${fmtN(r.direct)}</td><td>${share(r.direct, srcAll)}</td></tr>
+          ${r.refs.map(x => `<tr><td class="name">${esc(x.ref)}</td><td class="num">${fmtN(x.visits)}</td><td>${share(x.visits, srcAll)}</td></tr>`).join('')}
+        </tbody></table></div>
+          <h2 style="margin-top:22px">Устройства</h2><div class="tbl-wrap"><table class="tbl"><tbody>
+          <tr><td class="name">Телефоны и планшеты</td><td class="num">${fmtN(dev.mobile || 0)}</td><td>${share(dev.mobile || 0, devAll)}</td></tr>
+          <tr><td class="name">Компьютеры</td><td class="num">${fmtN(dev.desktop || 0)}</td><td>${share(dev.desktop || 0, devAll)}</td></tr>
+        </tbody></table></div></section>
+      </div>`;
   }
 
   /* ═════════════ РЕДАКТОР ЗАДАЧ И МЕТОДИЧКИ ═════════════ */
@@ -3405,8 +3485,23 @@ function stacklyApp() {
 
   /* ═════════════ МАРШРУТЫ ═════════════ */
   let curNav = '';
+  // посещаемость: отправляем только раздел (без id задач, групп и ДЗ), источник — только при входе на сайт
+  const HIT_PAGES = ['home', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin'];
+  // визит — первое открытие сайта во вкладке: перезагрузка после входа или выхода новым визитом не считается
+  let hitFirst = (() => { try { if (sessionStorage.getItem('stackly-visit')) return false; sessionStorage.setItem('stackly-visit', '1'); } catch (e) { } return true; })(), hitLast = null;
+  function pageHit(h) {
+    if (h === hitLast) return; hitLast = h;
+    let p = /^(ege|bank)-\d{1,2}$/.test(h) ? h : (/^[a-z]+/.exec(h) || ['home'])[0];
+    p = { p: 'task', py: 'python', reset: 'login' }[p] || p;
+    if (!HIT_PAGES.includes(p.replace(/-\d+$/, ''))) p = 'other';
+    let r = '';
+    if (hitFirst) { try { const u = new URL(document.referrer); if (u.host !== location.host) r = u.hostname; } catch (e) { } }
+    const body = JSON.stringify({ p, e: hitFirst ? 1 : 0, r }); hitFirst = false;
+    try { fetch(API + '/hit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', keepalive: true, body }).catch(() => { }); } catch (e) { }
+  }
   function route() {
     const h = (location.hash || '#home').slice(1);
+    pageHit(h);
     let m, html, nav = 'home', scrollTo = null, focusPid = null;
     codeStore = [];
     const gate = LOCKED && GATES.find(g => g[0].test(h));

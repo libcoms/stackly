@@ -265,6 +265,41 @@ class ClassroomTest(ServerCase):
         users = a.call('GET', '/admin/users?q=' + email.split('@')[0])[1]['users']
         self.assertEqual([u['email'] for u in users], [email])
 
+    def test_page_metrics(self):
+        a, email = self.register()
+        self.set_role(email, 'admin')
+        g = Client(self.base)
+        ua = {'User-Agent': 'Mozilla/5.0 (iPhone) Mobile', 'X-Real-IP': '10.9.0.1'}
+        self.assertTrue(g.call('POST', '/hit', {'p': 'home', 'e': 1, 'r': 'www.yandex.ru'}, ua)[1]['ok'])
+        self.assertTrue(g.call('POST', '/hit', {'p': 'bank-19'}, ua)[1]['ok'])
+        self.assertTrue(a.call('POST', '/hit', {'p': 'ege-5', 'e': 1, 'r': 'stackly.test'}, {'User-Agent': 'Mozilla/5.0 (X11)', 'X-Real-IP': '10.9.0.2'})[1]['ok'])
+        for bad in ({'p': 'hw-12'}, {'p': 'secret'}, {'p': '../x'}, {'p': 'home', 'e': 1, 'r': '<script>'}):
+            st, body = g.call('POST', '/hit', bad, ua)
+            self.assertEqual(st, 200)
+        self.assertFalse(g.call('POST', '/hit', {'p': 'home'}, {'User-Agent': 'Googlebot/2.1', 'X-Real-IP': '10.9.0.3'})[1]['ok'])
+        self.assertEqual(g.call('POST', '/hit', {'p': 'home'}, {'Origin': 'https://evil.test'})[0], 403)
+        self.assertEqual(g.call('GET', '/admin/metrics')[0], 401)
+        self.assertEqual(self.register()[0].call('GET', '/admin/metrics')[0], 403)
+        st, m = a.call('GET', '/admin/metrics?days=7')
+        self.assertEqual(st, 200)
+        self.assertEqual(len(m['series']), 7)
+        self.assertEqual(m['series'][-1]['day'], m['today'])
+        pages = {p['page']: p['views'] for p in m['pages']}
+        self.assertEqual(pages.get('home'), 2)            # главная + отклонённый ref «<script>» — просмотр есть, источника нет
+        self.assertEqual(pages.get('bank-19'), 1)
+        self.assertNotIn('secret', pages)
+        self.assertNotIn('hw-12', pages)
+        self.assertEqual(m['refs'], [{'ref': 'yandex.ru', 'visits': 1}])   # свой сайт и мусор — не источники
+        self.assertEqual(m['devices'], {'mobile': 2, 'desktop': 1})
+        self.assertGreaterEqual(m['online'], 2)
+        self.assertEqual(m['total']['users'], 1)          # гость не считается пользователем
+        self.assertEqual(m['series'][-1]['visitors'], 2)
+        # IP в базе не хранится
+        con = sqlite3.connect(self.db)
+        cols = ' '.join(r[1] for r in con.execute('PRAGMA table_info(hits)'))
+        dump = ' '.join(map(str, con.execute('SELECT * FROM hits').fetchall()))
+        self.assertNotIn('ip', cols); self.assertNotIn('10.9.0', dump)
+
     def test_join_bruteforce_limited(self):
         s, _ = self.register()
         codes = [s.call('POST', '/me/groups/join', {'code': f'ZZZZZZ{i:02d}'})[0] for i in range(11)]
