@@ -2898,20 +2898,27 @@ function stacklyApp() {
     $('#pickbody').innerHTML = html;
     if (D.tab === 'bank') renderPkList();
   }
+  // задачи 19–21 одной игры — комплект: в ДЗ добавляются и убираются вместе, по порядку 19, 20, 21
+  function pickBank(id, on) {
+    const p = BANK.find(x => x.id === id), g = p && gameSet(p), ids = g ? g.set.map(q => q.id) : [id];
+    ids.forEach(x => hwDraft.bank.delete(x));
+    if (on) ids.forEach(x => hwDraft.bank.add(x));
+    return ids.length > 1;
+  }
   const pkFound = () => {
     const D = hwDraft, nums = parseNums(D.q), q = D.q.trim().toLowerCase();
     if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
     return BANK.filter(p => (!D.num || p.task === D.num) && (!D.lvl || p.level === D.lvl) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
   };
-  const pkPreview = p => `${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}${p.data ? `<p class="muted" style="font-size:13px">К задаче прилагается файл ${esc(p.dname)} — ученик скопирует его со страницы задания.</p>` : ''}<p class="muted" style="font-size:13px;margin:8px 0 0">Ответ: <b>${esc(p.answer)}</b></p>`;
+  const pkPreview = p => `${gameSet(p) && p.task !== 19 ? `<div class="pgame"><div style="padding-top:12px">${gameText(gameSet(p).set[0])}</div></div>` : ''}${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}${p.data ? `<p class="muted" style="font-size:13px">К задаче прилагается файл ${esc(p.dname)} — ученик скопирует его со страницы задания.</p>` : ''}<p class="muted" style="font-size:13px;margin:8px 0 0">Ответ: <b>${esc(p.answer)}</b></p>`;
   // список найденных задач; при поиске по номеру условие раскрыто сразу
   function renderPkList() {
     const D = hwDraft, box = $('#pklist'); if (!box) return;
     const list = pkFound(), open = !!parseNums(D.q) && list.length <= 4, fresh = list.filter(p => !D.bank.has(p.id)).length;
     box.innerHTML = `<div class="pk-found"><span class="muted">${list.length ? `Найдено: ${list.length}` : 'Ничего не найдено — проверьте номер или сбросьте фильтры'}</span>
-        ${list.length && fresh && list.length <= 60 ? `<button type="button" class="linkbtn" data-tact="pick-all">Добавить ${list.length === 1 ? 'задачу' : `все ${fresh}`}</button>` : ''}</div>
+        ${list.length && fresh && list.length <= 60 ? `<button type="button" class="linkbtn" data-tact="pick-all">Добавить ${list.length === 1 ? (gameSet(list[0]) ? 'комплект 19–21' : 'задачу') : `все ${fresh}`}</button>` : ''}</div>
       <div class="pick-list pk-list">${list.map(p => { const on = D.bank.has(p.id); return `<div class="pk-row ${on ? 'on' : ''}">
-          <label class="pick"><input type="checkbox" data-pick="bank" value="${p.id}" ${on ? 'checked' : ''}><span><b class="pnum">#${pnum[p.id]}</b> №${p.task} · ${esc(p.title)}</span><small>${lvWord[p.level]}</small></label>
+          <label class="pick"><input type="checkbox" data-pick="bank" value="${p.id}" ${on ? 'checked' : ''}><span><b class="pnum">#${pnum[p.id]}</b> №${p.task} · ${esc(p.title)}${gameSet(p) ? ' <span class="muted">· комплект 19–21, добавится целиком</span>' : ''}</span><small>${lvWord[p.level]}</small></label>
           <button type="button" class="pk-eye" data-pkx="${p.id}" aria-expanded="${open}">${open ? 'Скрыть' : 'Условие'}</button>
           <div class="pk-prev prob-body" ${open ? '' : 'hidden'}>${open ? pkPreview(p) : ''}</div></div>`; }).join('')}</div>`;
   }
@@ -3273,8 +3280,8 @@ function stacklyApp() {
       return;
     }
     const a = b.dataset.tact, id = +b.dataset.id;
-    if (a === 'unpick') { hwDraft[b.dataset.k].delete(b.dataset.k === 'bank' ? b.dataset.v : +b.dataset.v); return renderPicker(true); }
-    if (a === 'pick-all') { pkFound().forEach(p => hwDraft.bank.add(p.id)); renderPicker(false); return renderPkList(); }
+    if (a === 'unpick') { b.dataset.k === 'bank' ? pickBank(b.dataset.v, false) : hwDraft[b.dataset.k].delete(+b.dataset.v); return renderPicker(true); }
+    if (a === 'pick-all') { pkFound().forEach(p => { if (!hwDraft.bank.has(p.id)) pickBank(p.id, true); }); renderPicker(false); return renderPkList(); }
     if (a === 'copy-code') return copyText(b.dataset.code, null);
     const ask = { 'del-hw': 'Удалить задание? Отметки учеников о выполнении пропадут.', 'del-group': `Удалить группу «${b.dataset.name}» вместе со всеми заданиями?`,
       'rm-member': `Убрать ${b.dataset.name} из группы?`, 'leave': `Выйти из группы «${b.dataset.name}»? Её задания пропадут из кабинета.`, 'new-code': 'Выдать новый код? Старый перестанет работать.' }[a];
@@ -3291,7 +3298,15 @@ function stacklyApp() {
   });
   document.addEventListener('change', async e => {
     const t = e.target;
-    if (t.dataset.pick) { const k = t.dataset.pick, v = k === 'bank' ? t.value : +t.value; t.checked ? hwDraft[k].add(v) : hwDraft[k].delete(v); renderPicker(false); const r = t.closest('.pk-row'); if (r) r.classList.toggle('on', t.checked); }
+    if (t.dataset.pick) {
+      const k = t.dataset.pick, v = k === 'bank' ? t.value : +t.value;
+      if (k === 'bank' && pickBank(v, t.checked)) {
+        // комплект 19–21: отметки соседних задач в списке меняются вместе с этой
+        $$('#pklist [data-pick="bank"]').forEach(c => { c.checked = hwDraft.bank.has(c.value); const r = c.closest('.pk-row'); if (r) r.classList.toggle('on', c.checked); });
+        renderPicker(false); toast(t.checked ? 'Добавлен весь комплект 19–21' : 'Комплект 19–21 убран из задания'); return;
+      }
+      if (k !== 'bank') t.checked ? hwDraft[k].add(v) : hwDraft[k].delete(v); renderPicker(false); const r = t.closest('.pk-row'); if (r) r.classList.toggle('on', t.checked);
+    }
     else if (t.name === 'to' && t.closest('[data-tform="hw"]')) $('#studlist').hidden = t.value !== 'some';
     else if (t.dataset.urole) {
       const prev = [...t.options].find(o => o.defaultSelected);
@@ -3311,7 +3326,7 @@ function stacklyApp() {
   document.addEventListener('keydown', e => {
     if (e.target.id !== 'pkq' || e.key !== 'Enter') return;
     e.preventDefault();
-    if (parseNums(hwDraft.q)) { pkFound().forEach(p => hwDraft.bank.add(p.id)); renderPicker(false); renderPkList(); }
+    if (parseNums(hwDraft.q)) { pkFound().forEach(p => { if (!hwDraft.bank.has(p.id)) pickBank(p.id, true); }); renderPicker(false); renderPkList(); }
   });
   document.addEventListener('input', e => {
     if (e.target.id !== 'usrq') return;
