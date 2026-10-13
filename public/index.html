@@ -1,4 +1,4 @@
-<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1E45FB"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>stackly</title>
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1E45FB"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style><script>try{if(localStorage.getItem('stackly-guest')!=='0')document.documentElement.classList.add('guest')}catch(e){document.documentElement.classList.add('guest')}</script></head><body><title>stackly</title>
 <meta name="description" content="stackly: платформа для репетиторов и преподавателей. Группы, домашние задания с автопроверкой и статистика по ученикам. Внутри готовый курс ЕГЭ по информатике.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -366,6 +366,66 @@ footer.foot b { color: var(--ink); font-family: var(--f-display); }
   .pv-mx td:first-child { padding-right: 6px; }
   .pv-mx .mx { min-width: 26px; height: 26px; font-size: 13px; }
 }
+
+
+/* шапка гостя */
+.guest .nav, .guest #scorePill, .guest #searchbtn, .guest #themebtn { display: none; }
+.guest .tools { margin-left: auto; }
+.guest .acct-btn { width: auto; background: var(--blue); border-color: var(--blue); color: #fff; padding-inline: 18px; font-weight: 600; }
+@media (max-width: 380px) { .guest .acct-btn { padding-inline: 14px; font-size: 13px; } }
+.guest .acct-btn:hover { filter: brightness(1.08); }
+.guest .acct-btn .lbl { display: inline !important; }
+@media (max-width: 900px) { .guest .top .wrap { flex-wrap: nowrap; } }
+
+/* первый экран: точечная сетка и ASCII-шар */
+.h-hero { position: relative; overflow: hidden; }
+.h-hero > .wrap { position: relative; }
+.h-dots { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.h-ascii { margin: 0; justify-self: center; width: min(100%, 540px); animation: fade .6s var(--ease) both; }
+#hball { display: block; width: 100%; aspect-ratio: 1; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.h-ascii figcaption { text-align: center; margin-top: 4px; font: 500 12.5px/1 var(--f-mono); letter-spacing: .06em; color: var(--mute); }
+
+/* как обычно / со stackly */
+.vs { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 8px; }
+.vs-col { border-radius: 24px; padding: clamp(22px, 2.6vw, 34px); }
+.vs-col h3 { font-size: 20px; font-weight: 650; margin-bottom: 18px; }
+.vs-col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.vs-col li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; align-items: start; font-size: 16.5px; line-height: 1.45; }
+.vs-col svg { width: 20px; height: 20px; margin-top: 2px; }
+.vs-was { background: var(--paper-2); color: var(--ink-2); }
+.vs-was svg { color: var(--mute); }
+.vs-now { background: var(--blue); color: #fff; }
+.vs-now svg { color: var(--lime); }
+
+/* три шага */
+.h-how-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.steps { list-style: none; counter-reset: st; margin: 26px 0 0; padding: 0; display: grid; gap: 22px; }
+.steps li { counter-increment: st; display: grid; grid-template-columns: 36px minmax(0, 1fr); column-gap: 16px; row-gap: 2px; }
+.steps li::before { content: counter(st); grid-row: 1 / span 2; align-self: start; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--blue-soft); color: var(--blue-ink); font: 650 18px/1 var(--f-display); }
+.steps b { font: 650 19px/1.3 var(--f-display); letter-spacing: -.015em; padding-top: 5px; }
+.steps span { color: var(--ink-2); }
+
+/* вопросы */
+.h-faq-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr); gap: clamp(20px, 4vw, 60px); align-items: start; }
+.faq details { border-top: 1px solid var(--line); }
+.faq details:last-child { border-bottom: 1px solid var(--line); }
+.faq summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 18px 0; font: 600 17.5px/1.35 var(--f-display); }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary i { position: relative; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--paper-2); transition: transform .3s var(--ease), background-color .2s; }
+.faq summary i::before, .faq summary i::after { content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 2px; margin: -1px 0 0 -6px; border-radius: 2px; background: var(--ink); }
+.faq summary i::after { transform: rotate(90deg); transition: transform .3s var(--ease); }
+.faq details[open] summary i { background: var(--blue-soft); }
+.faq details[open] summary i::after { transform: rotate(0); }
+.faq details p { margin: 0 0 20px; color: var(--ink-2); max-width: 62ch; animation: rise .35s var(--ease) both; }
+
+/* пиксельное раскрытие финального блока */
+.h-final .pix { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+
+@media (max-width: 1060px) {
+  .h-how-grid, .h-faq-grid { grid-template-columns: minmax(0, 1fr); }
+  .h-ascii { width: min(100%, 420px); }
+}
+@media (max-width: 700px) { .vs { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- методичка ---------- */
 .study { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: clamp(20px, 3vw, 48px); padding-block: 28px 70px; }
@@ -1867,6 +1927,7 @@ function stacklyApp() {
     sun: svg('<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
     copy: svg('<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>'),
     check: svg('<path d="m5 12 5 5 9-10"/>', 2.2),
+    cross: svg('<path d="M7 7l10 10M17 7 7 17"/>', 2),
     py: svg('<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>'),
     calc: svg('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4.5v15"/>'),
     userI: svg('<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.2-3.6 4-5.4 7.5-5.4s6.3 1.8 7.5 5.4"/>'),
@@ -1962,20 +2023,56 @@ function stacklyApp() {
   ];
   const mxCell = v => v > 0 ? `<span class="mx ok">${v}</span>` : v < 0 ? `<span class="mx bad">${-v}</span>` : '<span class="mx">-</span>';
   function homeCta() {
-    if (acct.cloud && (acct.role === 'teacher' || acct.role === 'admin')) return `<a class="btn blue" href="#teach">Мои группы <span class="arr">${I.arrow}</span></a>`;
-    if (acct.cloud) return `<a class="btn blue" href="#hw">Мои задания <span class="arr">${I.arrow}</span></a>`;
-    return `<a class="btn blue" href="#signup">Начать бесплатно <span class="arr">${I.arrow}</span></a>`;
+    if (acct.cloud && (acct.role === 'teacher' || acct.role === 'admin')) return `<a class="btn blue hcta" href="#teach">Мои группы <span class="arr">${I.arrow}</span></a>`;
+    if (acct.cloud) return `<a class="btn blue hcta" href="#hw">Мои задания <span class="arr">${I.arrow}</span></a>`;
+    return `<a class="btn blue hcta" href="#signup">Попробовать бесплатно <span class="arr">${I.arrow}</span></a>`;
   }
   function pageHome() {
     const done = HOME_MX.filter(([, r]) => r.every(v => v > 0)).length;
     const subj = ['Математика', 'Физика', 'Информатика', 'Русский язык', 'Английский', 'Химия', 'Биология', 'История'];
+    const faq = [
+      ['Ученикам нужно что-то устанавливать?', 'Нет. stackly работает в браузере на компьютере и телефоне. Ученик регистрируется по почте и вводит код вашей группы.'],
+      ['Подойдёт ли для моего предмета?', 'Да. Свои задачи можно писать по любому предмету: с формулами, таблицами и картинками. Для ЕГЭ по информатике уже есть готовый курс с разборами и банком задач.'],
+      ['Кто увидит мои задачи?', 'По умолчанию только вы и ученики ваших групп. Если захотите, задачу можно открыть всем пользователям платформы.'],
+      ['Можно выдать задание не всей группе?', 'Да. Задание выдаётся всей группе или выбранным ученикам, с комментарием и сроком сдачи.'],
+      ['Сколько это стоит?', 'Сейчас все возможности доступны бесплатно. Для регистрации нужна только почта.'],
+    ];
     return `<div class="page home">
-    <section class="h-hero"><div class="wrap h-hero-grid">
+    <section class="h-hero" id="hhero"><canvas class="h-dots" aria-hidden="true"></canvas><div class="wrap h-hero-grid">
       <div class="h-copy">
         <span class="eyebrow">Для репетиторов и преподавателей</span>
-        <h1>Ученики, домашние задания и прогресс в одном месте</h1>
-        <p class="lead">Соберите группу, выдайте задачи с автопроверкой и смотрите, кто справился, а кому нужна помощь.</p>
-        <div class="cta">${homeCta()}<a class="btn ghost" href="#course">Готовый курс ЕГЭ</a></div>
+        <h1>Домашние задания, которые проверяются сами</h1>
+        <p class="lead">Выдайте задание группе за минуту. Ученики решают на сайте, ответы проверяются сразу, а вы видите, кто справился.</p>
+        <div class="cta">${homeCta()}<button type="button" class="btn ghost" data-act="to-how">Как это работает</button></div>
+      </div>
+      <figure class="h-ascii"><canvas id="hball" aria-label="Шар stackly из символов. Нажмите, чтобы раскрасить"></canvas>
+        <figcaption>[ нажмите на шар ]</figcaption></figure>
+    </div></section>
+
+    <section class="section h-pain"><div class="wrap">
+      <h2 class="h-title">Меньше рутины, больше времени на объяснение</h2>
+      <div class="vs">
+        <div class="vs-col vs-was"><h3>Как обычно</h3><ul>
+          <li>${I.cross}<span>Задания в мессенджере, решения фотографиями тетрадей</span></li>
+          <li>${I.cross}<span>Вечер уходит на проверку одних и тех же ответов</span></li>
+          <li>${I.cross}<span>Непонятно, кто что сделал и где застрял</span></li>
+          <li>${I.cross}<span>Задачи разбросаны по файлам, папкам и чатам</span></li></ul></div>
+        <div class="vs-col vs-now"><h3>Со stackly</h3><ul>
+          <li>${I.check}<span>Ученик вводит код группы и сразу видит все задания</span></li>
+          <li>${I.check}<span>Ответы проверяются автоматически, в момент решения</span></li>
+          <li>${I.check}<span>Таблица: кто, что и с какой попытки решил</span></li>
+          <li>${I.check}<span>Свои задачи и готовый банк в одном месте</span></li></ul></div>
+      </div>
+    </div></section>
+
+    <section class="section h-how" id="how"><div class="wrap h-how-grid">
+      <div>
+        <h2 class="h-title">Первое задание за пять минут</h2>
+        <ol class="steps">
+          <li><b>Создайте группу</b><span>Например, «9Б · Алгебра». Отправьте ученикам код, и они сами в неё вступят.</span></li>
+          <li><b>Выдайте задание</b><span>Возьмите задачи из банка или напишите свои, добавьте комментарий и срок.</span></li>
+          <li><b>Смотрите результат</b><span>Кто сдал, сколько было попыток и на какой задаче ученик застрял.</span></li>
+        </ol>
       </div>
       <figure class="hpv h-pv" aria-label="Пример: статистика домашнего задания по группе">
         <div class="pv-bar"><span>9Б · Алгебра</span><span class="due ok">Сдали ${done} из ${HOME_MX.length}</span></div>
@@ -1990,7 +2087,7 @@ function stacklyApp() {
     </div></section>
 
     <section class="section h-feat"><div class="wrap">
-      <h2 class="h-title">Всё, что нужно для занятий</h2>
+      <h2 class="h-title">Всё для занятий в одном месте</h2>
       <div class="bento">
         <article class="bx bx-groups">
           <h3>Группы по коду приглашения</h3>
@@ -2037,7 +2134,7 @@ function stacklyApp() {
         <p class="lead">Всё задание на одной странице: теория, задачи и проверка ответа. Ничего не нужно скачивать и пересылать.</p>
         <ul class="h-list">
           <li>${I.check}<span>Вход по почте, группа по коду</span></li>
-          <li>${I.check}<span>Сроки и напоминания о несданных заданиях</span></li>
+          <li>${I.check}<span>Сроки сдачи и список несданных заданий</span></li>
           <li>${I.check}<span>Работает с телефона</span></li>
         </ul>
       </div>
@@ -2051,17 +2148,172 @@ function stacklyApp() {
       <a class="btn ghost" href="#course">Обзор курса <span class="arr">${I.arrow}</span></a>
     </div></section>
 
+    <section class="section h-faq"><div class="wrap h-faq-grid">
+      <h2 class="h-title">Частые вопросы</h2>
+      <div class="faq">${faq.map(([q, a]) => `<details><summary>${q}<i aria-hidden="true"></i></summary><p>${a}</p></details>`).join('')}</div>
+    </div></section>
+
     <section class="section"><div class="wrap">
-      <div class="band">
+      <div class="band h-final">
         <svg class="loop" viewBox="0 0 1200 440" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path pathLength="1" d="${LOOP}"/></svg>
+        <canvas class="pix" aria-hidden="true"></canvas>
         <div class="in">
-          <h3>Начните с одной группы</h3>
-          <p>Регистрация занимает минуту. Добавьте учеников и выдайте первое задание сегодня.</p>
+          <h3>Попробуйте на своей группе</h3>
+          <p>Регистрация занимает минуту. Добавьте учеников и выдайте первое задание уже сегодня.</p>
           ${homeCta()}
         </div>
       </div>
     </div></section>
     </div>`;
+  }
+
+  /* ── анимации главной: ASCII-шар, точечная сетка, пиксельное раскрытие ── */
+  // шар-логотип собран из символов: при появлении символы «расшифровываются», свет идёт за курсором,
+  // символы под курсором подсвечиваются, клик пускает волну, которая раскрашивает лаймовое ядро
+  const RAMP = ' .·:-=+×*#%@';
+  const SCRAMBLE = '01+-×÷=<>%#*';
+  function themeColors() {
+    const cs = getComputedStyle(document.documentElement), dark = cs.colorScheme.includes('dark');
+    const rgb = v => { const m = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(v.trim()); return m ? m.slice(1).map(x => parseInt(x, 16)) : [30, 69, 251]; };
+    return { blue: rgb(cs.getPropertyValue('--blue')), blueInk: rgb(cs.getPropertyValue('--blue-ink')), ink: rgb(cs.getPropertyValue('--ink')), lime: dark ? [205, 242, 43] : [112, 150, 0], dark };
+  }
+  function asciiBall(cv) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const ctx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1);
+    let W, H, fs, cw, cols, rows, cells, born, flick, flickN, glow, paint;
+    let colors = themeColors(), frame = 0, last = 0, raf = 0, visible = true, mode = 1, ripple = null;
+    const ptr = { x: -9999, y: -9999, on: false }, light = { x: -.55, y: -.6 };
+    function layout() {
+      const w = cv.clientWidth; if (!w) return false;
+      W = Math.round(w * dpr); H = W; cv.width = W; cv.height = H;
+      fs = Math.max(8, Math.round(w / 52)) * dpr;
+      ctx.font = `600 ${fs}px "JetBrains Mono", monospace`; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+      cw = ctx.measureText('@').width; cols = Math.floor(W / cw); rows = Math.floor(H / fs); cells = cols * rows;
+      born = new Int16Array(cells); flick = new Int8Array(cells); flickN = new Uint8Array(cells); glow = new Float32Array(cells); paint = new Float32Array(cells).fill(mode);
+      for (let i = 0; i < cells; i++) born[i] = reduce ? -99 : Math.floor(Math.random() * 50);
+      return true;
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      if (ripple) { ripple.r += 16 * dpr; if (ripple.r > W * 1.5) ripple = null; }
+      // источник света: курсор, а без курсора (телефон) — медленно ходит по кругу
+      const tx = ptr.on ? (ptr.x / W - .5) * 2.4 : Math.cos(frame / 90) * .7, ty = ptr.on ? (ptr.y / H - .5) * 2.4 : -.45 + Math.sin(frame / 90) * .35;
+      light.x += (tx - light.x) * .08; light.y += (ty - light.y) * .08;
+      let lx = light.x, ly = light.y, lz = .9; const ll = Math.hypot(lx, ly, lz); lx /= ll; ly /= ll; lz /= ll;
+      const hx = lx, hy = ly, hz = lz + 1, hl = Math.hypot(hx, hy, hz);
+      const cx = W / 2, cy = H / 2, R = W * .44, { ink, lime } = colors, blue = colors.dark ? colors.blueInk : colors.blue;
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const i = r * cols + c, px = c * cw + cw / 2, py = r * fs + fs / 2;
+        const dx = (px - cx) / R, dy = (py - cy) / R, d2 = dx * dx + dy * dy;
+        if (d2 > 1) continue;
+        const age = frame - born[i]; if (age < 0) continue;
+        const nz = Math.sqrt(1 - d2), dif = Math.max(0, dx * lx + dy * ly + nz * lz);
+        const spec = Math.pow(Math.max(0, (dx * hx + dy * hy + nz * hz) / hl), 28);
+        const core = (dx - .28) ** 2 + (dy + .2) ** 2 < .44 * .44 * (1 - d2 * .15);
+        let b = (.04 + .9 * dif ** 1.25) * (.45 + .55 * nz) + .6 * spec + (core ? .1 : 0);
+        // подсветка под курсором
+        const gx = px - ptr.x, gy = py - ptr.y, g2 = gx * gx + gy * gy, gr = 95 * dpr, gt = g2 < gr * gr ? (1 - g2 / (gr * gr)) ** .7 : 0;
+        glow[i] += (gt - glow[i]) * .14; b += glow[i] * .35;
+        let k = Math.max(0, Math.min(RAMP.length - 1, Math.round(b * (RAMP.length - 1))));
+        if (!reduce) {
+          if (flickN[i]) { flickN[i]--; k = Math.max(0, Math.min(RAMP.length - 1, k + flick[i])); }
+          else if (Math.random() < .0025) { flick[i] = Math.random() < .5 ? -1 : 1; flickN[i] = 6; }
+        }
+        const ch = age < 12 ? SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0] : RAMP[k];
+        if (ch === ' ') continue;
+        // волна после клика меняет раскраску: синий монохром ↔ шар с лаймовым ядром
+        if (ripple) { if (Math.hypot(px - ripple.x, py - ripple.y) <= ripple.r) paint[i] += (ripple.to - paint[i]) * .16; }
+        else paint[i] += (mode - paint[i]) * .05;
+        const p = core ? paint[i] : 0, base = [0, 1, 2].map(j => blue[j] + (lime[j] - blue[j]) * p);
+        const col = base.map((v, j) => Math.round(v + (ink[j] - v) * Math.min(1, glow[i] * .5 + spec * .35)));
+        const a = Math.min(1, age / 6) * (age < 12 ? .55 : .35 + .65 * Math.min(1, b));
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${a.toFixed(2)})`;
+        ctx.fillText(ch, px, py);
+      }
+    }
+    function loop(t) {
+      if (!cv.isConnected) return stop();
+      raf = requestAnimationFrame(loop);
+      if (!visible || t - last < 33) return;
+      last = t; frame++;
+      if (frame % 60 === 0) colors = themeColors();
+      draw();
+    }
+    function stop() { cancelAnimationFrame(raf); io.disconnect(); ro.disconnect(); }
+    const io = new IntersectionObserver(([e]) => { visible = e.isIntersecting; }, { threshold: .01 });
+    const ro = new ResizeObserver(() => { if (layout() && reduce) { frame = 99; draw(); } });
+    const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+    cv.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') Object.assign(ptr, pos(e), { on: true }); if (reduce) draw(); });
+    cv.addEventListener('pointerleave', () => { Object.assign(ptr, { x: -9999, y: -9999, on: false }); if (reduce) draw(); });
+    cv.addEventListener('click', e => {
+      mode = mode ? 0 : 1;
+      if (reduce) { paint.fill(mode); draw(); return; }
+      ripple = { ...pos(e), r: 0, to: mode };
+    });
+    io.observe(cv); ro.observe(cv);
+    if (layout()) { if (reduce) { frame = 99; draw(); } else raf = requestAnimationFrame(loop); }
+  }
+  // фон первого экрана: сетка точек, которые оживают рядом с курсором
+  function dotGrid(cv, area) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || matchMedia('(hover: none)').matches) return;
+    const ctx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), step = 28;
+    let W = 0, H = 0, raf = 0, t = 0, colors = themeColors(), active = false;
+    const m = { x: -1e4, y: -1e4, tx: -1e4, ty: -1e4 };
+    const size = () => { W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    function draw() {
+      if (!cv.isConnected) { cancelAnimationFrame(raf); ro.disconnect(); return; }
+      raf = requestAnimationFrame(draw);
+      t += .02; m.x += (m.tx - m.x) * .12; m.y += (m.ty - m.y) * .12;
+      if (t % 1.2 < .02) colors = themeColors();
+      ctx.clearRect(0, 0, W, H);
+      const [r, g, b] = colors.blue, [ir, ig, ib] = colors.ink, R = 220;
+      for (let x = step / 2; x < W; x += step) for (let y = step / 2; y < H; y += step) {
+        const d = Math.hypot(x - m.x, y - m.y), near = d < R ? (1 - d / R) ** 1.6 : 0;
+        const wave = .5 + .5 * Math.sin(t * 2 + x * .03 + y * .03);
+        if (near > .01) { ctx.fillStyle = `rgba(${r},${g},${b},${(near * (.35 + .5 * wave)).toFixed(3)})`; ctx.beginPath(); ctx.arc(x, y, 1 + 1.6 * near * wave, 0, 7); ctx.fill(); }
+        else { ctx.fillStyle = `rgba(${ir},${ig},${ib},.07)`; ctx.fillRect(x - .6, y - .6, 1.2, 1.2); }
+      }
+      if (!active && m.tx < -1e3 && Math.abs(m.x - m.tx) < 1) { cancelAnimationFrame(raf); raf = 0; }
+    }
+    const ro = new ResizeObserver(() => { size(); if (!raf) { raf = requestAnimationFrame(draw); } });
+    ro.observe(cv);
+    area.addEventListener('pointermove', e => { const r = cv.getBoundingClientRect(); m.tx = e.clientX - r.left; m.ty = e.clientY - r.top; if (!active) { m.x = m.tx; m.y = m.ty; } active = true; if (!raf) raf = requestAnimationFrame(draw); });
+    area.addEventListener('pointerleave', () => { active = false; m.tx = m.ty = -1e4; });
+  }
+  // финальный блок проявляется из пикселей: квадраты фона схлопываются волной по диагонали со вспышкой цвета
+  function pixelReveal(cv) {
+    const box = cv.parentElement;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) { cv.remove(); return; }
+    const ctx = cv.getContext('2d'), dpr = Math.min(2, devicePixelRatio || 1), S = 30;
+    const W = box.clientWidth, H = box.clientHeight; cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const cols = Math.ceil(W / S), rows = Math.ceil(H / S), { blue, lime } = themeColors();
+    const paper = getComputedStyle(document.body).backgroundColor;
+    const delay = new Float32Array(cols * rows);
+    for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) delay[r * cols + c] = (c / cols + r / rows) * .55 + Math.random() * .18;
+    const ease = x => 1 - (1 - x) ** 3;
+    let t0 = 0;
+    function draw(t) {
+      if (!t0) t0 = t;
+      const s = (t - t0) / 1100; let left = false;
+      ctx.clearRect(0, 0, W, H);
+      for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+        const l = Math.max(0, Math.min(1, (s - delay[r * cols + c]) / .35));
+        if (l >= 1) continue; left = true;
+        const k = l < .25 ? 1 + .25 * Math.sin(l / .25 * Math.PI) : 1 - ease((l - .25) / .75), n = S * k, o = (S - n) / 2;
+        ctx.fillStyle = paper; ctx.fillRect(c * S + o, r * S + o, n, n);
+        const f = Math.sin(l * Math.PI);
+        if (f > .05) { const [cr, cg, cb] = (r + c) % 2 ? blue : lime; ctx.fillStyle = `rgba(${cr},${cg},${cb},${(.55 * f).toFixed(2)})`; ctx.fillRect(c * S + o, r * S + o, n, n); }
+      }
+      if (left) requestAnimationFrame(draw); else cv.remove();
+    }
+    ctx.fillStyle = paper; ctx.fillRect(0, 0, W, H);
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); requestAnimationFrame(draw); } }, { threshold: .35 });
+    io.observe(box);
+  }
+  function mountHome() {
+    const ball = $('#hball'); if (ball) asciiBall(ball);
+    const hero = $('#hhero'); if (hero) dotGrid($('.h-dots', hero), hero);
+    const pix = $('.h-final .pix'); if (pix) pixelReveal(pix);
   }
 
   function pageCourse() {
@@ -2588,6 +2840,7 @@ function stacklyApp() {
     try { const r = await api('/auth/me'); setUser(r.user); await connect(true); }
     catch (e) { /* не вошли — работаем в гостевом режиме */ }
     acct.checked = true; renderAcctBtn();
+    $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
     if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash) || isTeacher()) { curNav = ''; route(); }
   }
@@ -2612,9 +2865,14 @@ function stacklyApp() {
   }
   function renderAcctBtn() {
     const b = $('#acctbtn'); if (!b) return;
-    b.innerHTML = acct.cloud ? `${avatarHTML('sm')}<span class="lbl">Кабинет</span>` : `${I.userI}<span class="lbl">Войти</span>`;
-    b.setAttribute('href', acct.cloud ? '#me' : '#login');
-    b.setAttribute('aria-label', acct.cloud ? 'Личный кабинет' : 'Войти');
+    // гостю шапка показывает только логотип и кнопку регистрации; вход — вкладкой на её странице
+    if (acct.checked || acct.cloud) {
+      document.documentElement.classList.toggle('guest', !acct.cloud);
+      try { localStorage.setItem('stackly-guest', acct.cloud ? '0' : '1'); } catch (e) { }
+    }
+    b.innerHTML = acct.cloud ? `${avatarHTML('sm')}<span class="lbl">Кабинет</span>` : `<span class="lbl">Попробовать бесплатно</span>`;
+    b.setAttribute('href', acct.cloud ? '#me' : '#signup');
+    b.setAttribute('aria-label', acct.cloud ? 'Личный кабинет' : 'Попробовать бесплатно');
     b.classList.toggle('on', acct.cloud);
     const tl = $('.nav [data-nav="teach"]'); if (tl) tl.hidden = !isTeacher();
     updHWBadge();
@@ -2721,6 +2979,12 @@ function stacklyApp() {
     const s = e.target.closest('[data-settings]'); if (s) { e.preventDefault(); submitSettings(s); }
   });
   document.addEventListener('click', e => { const b = e.target.closest('[data-mode]'); if (b) setMode(b.dataset.mode); });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('[data-act="to-how"]')) return;
+    const el = $('#how'); if (!el) return;
+    el.classList.add('in');
+    window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight + 1, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  });
   async function submitSettings(form) {
     const kind = form.dataset.settings, msg = form.querySelector('.form-msg'), btn = form.querySelector('[type=submit]');
     const v = id => form.querySelector('#' + id).value;
@@ -3851,6 +4115,7 @@ function stacklyApp() {
       if (el) { jump(el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - under - 16); el.classList.add('flash'); }
     }
     reveal($('#app'));
+    if (nav === 'home') mountHome();
     if (nav === 'teach') loadTeach(h);
     if (nav === 'hw') loadHW(h); else curHW = 0;
     if (nav === 'me') loadMyClass();
