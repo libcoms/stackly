@@ -378,6 +378,32 @@ class ContentTest(ServerCase):
         self.assertEqual(t.call('POST', '/content/problem', dict(math, id=pid, subject='Математика', vis='private'))[0], 200)
         self.assertIn(pid, ids(stranger)); self.assertIn(pid, ids(other))
 
+    def test_teaching_subjects_and_materials(self):
+        t, s = self.user('teacher'), self.user('student')
+        self.assertEqual(s.call('POST', '/me/teaching', {'subjects': ['Физика']})[0], 403)
+        st, r = t.call('POST', '/me/teaching', {'subjects': ['Физика', 'Алхимия', 'Информатика'], 'materials': ['inf-ege', 'Bad id!', 'inf-py']})
+        self.assertEqual(st, 200, r)
+        self.assertEqual((r['user']['subjects'], r['user']['materials']), (['Физика', 'Информатика'], ['inf-ege', 'inf-py']))
+        # ученик видит материалы, которые включил его учитель
+        self.assertEqual(s.call('GET', '/auth/me')[1]['user']['materials'], [])
+        g = t.call('POST', '/teach/groups', {'name': '10Ф'})[1]['group']
+        s.call('POST', '/me/groups/join', {'code': g['code']})
+        self.assertEqual(s.call('GET', '/auth/me')[1]['user']['materials'], ['inf-ege', 'inf-py'])
+
+    def test_admin_overview(self):
+        a, t, s = self.user('admin'), self.user('teacher'), self.user('student')
+        self.assertEqual(t.call('GET', '/admin/overview')[0], 403)
+        t.call('POST', '/content/problem', dict(self.P, task=0, subject='Физика', data='1 2 3 ' * 100, dname='d.txt'))
+        g = t.call('POST', '/teach/groups', {'name': '7А'})[1]['group']
+        s.call('POST', '/me/groups/join', {'code': g['code']})
+        st, r = a.call('GET', '/admin/overview')
+        self.assertEqual(st, 200, r)
+        me = next(x for x in r['teachers'] if x['id'] == t.call('GET', '/auth/me')[1]['user']['id'])
+        self.assertEqual((me['groups'], me['students'], me['problems']), (1, 1, 1))
+        self.assertGreater(me['storage'], 600)
+        self.assertGreaterEqual(r['students']['in_groups'], 1)
+        self.assertGreater(r['content']['db_bytes'], 0)
+
     def test_old_custom_numbers_move_past_builtin_range(self):
         # задачи учителей раньше нумеровались с 101 — теперь встроенный банк до 1000, их номера сдвигаются
         con = sqlite3.connect(self.db)

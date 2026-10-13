@@ -37,10 +37,14 @@ IMAGE_TYPES = {'image/png': b'\x89PNG', 'image/jpeg': b'\xff\xd8\xff', 'image/gi
 MEDIA_RE = re.compile(r'^/api/media/([A-Za-z0-9_-]{8,40})$')
 MAX_PROGRESS = 200 * 1024
 ROLES = ('student', 'teacher', 'admin')
+# предметы, из которых преподаватель выбирает свои; материалы — id модулей курса (список модулей живёт на сайте)
+SUBJECTS = ('Математика', 'Физика', 'Информатика', 'Русский язык', 'Литература', 'Английский язык', 'Химия',
+            'Биология', 'История', 'Обществознание', 'География')
+MATERIAL_RE = re.compile(r'^[a-z0-9-]{1,40}$')
 CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'      # без похожих 0/O и 1/I
 BANK_ID_RE = re.compile(r'^[\w.-]{1,40}$')
 # посещаемость: страницы сайта, которые считаем (ege-5, bank-19 — с номером задания)
-METRIC_PAGES = ('home', 'course', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin', 'other')
+METRIC_PAGES = ('home', 'course', 'materials', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin', 'other')
 PAGE_RE = re.compile(r'^([a-z]{2,8})(?:-(\d{1,2}))?$')
 HOST_RE = re.compile(r'^[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63}){1,5}$')
 BOT_RE = re.compile(r'bot|crawl|spider|slurp|headless|preview|monitor|curl|wget|python-requests', re.I)
@@ -139,6 +143,10 @@ def migrate():
     # задачи любого предмета: task = 0 — не ЕГЭ, тогда предмет обязателен, тема — по желанию.
     # vis: platform — общий банк платформы (задачи администратора), public — видят все,
     # private — автор, ученики его групп и те, кому задачу выдали в ДЗ
+    cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
+    if 'subjects' not in cols:
+        db().execute("ALTER TABLE users ADD COLUMN subjects TEXT NOT NULL DEFAULT '[]'")
+        db().execute("ALTER TABLE users ADD COLUMN materials TEXT NOT NULL DEFAULT '[]'")
     cols = [r['name'] for r in db().execute('PRAGMA table_info(problems)')]
     if 'vis' not in cols:
         db().execute("ALTER TABLE problems ADD COLUMN subject TEXT NOT NULL DEFAULT ''")
@@ -472,6 +480,8 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/admin/users'): self.a_users,
             ('GET', '/api/admin/metrics'): self.a_metrics,
             ('POST', '/api/admin/role'): self.a_role,
+            ('GET', '/api/admin/overview'): self.a_overview,
+            ('POST', '/api/me/teaching'): self.save_teaching,
             # редактор задач и методички
             ('GET', '/api/content'): self.content,
             ('POST', '/api/content/problem'): self.c_problem_save,
@@ -501,7 +511,26 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {'ok': True})
 
     def user_json(self, u):
-        return {'id': u['id'], 'email': u['email'], 'name': u['name'], 'created': u['created'], 'role': u['role']}
+        j = {'id': u['id'], 'email': u['email'], 'name': u['name'], 'created': u['created'], 'role': u['role'],
+             'subjects': json.loads(u['subjects'] or '[]'), 'materials': json.loads(u['materials'] or '[]')}
+        if u['role'] == 'student':
+            # ученику открыты материалы, которые включили его учителя
+            mats = set()
+            for r in db().execute('SELECT t.materials FROM group_members m JOIN study_groups g ON g.id = m.group_id '
+                                  'JOIN users t ON t.id = g.teacher_id WHERE m.user_id = ?', (u['id'],)):
+                mats.update(json.loads(r['materials'] or '[]'))
+            j['materials'] = sorted(mats)
+        return j
+
+    def save_teaching(self):
+        u = self.teacher()
+        d = self.body()
+        subjects = [x for x in SUBJECTS if x in (d.get('subjects') or [])]
+        raw = d.get('materials') if isinstance(d.get('materials'), list) else []
+        materials = sorted({str(x) for x in raw if MATERIAL_RE.match(str(x))})[:60]
+        db().execute('UPDATE users SET subjects = ?, materials = ? WHERE id = ?',
+                     (json.dumps(subjects, ensure_ascii=False), json.dumps(materials), u['id']))
+        self.send_json(200, {'user': self.user_json(db().execute('SELECT * FROM users WHERE id = ?', (u['id'],)).fetchone())})
 
     def me(self):
         self.send_json(200, {'user': self.user_json(self.current_user())})
@@ -1180,6 +1209,48 @@ class Handler(BaseHTTPRequestHandler):
         if u['role'] != 'admin':
             raise ApiError(403, 'forbidden', 'Раздел доступен только администратору')
         return u
+
+    def a_overview(self):
+        self.admin()
+        now = int(time.time())
+        week = now - 7 * 86400
+        one = lambda sql, *a: db().execute(sql, a).fetchone()[0]
+        roles = {r['role']: r['n'] for r in db().execute('SELECT role, COUNT(*) AS n FROM users GROUP BY role')}
+        seen = {r['uid']: r['ts'] for r in db().execute('SELECT uid, MAX(ts) AS ts FROM hits WHERE uid IS NOT NULL GROUP BY uid')}
+        # место: картинки, свои задачи (с файлами данных) и выданные задания — в байтах
+        teachers = [dict(r) for r in db().execute(
+            "SELECT u.id, u.name, u.email, u.role, u.subjects, u.created, "
+            "(SELECT COUNT(*) FROM study_groups g WHERE g.teacher_id = u.id) AS groups, "
+            "(SELECT COUNT(DISTINCT m.user_id) FROM group_members m JOIN study_groups g ON g.id = m.group_id WHERE g.teacher_id = u.id) AS students, "
+            "(SELECT COUNT(*) FROM homework h JOIN study_groups g ON g.id = h.group_id WHERE g.teacher_id = u.id) AS homework, "
+            "(SELECT COUNT(*) FROM problems p WHERE p.author_id = u.id AND p.builtin = 0 AND p.hidden = 0) AS problems, "
+            "(SELECT COALESCE(SUM(length(data)), 0) FROM media WHERE owner_id = u.id) AS media_b, "
+            "(SELECT COALESCE(SUM(length(CAST(title || body || answer || solution || note || data AS BLOB))), 0) "
+            "  FROM problems p WHERE p.author_id = u.id AND p.builtin = 0) AS problems_b, "
+            "(SELECT COALESCE(SUM(length(CAST(h.title || h.comment || h.items AS BLOB))), 0) "
+            "  FROM homework h JOIN study_groups g ON g.id = h.group_id WHERE g.teacher_id = u.id) AS homework_b "
+            "FROM users u WHERE u.role IN ('teacher', 'admin') ORDER BY u.created")]
+        for t in teachers:
+            t['subjects'] = json.loads(t['subjects'] or '[]')
+            t['storage'] = t['media_b'] + t['problems_b'] + t['homework_b']
+            t['seen'] = seen.get(t['id'])
+        teachers.sort(key=lambda t: -t['storage'])
+        students = roles.get('student', 0)
+        recent = [dict(r) | {'seen': seen.get(r['id'])} for r in db().execute(
+            "SELECT u.id, u.name, u.email, u.created, (SELECT COUNT(*) FROM group_members m WHERE m.user_id = u.id) AS groups "
+            "FROM users u WHERE u.role = 'student' ORDER BY u.created DESC LIMIT 6")]
+        self.send_json(200, {
+            'users': {'teachers': roles.get('teacher', 0), 'admins': roles.get('admin', 0), 'students': students,
+                      'new_week': one('SELECT COUNT(*) FROM users WHERE created >= ?', week),
+                      'active_week': one('SELECT COUNT(DISTINCT uid) FROM hits WHERE uid IS NOT NULL AND ts >= ?', week)},
+            'students': {'total': students,
+                         'in_groups': one("SELECT COUNT(DISTINCT m.user_id) FROM group_members m JOIN users u ON u.id = m.user_id WHERE u.role = 'student'"),
+                         'active_week': one("SELECT COUNT(DISTINCT h.uid) FROM hits h JOIN users u ON u.id = h.uid WHERE u.role = 'student' AND h.ts >= ?", week),
+                         'recent': recent},
+            'content': {'groups': one('SELECT COUNT(*) FROM study_groups'), 'homework': one('SELECT COUNT(*) FROM homework'),
+                        'problems': one('SELECT COUNT(*) FROM problems WHERE builtin = 0 AND hidden = 0'),
+                        'db_bytes': one('SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size()')},
+            'teachers': teachers})
 
     def a_users(self):
         self.admin()
