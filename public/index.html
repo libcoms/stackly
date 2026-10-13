@@ -1,11 +1,11 @@
 <!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1E45FB"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>stackly</title>
-<meta name="description" content="Методичка по ЕГЭ по информатике: 27 заданий, учебник Python и банк задач">
+<meta name="description" content="stackly: платформа для репетиторов и преподавателей. Группы, домашние задания с автопроверкой и статистика по ученикам. Внутри готовый курс ЕГЭ по информатике.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Montserrat:wght@600;700;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400..800&family=JetBrains+Mono:wght@400;500;600;700&display=swap">
 <style>
-/* stackly · ЕГЭ Информатика
-   Layout: белая «тетрадная» основа, тяжёлый гротеск Montserrat, синий как рабочий акцент, лайм — для отметок и «нового».
+/* stackly · платформа для преподавателей
+   Layout: белая основа, гротеск Onest, синий как единственный рабочий акцент, лайм только для отметок и «нового».
    Сквозной мотив — шар: синий круг с лаймовым ядром (маркеры, логотип, счётчик), и петлистая синяя линия на лаймовой ленте. */
 :root {
   --paper: #FFFFFF;
@@ -35,8 +35,8 @@
   --c-com: #7C849C;
   --c-fn: #FFFFFF;
   --c-bi: #C7B4FF;
-  --f-display: "Montserrat", "Arial Black", "Helvetica Neue", Arial, sans-serif;
-  --f-body: "Golos Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-display: "Onest", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-body: "Onest", "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-mono: "JetBrains Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --r: 16px;
   --r-s: 10px;
@@ -91,7 +91,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border-bottom: 1px solid var(--line);
 }
 .top .wrap { display: flex; align-items: center; gap: 18px; min-height: 64px; }
-.logo { display: inline-flex; align-items: center; gap: 8px; font: 800 25px/1 var(--f-display); color: var(--ink); letter-spacing: -.045em; flex-shrink: 0; }
+.logo { display: inline-flex; align-items: center; gap: 8px; font: 650 25px/1 var(--f-display); color: var(--ink); letter-spacing: -.03em; flex-shrink: 0; }
 .logo:hover { text-decoration: none; }
 .logo .ball { --s: 24px; transition: transform .6s var(--ease); }
 .logo:hover .ball { transform: rotate(200deg); }
@@ -106,9 +106,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .icon-btn:hover { border-color: var(--ink-2); transform: rotate(-12deg); }
 .icon-btn:active { transform: scale(.94); }
 .icon-btn svg { width: 18px; height: 18px; }
-.score-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px 6px 7px; border-radius: 999px; background: var(--lime); color: var(--on-lime); font: 700 14px/1 var(--f-display); white-space: nowrap; box-shadow: inset 0 0 0 1px rgba(13,15,23,.2); }
-.score-pill:hover { text-decoration: none; filter: brightness(.96); }
-.score-pill .ball { --s: 20px; background: var(--on-lime); }
+.score-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px 6px 7px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font: 600 14px/1 var(--f-display); white-space: nowrap; box-shadow: inset 0 0 0 1px var(--line); }
+.score-pill:hover { text-decoration: none; box-shadow: inset 0 0 0 1px var(--ink-2); }
+.score-pill .ball { --s: 20px; }
 .score-pill.bump { animation: bump .5s var(--ease); }
 /* подпись у логотипа не помещается рядом с меню из 5–6 пунктов (контейнер не шире 1240px) */
 .logo small { display: none; }
@@ -137,7 +137,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 /* ---------- кнопки, чипы, бейджи ---------- */
-.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; font: 700 15px/1 var(--f-display); letter-spacing: -.01em; border: 1.5px solid var(--ink); background: var(--ink); color: var(--paper); transition: transform .25s var(--ease), box-shadow .25s var(--ease), background-color .2s, color .2s; text-decoration: none; }
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 999px; font: 600 15px/1 var(--f-display); letter-spacing: -.01em; border: 1.5px solid var(--ink); background: var(--ink); color: var(--paper); transition: transform .25s var(--ease), box-shadow .25s var(--ease), background-color .2s, color .2s; text-decoration: none; }
 .btn:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--shadow); }
 .btn:active { transform: translateY(0) scale(.98); }
 .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
@@ -152,35 +152,36 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .chip.on { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .chip[disabled] { opacity: .35; pointer-events: none; }
 .chip svg { width: 15px; height: 15px; }
-.lvl { display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: 6px; font: 700 12px/1 var(--f-display); }
+.lvl { display: inline-grid; place-items: center; min-width: 26px; height: 22px; padding: 0 7px; border-radius: 6px; font: 600 12px/1 var(--f-display); }
 .lvl-Б { border: 1.5px solid var(--ink-2); color: var(--ink-2); }
 .lvl-П { background: var(--blue-soft); color: var(--blue-ink); border: 1.5px solid transparent; }
 .lvl-В { background: var(--blue); color: #fff; border: 1.5px solid var(--blue); }
 .tag { display: inline-flex; align-items: center; gap: 6px; font: 500 13.5px/1.2 var(--f-body); color: var(--mute); }
 .tool-ico { width: 15px; height: 15px; flex: none; }
-.newbadge { font: 800 10px/1 var(--f-display); letter-spacing: .04em; padding: 3px 6px; border-radius: 5px; background: var(--lime); color: var(--on-lime); text-transform: uppercase; box-shadow: inset 0 0 0 1px rgba(13,15,23,.28); }
+.newbadge { font: 650 10px/1 var(--f-display); letter-spacing: .04em; padding: 3px 6px; border-radius: 5px; background: var(--lime); color: var(--on-lime); text-transform: uppercase; box-shadow: inset 0 0 0 1px rgba(13,15,23,.28); }
 
 /* ---------- главная: герой ---------- */
 .page { animation: pageIn .5s var(--ease) both; }
 .hero { padding-block: clamp(36px, 6vw, 76px) clamp(28px, 4vw, 52px); }
 .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(28px, 4vw, 60px); align-items: center; }
-.wordmark { font: 900 clamp(62px, 10vw, 140px)/.88 var(--f-display); letter-spacing: -.06em; display: flex; align-items: center; gap: .1em; margin: 0 0 22px; }
+.wordmark { font: 700 clamp(62px, 10vw, 140px)/.88 var(--f-display); letter-spacing: -.03em; display: flex; align-items: center; gap: .1em; margin: 0 0 22px; }
 .wordmark .word { display: inline-block; animation: rise .7s .1s var(--ease) both; }
 .ball-27 { --s: .78em; font-size: inherit; animation: roll 1.1s .25s var(--ease) both; }
 .ball-27::after { width: 52%; height: 52%; top: 12%; right: 10%; }
-.ball-27 b { position: absolute; z-index: 1; width: 52%; height: 52%; top: 12%; right: 10%; display: grid; place-items: center; font: 900 .2em/1 var(--f-display); letter-spacing: -.04em; color: var(--blue); }
-.hero h1 { font-size: clamp(27px, 3.4vw, 42px); font-weight: 800; margin-bottom: 16px; animation: rise .7s .2s var(--ease) both; }
+.ball-27 b { position: absolute; z-index: 1; width: 52%; height: 52%; top: 12%; right: 10%; display: grid; place-items: center; font: 700 .2em/1 var(--f-display); letter-spacing: -.03em; color: var(--blue); }
+.course-h1 { margin-top: 12px; }
+.hero h1 { font-size: clamp(27px, 3.4vw, 42px); font-weight: 650; margin-bottom: 16px; animation: rise .7s .2s var(--ease) both; }
 .hero .lead { font-size: clamp(16px, 1.4vw, 18.5px); color: var(--ink-2); max-width: 54ch; margin: 0 0 28px; animation: rise .7s .28s var(--ease) both; }
 .hero .cta { display: flex; flex-wrap: wrap; gap: 12px; animation: rise .7s .36s var(--ease) both; }
 .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 38px; border-top: 1px solid var(--line); animation: rise .7s .44s var(--ease) both; }
 .facts div { padding: 18px 14px 0 0; }
-.facts b { display: block; font: 800 clamp(25px, 2.6vw, 34px)/1 var(--f-display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.facts b { display: block; font: 650 clamp(25px, 2.6vw, 34px)/1 var(--f-display); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
 .facts span { font-size: 13.5px; color: var(--mute); line-height: 1.4; display: block; margin-top: 6px; }
 
 /* карта экзамена */
 .map { background: var(--paper-2); border: 1px solid var(--line); border-radius: 24px; padding: clamp(14px, 2vw, 22px); animation: rise .8s .15s var(--ease) both; }
 .map-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
-.map-head h2 { font-size: 18px; font-weight: 800; }
+.map-head h2 { font-size: 18px; font-weight: 650; }
 .map-head .grp { display: flex; flex-wrap: wrap; gap: 6px; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12.5px; color: var(--mute); margin-top: 14px; align-items: center; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -192,7 +193,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   animation: pop .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 18ms + .2s);
 }
 .tile:hover { text-decoration: none; transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--blue); }
-.tile .num { font: 800 25px/1 var(--f-display); letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.tile .num { font: 650 25px/1 var(--f-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .tile .nm { font-size: 11.5px; line-height: 1.25; color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
 .tile-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 4px; }
 .tile .meta { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; color: var(--mute); flex-shrink: 0; margin: -1px -1px 0 0; }
@@ -200,7 +201,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tile.В { background: var(--blue); color: #fff; border-color: var(--blue); }
 .tile.В .nm, .tile.В .meta { color: rgba(255,255,255,.8); }
 .tile.dim { opacity: .22; transform: scale(.96); }
-.tile .pts { font: 800 10px/1 var(--f-display); padding: 3px 5px; border-radius: 5px; background: var(--lime); color: var(--on-lime); }
+.tile .pts { font: 650 10px/1 var(--f-display); padding: 3px 5px; border-radius: 5px; background: var(--lime); color: var(--on-lime); }
 .tile.new { background: var(--lime); color: var(--on-lime); border-color: color-mix(in srgb, var(--on-lime) 22%, transparent); }
 .tile.new .isnew { display: none; }
 .tile.new .nm, .tile.new .meta { color: color-mix(in srgb, var(--on-lime) 78%, transparent); }
@@ -211,12 +212,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* секции */
 .section { padding-block: clamp(44px, 6vw, 80px); border-top: 1px solid var(--line); }
 .section-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
-.section-head h2 { font-size: clamp(28px, 3.4vw, 42px); font-weight: 800; margin-top: 10px; }
+.section-head h2 { font-size: clamp(28px, 3.4vw, 42px); font-weight: 650; margin-top: 10px; }
 .section-head p { margin: 10px 0 0; color: var(--ink-2); max-width: 62ch; }
 
 /* полоса времени */
 .timeline { display: flex; height: 56px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--paper-2); }
-.timeline .seg { position: relative; min-width: 0; border-right: 1px solid var(--paper); display: grid; place-items: center; font: 700 11px/1 var(--f-display); color: var(--ink); background: var(--line); text-decoration: none; transform-origin: left; animation: grow .9s var(--ease) both; animation-delay: calc(var(--i) * 18ms + .1s); transition: filter .2s; }
+.timeline .seg { position: relative; min-width: 0; border-right: 1px solid var(--paper); display: grid; place-items: center; font: 600 11px/1 var(--f-display); color: var(--ink); background: var(--line); text-decoration: none; transform-origin: left; animation: grow .9s var(--ease) both; animation-delay: calc(var(--i) * 18ms + .1s); transition: filter .2s; }
 .timeline .seg.П { background: var(--blue-mid); }
 .timeline .seg.В { background: var(--blue); color: #fff; }
 .timeline .seg.res { background: repeating-linear-gradient(135deg, var(--paper-2) 0 7px, var(--line) 7px 14px); color: var(--ink); }
@@ -227,19 +228,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tl-axis span:last-child { transform: translateX(-100%); }
 .tl-note { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 24px; }
 .tl-note div { padding: 18px 20px; border-radius: var(--r); background: var(--paper-2); }
-.tl-note b { font: 800 23px/1.1 var(--f-display); display: block; margin-bottom: 6px; letter-spacing: -.03em; }
+.tl-note b { font: 650 23px/1.1 var(--f-display); display: block; margin-bottom: 6px; letter-spacing: -.03em; }
 .tl-note span { color: var(--ink-2); font-size: 14.5px; }
 
 /* карточки разделов */
 .cards4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .card { border: 1px solid var(--line); border-radius: 20px; padding: 24px; background: var(--paper); transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .2s; display: flex; flex-direction: column; gap: 10px; color: var(--ink); }
 a.card:hover { text-decoration: none; transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--ink-2); }
-.card h3 { font-size: 22px; font-weight: 800; }
+.card h3 { font-size: 22px; font-weight: 650; }
 .card p { margin: 0; color: var(--ink-2); }
-.card .go { margin-top: auto; padding-top: 6px; font: 700 14px/1 var(--f-display); color: var(--blue-ink); display: inline-flex; gap: 8px; align-items: center; }
+.card .go { margin-top: auto; padding-top: 6px; font: 600 14px/1 var(--f-display); color: var(--blue-ink); display: inline-flex; gap: 8px; align-items: center; }
 .card .go svg { width: 15px; height: 15px; transition: transform .3s var(--ease); }
 a.card:hover .go svg { transform: translateX(4px); }
-.card .big { font: 900 58px/1 var(--f-display); letter-spacing: -.05em; color: var(--blue); font-variant-numeric: tabular-nums; }
+.card .big { font: 700 58px/1 var(--f-display); letter-spacing: -.03em; color: var(--blue); font-variant-numeric: tabular-nums; }
 .card.lime { background: var(--lime); border-color: var(--lime); color: var(--on-lime); }
 .card.lime p { color: color-mix(in srgb, var(--on-lime) 78%, transparent); }
 .card.lime .big, .card.lime .go { color: var(--on-lime); }
@@ -249,7 +250,7 @@ a.card:hover .go svg { transform: translateX(4px); }
 .band svg.loop { position: absolute; inset: 0; width: 100%; height: 100%; }
 .band svg.loop path { fill: none; stroke: var(--blue); stroke-width: 30; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 0; animation: draw 2.4s .2s var(--ease) both; }
 .band .in { position: relative; z-index: 1; margin: clamp(22px, 4vw, 44px); background: var(--paper); color: var(--ink); border-radius: 22px; padding: clamp(20px, 3vw, 32px); max-width: 470px; box-shadow: 0 20px 40px -20px rgba(13,15,23,.4); }
-.band .in h3 { font-size: clamp(24px, 2.6vw, 32px); font-weight: 900; margin: 10px 0 10px; letter-spacing: -.04em; }
+.band .in h3 { font-size: clamp(24px, 2.6vw, 32px); font-weight: 700; margin: 10px 0 10px; letter-spacing: -.03em; }
 .band .in p { color: var(--ink-2); margin: 0 0 18px; }
 .hexpill { display: inline-flex; align-items: center; gap: 10px; padding: 7px 7px 7px 16px; border-radius: 999px; font: 600 14px/1 var(--f-mono); background: var(--blue); color: #fff; }
 .hexpill i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--lime); color: var(--on-lime); font-style: normal; font-weight: 700; }
@@ -257,8 +258,8 @@ a.card:hover .go svg { transform: translateX(4px); }
 /* что изменилось */
 .news { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .news article { padding: 20px; border-radius: var(--r); background: var(--paper-2); display: grid; gap: 10px; align-content: start; }
-.news .no { width: 44px; height: 44px; border-radius: 50%; background: var(--blue); color: var(--lime); display: grid; place-items: center; font: 900 16px/1 var(--f-display); letter-spacing: -.03em; }
-.news h3 { font-size: 17px; font-weight: 800; }
+.news .no { width: 44px; height: 44px; border-radius: 50%; background: var(--blue); color: var(--lime); display: grid; place-items: center; font: 700 16px/1 var(--f-display); letter-spacing: -.03em; }
+.news h3 { font-size: 17px; font-weight: 650; }
 .news p { margin: 0; color: var(--ink-2); font-size: 14.5px; }
 
 /* матрица Python × задания */
@@ -267,7 +268,7 @@ a.card:hover .go svg { transform: translateX(4px); }
 .pymap th, .pymap td { border-bottom: 1px solid var(--line); padding: 10px 4px; text-align: center; }
 .pymap tr:last-child td { border-bottom: 0; }
 .pymap th:first-child, .pymap td:first-child { text-align: left; padding-left: 16px; position: sticky; left: 0; background: var(--paper); font-weight: 600; white-space: nowrap; z-index: 1; }
-.pymap thead th { font: 700 12px/1 var(--f-display); color: var(--mute); }
+.pymap thead th { font: 600 12px/1 var(--f-display); color: var(--mute); }
 .pymap thead th a { color: inherit; }
 .pymap td .dot { display: inline-block; border-radius: 50%; background: var(--blue); vertical-align: middle; animation: pop .45s var(--ease) both; }
 .pymap td .d1 { width: 8px; height: 8px; background: var(--blue-mid); }
@@ -280,6 +281,92 @@ footer.foot { border-top: 1px solid var(--line); padding-block: 28px 44px; color
 footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; align-items: center; }
 footer.foot b { color: var(--ink); font-family: var(--f-display); }
 
+/* ---------- главная: платформа для преподавателей ---------- */
+.h-hero { padding-block: clamp(28px, 5vw, 72px) clamp(36px, 5vw, 72px); }
+.h-hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.h-copy h1 { font-size: clamp(34px, 4.3vw, 56px); font-weight: 650; letter-spacing: -.035em; line-height: 1.05; margin: 14px 0 18px; animation: rise .7s .08s var(--ease) both; }
+.h-copy .eyebrow { animation: rise .7s var(--ease) both; }
+.h-copy .lead { font-size: clamp(17px, 1.4vw, 19px); color: var(--ink-2); max-width: 44ch; margin: 0 0 28px; animation: rise .7s .16s var(--ease) both; }
+.h-copy .cta { display: flex; flex-wrap: wrap; gap: 12px; animation: rise .7s .24s var(--ease) both; }
+.h-title { font-size: clamp(28px, 3.2vw, 40px); font-weight: 650; letter-spacing: -.03em; margin: 0 0 14px; }
+.h-feat .h-title { margin-bottom: 28px; }
+.lead { text-wrap: pretty; }
+
+/* окно-превью: собрано из настоящих компонентов кабинета */
+.hpv { margin: 0; position: relative; border-radius: 24px; background: var(--paper); border: 1px solid var(--line); box-shadow: 0 1px 2px rgba(13, 25, 80, .05), 0 24px 60px -24px rgba(13, 25, 80, .22); overflow: hidden; }
+:root[data-theme="dark"] .hpv { box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .7); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hpv { box-shadow: 0 24px 60px -24px rgba(0, 0, 0, .7); } }
+.h-pv { animation: rise .8s .2s var(--ease) both; }
+.pv-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px 12px 20px; background: var(--paper-2); border-bottom: 1px solid var(--line); font: 600 13.5px/1.2 var(--f-body); color: var(--ink-2); }
+.pv-body { padding: 20px 20px 18px; display: grid; gap: 12px; }
+.pv-body h3 { font-size: 20px; font-weight: 650; letter-spacing: -.02em; }
+.pv-sub { margin: -8px 0 0; font-size: 13.5px; color: var(--mute); }
+.pv-mx { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pv-mx th { font: 600 12px/1 var(--f-body); color: var(--mute); text-align: left; padding: 0 4px 8px; }
+.pv-mx th.c { text-align: center; }
+.pv-mx td { padding: 5px 4px; border-top: 1px solid var(--line); }
+.pv-mx td:first-child { white-space: nowrap; padding-right: 10px; color: var(--ink); }
+.pv-mx td.c { text-align: center; }
+.pv-mx tbody tr { animation: rise .6s var(--ease) both; animation-delay: calc(var(--i) * 70ms + .45s); }
+.pv-note { margin: 2px 0 0; font-size: 12.5px; color: var(--mute); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pv-note .mx { min-width: 24px; height: 22px; font-size: 12px; }
+
+/* бенто возможностей */
+.bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.bx { border-radius: 24px; padding: clamp(22px, 2.4vw, 30px); display: flex; flex-direction: column; gap: 10px; min-height: 240px; background: var(--paper-2); color: var(--ink); min-width: 0; }
+.bx h3 { font-size: clamp(20px, 1.8vw, 24px); font-weight: 650; letter-spacing: -.025em; }
+.bx p { margin: 0; color: var(--ink-2); max-width: 44ch; }
+.bx-art { margin-top: auto; padding-top: 18px; }
+.bx-groups { grid-column: span 2; background: var(--blue); color: #fff; }
+.bx-groups p { color: rgba(255, 255, 255, .82); }
+.bx-subj { background: var(--paper); border: 1px solid var(--line); }
+.bx-stats { grid-column: span 2; }
+.bx-groups .bx-art { display: flex; flex-wrap: wrap; gap: 8px; }
+.code-chip { display: inline-flex; align-items: center; padding: 11px 16px; border-radius: 14px; background: #fff; color: var(--blue); font: 600 16px/1 var(--f-mono); letter-spacing: .1em; }
+.code-chip.ghost { background: rgba(255, 255, 255, .14); color: #fff; font: 500 14.5px/1 var(--f-body); letter-spacing: 0; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
+.ans { display: inline-flex; align-items: center; gap: 12px; padding: 8px 8px 8px 18px; border-radius: 999px; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ok); font-size: 16px; color: var(--ink-2); }
+.ans b { font: 600 17px/1 var(--f-mono); color: var(--ink); min-width: 2ch; }
+.ans i { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--ok); color: #fff; }
+.ans i svg { width: 16px; height: 16px; }
+.bx-art.subj { display: flex; flex-wrap: wrap; gap: 6px; }
+.bx-art.st { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.st b { display: block; font: 650 clamp(26px, 2.6vw, 34px)/1 var(--f-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.st span { display: block; margin-top: 6px; font-size: 13.5px; color: var(--mute); line-height: 1.35; }
+
+/* ученик */
+.h-split { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(28px, 5vw, 72px); align-items: center; }
+.h-split .lead { font-size: 17.5px; color: var(--ink-2); max-width: 46ch; margin: 0 0 22px; }
+.h-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.h-list li { display: flex; gap: 12px; align-items: center; font-weight: 500; }
+.h-list svg { width: 20px; height: 20px; flex: none; color: var(--blue-ink); }
+.h-student .hpv .hw-items { margin-top: 2px; }
+.h-student .hw-prog { color: var(--ink-2); }
+
+/* готовый курс */
+.h-course .lead { font-size: 17.5px; color: var(--ink-2); max-width: 60ch; margin: 0; }
+.h-course .h-title { margin-top: 10px; }
+.h-tiles { margin: 28px 0 26px; }
+.home .band .in h3 { margin-top: 0; }
+
+@media (max-width: 1060px) {
+  .h-hero-grid, .h-split { grid-template-columns: minmax(0, 1fr); }
+  .h-split .h-copy { order: -1; }
+  .h-copy .lead { max-width: 56ch; }
+}
+@media (max-width: 860px) {
+  .bento { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .bx-groups, .bx-stats { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+  .bento { grid-template-columns: minmax(0, 1fr); }
+  .bx { min-height: 0; }
+  .bx-art.st { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .pv-body { padding: 16px 14px; }
+  .pv-mx { font-size: 13px; }
+  .pv-mx td:first-child { padding-right: 6px; }
+  .pv-mx .mx { min-width: 26px; height: 26px; font-size: 13px; }
+}
+
 /* ---------- методичка ---------- */
 .study { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: clamp(20px, 3vw, 48px); padding-block: 28px 70px; }
 .side { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 93px); align-self: start; max-height: calc(100vh - 112px); overflow-y: auto; padding-right: 6px; scrollbar-width: thin; }
@@ -288,7 +375,7 @@ footer.foot b { color: var(--ink); font-family: var(--f-display); }
 .side ul { list-style: none; margin: 0; padding: 0; }
 .side li a { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 11px; color: var(--ink-2); font-size: 14.5px; line-height: 1.25; transition: background-color .15s, color .15s; }
 .side li a:hover { background: var(--paper-2); color: var(--ink); text-decoration: none; }
-.side li a .n { font: 800 15px/1 var(--f-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.side li a .n { font: 650 15px/1 var(--f-display); color: var(--ink); font-variant-numeric: tabular-nums; }
 .side li a.on { background: var(--ink); color: var(--paper); }
 .side li a.on .n { color: var(--paper); }
 .side li a.on .lvl-Б { color: var(--paper); border-color: color-mix(in srgb, var(--paper) 60%, transparent); }
@@ -298,9 +385,9 @@ footer.foot b { color: var(--ink); font-family: var(--f-display); }
 
 .task-view { animation: swapIn .45s var(--ease) both; min-width: 0; }
 .task-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: center; padding-bottom: 26px; border-bottom: 1px solid var(--line); }
-.task-num { position: relative; display: inline-flex; align-items: flex-start; font: 900 clamp(76px, 9vw, 124px)/.82 var(--f-display); letter-spacing: -.07em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.task-num { position: relative; display: inline-flex; align-items: flex-start; font: 700 clamp(76px, 9vw, 124px)/.82 var(--f-display); letter-spacing: -.07em; color: var(--ink); font-variant-numeric: tabular-nums; }
 .task-num .ball { --s: .3em; margin: .02em .06em 0 0; }
-.task-head h1 { font-size: clamp(27px, 3.4vw, 42px); font-weight: 800; margin: 8px 0 12px; }
+.task-head h1 { font-size: clamp(27px, 3.4vw, 42px); font-weight: 650; margin: 8px 0 12px; }
 .task-meta { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; }
 .task-goal { font-size: 18px; color: var(--ink-2); margin: 24px 0 10px; max-width: 70ch; }
 .pytags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -309,7 +396,7 @@ footer.foot b { color: var(--ink); font-family: var(--f-display); }
 .changed { margin-top: 22px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; align-items: start; padding: 16px 18px; border-radius: var(--r); background: var(--lime-soft); color: var(--ink); }
 .changed .newbadge { margin-top: 3px; }
 .block { margin-top: 42px; }
-.block > h2 { font-size: 23px; font-weight: 800; margin-bottom: 16px; display: flex; align-items: center; gap: 11px; }
+.block > h2 { font-size: 23px; font-weight: 650; margin-bottom: 16px; display: flex; align-items: center; gap: 11px; }
 .prose { max-width: 74ch; color: var(--ink-2); }
 .prose p { margin: 0 0 12px; }
 .prose b { color: var(--ink); }
@@ -320,7 +407,7 @@ footer.foot b { color: var(--ink); font-family: var(--f-display); }
 .types { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 12px; }
 .type { padding: 17px 19px; border-radius: var(--r); background: var(--paper-2); border: 1px solid transparent; transition: border-color .2s, transform .3s var(--ease); }
 .type:hover { border-color: var(--blue); transform: translateY(-2px); }
-.type h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+.type h3 { font-size: 16px; font-weight: 650; margin-bottom: 6px; }
 .type p { margin: 0; font-size: 14.5px; color: var(--ink-2); }
 .formulas { display: grid; gap: 8px; }
 .formula-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: center; padding: 13px 17px; border-radius: 13px; border: 1px solid var(--line); }
@@ -328,22 +415,22 @@ footer.foot b { color: var(--ink); font-family: var(--f-display); }
 .formula-row .d { font-size: 14px; color: var(--mute); }
 .steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 12px; max-width: 78ch; }
 .steps li { counter-increment: s; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; color: var(--ink-2); }
-.steps li::before { content: counter(s); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--blue); color: #fff; font: 800 15px/1 var(--f-display); }
+.steps li::before { content: counter(s); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--blue); color: #fff; font: 650 15px/1 var(--f-display); }
 .steps li span { padding-top: 5px; }
 .traps { display: grid; gap: 8px; max-width: 80ch; }
 .trap { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding: 13px 17px; border-radius: 13px; background: var(--bad-soft); color: var(--ink); }
-.trap::before { content: "!"; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bad); color: #fff; font: 800 13px/1 var(--f-display); margin-top: 1px; }
+.trap::before { content: "!"; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--bad); color: #fff; font: 650 13px/1 var(--f-display); margin-top: 1px; }
 .tipbox { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; padding: 18px 20px; border-radius: var(--r); background: var(--blue); color: #fff; max-width: 80ch; }
 .tipbox .ball { --s: 26px; background: #fff; margin-top: 1px; }
 .tipbox .ball::after { background: var(--lime); }
 .tipbox b { display: block; font-family: var(--f-display); }
 .practice { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; padding: 20px 22px; border-radius: 20px; background: var(--lime); color: var(--on-lime); margin-top: 42px; }
-.practice b { font: 800 19px/1.2 var(--f-display); letter-spacing: -.02em; }
+.practice b { font: 650 19px/1.2 var(--f-display); letter-spacing: -.02em; }
 .task-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); }
 .task-foot a { border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; color: var(--ink); min-width: 0; transition: border-color .2s, transform .3s var(--ease); }
 .task-foot a:hover { text-decoration: none; border-color: var(--ink-2); transform: translateY(-2px); }
 .task-foot small { display: block; color: var(--mute); font-size: 12.5px; }
-.task-foot b { display: block; font: 700 15px/1.3 var(--f-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task-foot b { display: block; font: 600 15px/1.3 var(--f-display); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .task-foot .nx { text-align: right; grid-column: 2; }
 
 /* ---------- код ---------- */
@@ -387,7 +474,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .gsvg .ge { stroke: var(--ink-2); stroke-width: 2; }
 .gsvg .gn { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
 .gsvg .ga { fill: var(--ink-2); }
-.gsvg .gt { fill: var(--ink); font: 700 13px var(--f-display); text-anchor: middle; }
+.gsvg .gt { fill: var(--ink); font: 600 13px var(--f-display); text-anchor: middle; }
 .dbgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
 .cap { font: 600 11.5px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--mute); margin: 14px 0 6px; }
 .f { font-family: var(--f-mono); color: var(--ink); background: var(--paper-2); padding: .1em .4em; border-radius: 6px; overflow-wrap: anywhere; }
@@ -397,7 +484,7 @@ table.mapping td, table.mapping th { text-align: left; }
 
 /* ---------- банк ---------- */
 .bank-top { padding-block: 34px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; }
-.bank-top h1, .py-hero h1 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 900; letter-spacing: -.045em; margin-top: 10px; }
+.bank-top h1, .py-hero h1 { font-size: clamp(34px, 4.6vw, 56px); font-weight: 700; letter-spacing: -.03em; margin-top: 10px; }
 .bank-top p, .py-hero p { color: var(--ink-2); margin: 12px 0 0; max-width: 62ch; }
 .ring { position: relative; width: 120px; height: 120px; }
 .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
@@ -405,7 +492,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .ring .bg { stroke: var(--blue-soft); }
 .ring .fg { stroke: var(--blue); stroke-linecap: round; transition: stroke-dashoffset 1s var(--ease); }
 .ring .lbl { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.ring .lbl b { font: 900 28px/1 var(--f-display); font-variant-numeric: tabular-nums; letter-spacing: -.04em; }
+.ring .lbl b { font: 700 28px/1 var(--f-display); font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
 .ring .lbl span { font-size: 11.5px; color: var(--mute); }
 .filters { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--top-h, 64px)); z-index: 20; background: var(--paper); padding-block: 12px; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
 .filter-row { display: flex; flex-wrap: wrap; gap: 6px; padding-bottom: 2px; }
@@ -424,14 +511,26 @@ table.mapping td, table.mapping th { text-align: left; }
 .prob { min-width: 0; border: 1px solid var(--line); border-radius: 22px; padding: clamp(18px, 2.4vw, 30px); background: var(--paper); animation: rise .45s var(--ease) both; animation-delay: calc(var(--i, 0) * 35ms); }
 .prob.solved { border-color: color-mix(in srgb, var(--ok) 55%, var(--line)); }
 .prob-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-bottom: 14px; }
-.prob-head .pn { font: 800 15px/1 var(--f-display); padding: 8px 11px; border-radius: 999px; background: var(--ink); color: var(--paper); font-variant-numeric: tabular-nums; }
+.prob-head .pn { font: 650 15px/1 var(--f-display); padding: 8px 11px; border-radius: 999px; background: var(--ink); color: var(--paper); font-variant-numeric: tabular-nums; }
 .prob-head .pn em { font-style: normal; color: var(--blue-mid); }
-.prob-head h3 { font-size: 19px; font-weight: 800; }
+.prob-head .pn-s { font-size: 13px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sol-md { padding: 14px 16px; border-radius: 14px; background: var(--paper-2); }
+.subj-row { margin-bottom: 8px; }
+.ed-vis { max-width: 360px; }
+.role-pick { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.role-pick label { position: relative; cursor: pointer; }
+.role-pick input { position: absolute; opacity: 0; pointer-events: none; }
+.role-pick span { display: grid; gap: 3px; height: 100%; padding: 12px 14px; border-radius: 14px; border: 1.5px solid var(--line); transition: border-color .2s, background-color .2s; }
+.role-pick b { font: 600 14.5px/1.2 var(--f-display); }
+.role-pick small { font-size: 12.5px; color: var(--mute); line-height: 1.3; }
+.role-pick input:checked + span { border-color: var(--blue); background: var(--blue-soft); }
+.role-pick input:focus-visible + span { outline: 2.5px solid var(--blue); outline-offset: 2px; }
+.prob-head h3 { font-size: 19px; font-weight: 650; }
 .diff { display: inline-flex; gap: 3px; margin-left: auto; align-items: center; }
 .diff i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
 .diff i.on { background: var(--blue); }
 .diff span { font-size: 12.5px; color: var(--mute); margin-right: 6px; }
-.badge-ok { font: 700 12.5px/1 var(--f-display); color: var(--ok); background: var(--ok-soft); padding: 6px 9px; border-radius: 7px; }
+.badge-ok { font: 600 12.5px/1 var(--f-display); color: var(--ok); background: var(--ok-soft); padding: 6px 9px; border-radius: 7px; }
 .prob-body { color: var(--ink-2); max-width: 86ch; min-width: 0; }
 .prob-body p { margin: 0 0 10px; }
 .prob-body ul, .prob-body ol { margin: 0 0 10px; padding-left: 22px; }
@@ -469,19 +568,19 @@ table.mapping td, table.mapping th { text-align: left; }
 .reveal > * { animation: rise .35s var(--ease) both; }
 .ansbox { padding: 12px 16px; border-radius: 12px; background: var(--paper-2); font: 600 15px/1.5 var(--f-mono); color: var(--ink); white-space: pre-wrap; }
 .empty { text-align: center; padding: 64px 16px; color: var(--mute); }
-.empty b { display: block; font: 800 22px var(--f-display); color: var(--ink); margin-bottom: 6px; }
+.empty b { display: block; font: 650 22px var(--f-display); color: var(--ink); margin-bottom: 6px; }
 
 /* ---------- python ---------- */
 .py-hero { padding-block: 36px 10px; }
 .toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 24px 0 8px; }
 .pyblock-h { display: flex; align-items: baseline; gap: 16px; padding-block: 48px 4px; }
-.pyblock-h .bn { font: 900 clamp(48px, 6vw, 80px)/.8 var(--f-display); letter-spacing: -.06em; color: var(--blue); }
-.pyblock-h h2 { font-size: clamp(26px, 3vw, 36px); font-weight: 900; letter-spacing: -.04em; }
+.pyblock-h .bn { font: 700 clamp(48px, 6vw, 80px)/.8 var(--f-display); letter-spacing: -.03em; color: var(--blue); }
+.pyblock-h h2 { font-size: clamp(26px, 3vw, 36px); font-weight: 700; letter-spacing: -.03em; }
 .pyblock-h small { display: block; color: var(--mute); font: 500 14px/1.4 var(--f-body); letter-spacing: 0; margin-top: 4px; }
 .topic { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: clamp(18px, 3vw, 44px); padding-block: 32px; border-top: 1px solid var(--line); scroll-margin-top: 90px; }
 .topic aside { position: sticky; top: 92px; align-self: start; display: grid; gap: 12px; }
 .topic aside .eyebrow b { color: var(--blue-ink); }
-.topic h3 { font-size: 24px; font-weight: 800; }
+.topic h3 { font-size: 24px; font-weight: 650; }
 .topic .main { min-width: 0; display: grid; gap: 14px; }
 .topic .main .prose { max-width: 72ch; }
 .topic .note { font-size: 14.5px; color: var(--ink); background: var(--lime-soft); padding: 12px 16px; border-radius: 12px; }
@@ -493,7 +592,7 @@ table.mapping td, table.mapping th { text-align: left; }
 /* ---------- шпаргалка ---------- */
 .cheat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; align-items: start; padding-bottom: 70px; }
 .cheat { border: 1px solid var(--line); border-radius: 20px; padding: 22px; background: var(--paper); }
-.cheat h3 { font-size: 18px; font-weight: 800; margin-bottom: 12px; display: flex; gap: 10px; align-items: center; }
+.cheat h3 { font-size: 18px; font-weight: 650; margin-bottom: 12px; display: flex; gap: 10px; align-items: center; }
 .cheat h3 a { color: var(--ink); }
 .cheat .row { padding: 10px 0; border-top: 1px solid var(--line); display: grid; gap: 3px; }
 .cheat .row:first-of-type { border-top: 0; padding-top: 0; }
@@ -516,7 +615,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .results { max-height: 56vh; overflow: auto; padding: 8px; }
 .res { display: grid; grid-template-columns: 44px 1fr; gap: 12px; align-items: center; padding: 10px; border-radius: 13px; color: var(--ink); }
 .res:hover, .res.sel { background: var(--paper-2); text-decoration: none; }
-.res .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font: 800 15px/1 var(--f-display); background: var(--paper-2); }
+.res .ic { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font: 650 15px/1 var(--f-display); background: var(--paper-2); }
 .res .ic.e { background: var(--blue); color: #fff; }
 .res .ic.p { background: var(--lime); color: var(--on-lime); }
 .res b { display: block; font-weight: 600; font-size: 14.5px; }
@@ -537,8 +636,8 @@ table.mapping td, table.mapping th { text-align: left; }
 .tip::after { content: ""; position: absolute; left: var(--ax, 50%); bottom: -6px; width: 12px; height: 12px; background: var(--ink); transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
 .tip.below::after { bottom: auto; top: -6px; }
 .tip-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: center; }
-.tip-n { min-width: 54px; height: 54px; padding: 0 8px; border-radius: 14px; display: grid; place-items: center; background: var(--lime); font: 900 32px/1 var(--f-display); letter-spacing: -.06em; color: #0D0F17; font-variant-numeric: tabular-nums; }
-.tip-meta b { display: block; font: 800 15.5px/1.2 var(--f-display); letter-spacing: -.02em; }
+.tip-n { min-width: 54px; height: 54px; padding: 0 8px; border-radius: 14px; display: grid; place-items: center; background: var(--lime); font: 700 32px/1 var(--f-display); letter-spacing: -.03em; color: #0D0F17; font-variant-numeric: tabular-nums; }
+.tip-meta b { display: block; font: 650 15.5px/1.2 var(--f-display); letter-spacing: -.02em; }
 .tip-meta span { display: block; font-size: 11.5px; color: color-mix(in srgb, var(--paper) 60%, transparent); margin-top: 3px; line-height: 1.3; }
 .tip-facts { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-top: 12px; font-size: 12.5px; color: color-mix(in srgb, var(--paper) 82%, transparent); }
 .tip-facts .lvl-Б { border-color: color-mix(in srgb, var(--paper) 60%, transparent); color: var(--paper); }
@@ -546,8 +645,8 @@ table.mapping td, table.mapping th { text-align: left; }
 .tip-lead { margin: 10px 0 0; font-size: 13px; line-height: 1.5; color: color-mix(in srgb, var(--paper) 78%, transparent); }
 .tip-foot { display: flex; justify-content: space-between; gap: 10px; align-items: center; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.12); font-size: 12.5px; }
 .tip-foot > span:first-child { display: inline-flex; gap: 6px; align-items: center; color: color-mix(in srgb, var(--paper) 82%, transparent); }
-.tip-bank { font: 700 11.5px/1 var(--f-display); padding: 5px 8px; border-radius: 999px; background: var(--blue); color: #fff; white-space: nowrap; }
-.tip-new { position: absolute; top: -9px; right: 14px; font: 800 10px/1 var(--f-display); text-transform: uppercase; letter-spacing: .04em; padding: 4px 7px; border-radius: 6px; background: var(--lime); color: var(--on-lime); }
+.tip-bank { font: 600 11.5px/1 var(--f-display); padding: 5px 8px; border-radius: 999px; background: var(--blue); color: #fff; white-space: nowrap; }
+.tip-new { position: absolute; top: -9px; right: 14px; font: 650 10px/1 var(--f-display); text-transform: uppercase; letter-spacing: .04em; padding: 4px 7px; border-radius: 6px; background: var(--lime); color: var(--on-lime); }
 
 
 /* ---------- аккаунт: кнопка в шапке ---------- */
@@ -557,7 +656,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .acct-btn.on { padding-left: 4px; }
 .acct-btn.cur { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 @media (max-width: 1100px) { .acct-btn .lbl { display: none; } .acct-btn { width: 40px; padding: 0; justify-content: center; } .acct-btn.on { padding: 0; } }
-.ava { width: 32px; height: 32px; border-radius: 50%; background: var(--blue); color: #fff; display: inline-grid; place-items: center; font: 800 13px/1 var(--f-display); object-fit: cover; flex: none; }
+.ava { width: 32px; height: 32px; border-radius: 50%; background: var(--blue); color: #fff; display: inline-grid; place-items: center; font: 650 13px/1 var(--f-display); object-fit: cover; flex: none; }
 .ava svg { width: 55%; height: 55%; }
 .ava.sm { width: 30px; height: 30px; font-size: 12px; }
 .ava.lg { width: 56px; height: 56px; font-size: 20px; }
@@ -565,19 +664,19 @@ table.mapping td, table.mapping th { text-align: left; }
 
 /* ---------- страница входа ---------- */
 .auth { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding-block: clamp(40px, 7vw, 90px); }
-.auth h1 { font-size: clamp(38px, 5.4vw, 64px); font-weight: 900; letter-spacing: -.05em; margin: 12px 0 14px; }
+.auth h1 { font-size: clamp(38px, 5.4vw, 64px); font-weight: 700; letter-spacing: -.03em; margin: 12px 0 14px; }
 .auth .lead { font-size: 18px; color: var(--ink-2); max-width: 46ch; margin: 0 0 28px; }
 .auth-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; max-width: 54ch; }
 .auth-list li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 14px; align-items: start; }
-.auth-list .no { width: 36px; height: 36px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; font: 800 15px/1 var(--f-display); }
-.auth-list b { display: block; font: 800 16.5px/1.3 var(--f-display); }
+.auth-list .no { width: 36px; height: 36px; border-radius: 50%; background: var(--blue); color: #fff; display: grid; place-items: center; font: 650 15px/1 var(--f-display); }
+.auth-list b { display: block; font: 650 16.5px/1.3 var(--f-display); }
 .auth-list span { color: var(--ink-2); font-size: 14.5px; }
 .auth-card { border: 1px solid var(--line); border-radius: 28px; padding: clamp(22px, 3vw, 34px); background: var(--paper); box-shadow: var(--shadow); display: grid; gap: 14px; position: relative; overflow: hidden; }
 .auth-card::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 8px; background: var(--lime); }
 .auth-who { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 18px; background: var(--paper-2); }
-.auth-who b { display: block; font: 800 18px/1.2 var(--f-display); }
+.auth-who b { display: block; font: 650 18px/1.2 var(--f-display); }
 .auth-who div > span { display: block; font-size: 13px; color: var(--mute); }
-.auth-h { font-size: 22px; font-weight: 800; }
+.auth-h { font-size: 22px; font-weight: 650; }
 .auth-note { font-size: 13.5px; color: var(--mute); margin: 0; }
 .btn.wide { width: 100%; justify-content: center; }
 .auth-wait { display: flex; gap: 10px; align-items: center; color: var(--mute); padding: 24px 0; }
@@ -589,7 +688,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .me { padding-block: 34px 70px; }
 .me-head { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; justify-content: space-between; padding-bottom: 26px; border-bottom: 1px solid var(--line); }
 .me-id { display: flex; gap: 20px; align-items: center; min-width: 0; }
-.me-id h1 { font-size: clamp(30px, 4vw, 46px); font-weight: 900; letter-spacing: -.045em; margin: 8px 0 8px; overflow-wrap: anywhere; }
+.me-id h1 { font-size: clamp(30px, 4vw, 46px); font-weight: 700; letter-spacing: -.03em; margin: 8px 0 8px; overflow-wrap: anywhere; }
 .me-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 13.5px; color: var(--mute); }
 .sync { display: inline-flex; align-items: center; gap: 7px; font: 600 12.5px/1 var(--f-body); padding: 6px 10px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); }
 .sync i { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); }
@@ -598,7 +697,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 26px; }
 .kpi { border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; display: grid; gap: 10px; align-content: start; background: var(--paper); }
 .kpi .k-l { font: 600 12px/1 var(--f-body); letter-spacing: .1em; text-transform: uppercase; color: var(--mute); }
-.kpi b { font: 900 40px/1 var(--f-display); letter-spacing: -.05em; font-variant-numeric: tabular-nums; }
+.kpi b { font: 700 40px/1 var(--f-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
 .kpi b small { font-size: .45em; letter-spacing: -.01em; color: var(--mute); font-weight: 700; }
 .kpi .k-s { font-size: 13px; color: var(--mute); }
 .kpi.accent { background: var(--blue); border-color: var(--blue); color: #fff; }
@@ -613,7 +712,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .panel { border: 1px solid var(--line); border-radius: 22px; padding: 20px 22px; background: var(--paper); min-width: 0; }
 .panel.span2 { grid-column: 1 / -1; }
 .panel-h { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
-.panel-h h2 { font-size: 19px; font-weight: 800; }
+.panel-h h2 { font-size: 19px; font-weight: 650; }
 .panel-h .muted { font-size: 13px; }
 .taskbars { display: grid; grid-template-columns: repeat(27, minmax(0, 1fr)); gap: 6px; align-items: end; height: 150px; }
 .tb { display: grid; grid-template-rows: 1fr auto; gap: 6px; height: 100%; color: var(--ink); text-decoration: none; }
@@ -622,7 +721,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .tb-col i { display: block; width: 100%; background: var(--blue); border-radius: 4px 4px 0 0; transform-origin: bottom; animation: growY .9s var(--ease) both; }
 .tb.full .tb-col i { background: var(--lime); box-shadow: inset 0 0 0 1.5px rgba(13,15,23,.35); border-radius: 4px; }
 .tb:hover .tb-col { box-shadow: inset 0 0 0 1.5px var(--blue); }
-.tb-n { font: 700 11px/1 var(--f-display); text-align: center; color: var(--mute); font-variant-numeric: tabular-nums; }
+.tb-n { font: 600 11px/1 var(--f-display); text-align: center; color: var(--mute); font-variant-numeric: tabular-nums; }
 @keyframes growY { from { transform: scaleY(0); } }
 .lg { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
 .lg-b { background: var(--blue); } .lg-l { background: var(--lime); box-shadow: inset 0 0 0 1.5px rgba(13,15,23,.35); }
@@ -646,12 +745,12 @@ table.mapping td, table.mapping th { text-align: left; }
 .row-stat { display: grid; grid-template-columns: 30px minmax(0, 140px) minmax(0, 1fr) 46px; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); color: var(--ink); }
 .row-stat:first-of-type { border-top: 0; }
 .row-stat.link:hover { text-decoration: none; background: var(--paper-2); }
-.row-stat b { font: 800 14px/1 var(--f-display); text-align: right; font-variant-numeric: tabular-nums; }
+.row-stat b { font: 650 14px/1 var(--f-display); text-align: right; font-variant-numeric: tabular-nums; }
 .rs-name { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.rs-no { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; font: 800 12px/1 var(--f-display); }
+.rs-no { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; font: 650 12px/1 var(--f-display); }
 .mini-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 .mini-kpis div { padding: 12px 14px; border-radius: 14px; background: var(--paper-2); }
-.mini-kpis b { display: block; font: 900 24px/1 var(--f-display); letter-spacing: -.04em; }
+.mini-kpis b { display: block; font: 700 24px/1 var(--f-display); letter-spacing: -.03em; }
 .mini-kpis span { font-size: 12.5px; color: var(--mute); }
 .next { display: grid; grid-template-columns: auto minmax(0, 1fr) 18px; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 14px; color: var(--ink); transition: background-color .2s; }
 .next:hover { background: var(--paper-2); text-decoration: none; }
@@ -664,17 +763,17 @@ table.mapping td, table.mapping th { text-align: left; }
 .feed li:first-child { border-top: 0; }
 .feed a { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .feed time { font-size: 12px; color: var(--mute); white-space: nowrap; }
-.fd { font: 800 11px/1 var(--f-display); padding: 6px 0; border-radius: 8px; text-align: center; background: var(--paper-2); }
+.fd { font: 650 11px/1 var(--f-display); padding: 6px 0; border-radius: 8px; text-align: center; background: var(--paper-2); }
 .fd.ok { background: var(--ok-soft); color: var(--ok); } .fd.bad { background: var(--bad-soft); color: var(--bad); }
 .empty-mini { color: var(--mute); font-size: 14px; display: grid; gap: 6px; }
-.empty-mini b { color: var(--ink); font: 800 16px var(--f-display); }
+.empty-mini b { color: var(--ink); font: 650 16px var(--f-display); }
 .danger { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; margin-top: 26px; padding: 16px 20px; border-radius: 18px; border: 1px dashed var(--line); }
 .danger b { display: block; font-family: var(--f-display); }
 .danger span { font-size: 13.5px; color: var(--mute); }
 .danger-acts { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .btn.danger-btn { background: var(--bad); border-color: var(--bad); color: #fff; }
 .tip.small { width: auto; max-width: 260px; padding: 10px 14px; }
-.tip-s b { display: block; font: 700 13.5px/1.3 var(--f-display); }
+.tip-s b { display: block; font: 600 13.5px/1.3 var(--f-display); }
 .tip-s span { font-size: 12.5px; color: color-mix(in srgb, var(--paper) 72%, transparent); }
 @media (max-width: 960px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .me-grid { grid-template-columns: minmax(0, 1fr); } .taskbars { gap: 3px; height: 130px; } .tb-n { font-size: 9px; } }
 @media (max-width: 560px) { .kpis { grid-template-columns: minmax(0, 1fr); } .taskbars { grid-template-columns: repeat(14, minmax(0, 1fr)); height: auto; grid-auto-rows: 110px; row-gap: 12px; } .row-stat { grid-template-columns: 26px minmax(0, 1fr) 70px 40px; } .me-id { gap: 14px; } .ava.xl { width: 64px; height: 64px; font-size: 24px; } }
@@ -682,7 +781,7 @@ table.mapping td, table.mapping th { text-align: left; }
 
 /* ---------- формы входа (версия для своего сервера) ---------- */
 .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--paper-2); margin-top: 6px; }
-.auth-tabs button { border: 0; background: none; padding: 10px; border-radius: 999px; font: 700 14.5px/1 var(--f-display); color: var(--ink-2); transition: background-color .2s, color .2s; }
+.auth-tabs button { border: 0; background: none; padding: 10px; border-radius: 999px; font: 600 14.5px/1 var(--f-display); color: var(--ink-2); transition: background-color .2s, color .2s; }
 .auth-tabs button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(13,15,23,.12); }
 .auth-form { display: grid; gap: 12px; }
 .fld { display: grid; gap: 6px; font-size: 13px; color: var(--mute); }
@@ -724,7 +823,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .fld textarea, .fld select { width: 100%; padding: 12px 15px; border-radius: 13px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 15px/1.5 var(--f-body); transition: border-color .2s; }
 .fld textarea { min-height: 92px; resize: vertical; }
 .fld textarea:focus, .fld select:focus { outline: none; border-color: var(--blue); }
-.hw-dot { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font: 800 11px/18px var(--f-display); text-align: center; box-shadow: 0 0 0 2px var(--paper); }
+.hw-dot { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--bad); color: #fff; font: 650 11px/18px var(--f-display); text-align: center; box-shadow: 0 0 0 2px var(--paper); }
 .acct-btn { position: relative; }
 .loading-row { display: flex; gap: 10px; align-items: center; color: var(--mute); padding: 60px 0; justify-content: center; }
 .loading-row .ball { animation: spin 1s linear infinite; }
@@ -733,19 +832,19 @@ table.mapping td, table.mapping th { text-align: left; }
 .hw-card { border: 1px solid var(--line); border-radius: 18px; padding: 16px 18px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; background: var(--paper); min-width: 0; }
 .hw-card.done { background: var(--paper-2); }
 .hw-top { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; justify-content: space-between; }
-.hw-top h3 { font-size: 17px; font-weight: 800; }
+.hw-top h3 { font-size: 17px; font-weight: 650; }
 .hw-meta { font-size: 12.5px; color: var(--mute); }
 .hw-comment { font-size: 14px; color: var(--ink-2); white-space: pre-line; padding: 10px 12px; border-radius: 12px; background: var(--paper-2); border-left: 3px solid var(--lime); }
 .hw-card.done .hw-comment { background: var(--paper); }
 .hw-items { display: flex; flex-wrap: wrap; gap: 6px; }
 .hwi { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 13px; line-height: 1.25; max-width: 100%; }
 .hwi:hover { text-decoration: none; border-color: var(--ink-2); }
-.hwi b { font: 800 11px/1 var(--f-display); color: var(--mute); white-space: nowrap; }
+.hwi b { font: 650 11px/1 var(--f-display); color: var(--mute); white-space: nowrap; }
 .hwi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .hwi.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
 .hwi.ok b { color: var(--ok); }
 .hwi svg { width: 14px; height: 14px; flex: none; }
-.hw-prog { display: flex; gap: 10px; align-items: center; font: 700 13px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.hw-prog { display: flex; gap: 10px; align-items: center; font: 600 13px/1 var(--f-display); font-variant-numeric: tabular-nums; }
 .due { display: inline-flex; align-items: center; gap: 5px; font: 700 12px/1 var(--f-body); padding: 5px 9px; border-radius: 999px; background: var(--paper-2); color: var(--ink-2); white-space: nowrap; }
 .due.soon { background: var(--lime-soft); color: var(--ink); }
 .due.late { background: var(--bad-soft); color: var(--bad); }
@@ -758,19 +857,19 @@ table.mapping td, table.mapping th { text-align: left; }
 .grp-row small { display: block; color: var(--mute); font-size: 12.5px; }
 .t-page { padding-block: 34px 70px; }
 .t-head { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; justify-content: space-between; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
-.t-head h1 { font-size: clamp(30px, 4vw, 46px); font-weight: 900; letter-spacing: -.045em; margin: 8px 0 6px; overflow-wrap: anywhere; }
+.t-head h1 { font-size: clamp(30px, 4vw, 46px); font-weight: 700; letter-spacing: -.03em; margin: 8px 0 6px; overflow-wrap: anywhere; }
 .t-head p { color: var(--ink-2); margin: 0; max-width: 60ch; }
 .t-back { display: inline-flex; gap: 6px; align-items: center; font-size: 14px; color: var(--mute); }
 .t-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .t-page > .t-tabs:first-child { margin-bottom: 18px; }
 .t-sec { margin-top: 26px; }
-.t-sec > h2 { font-size: 21px; font-weight: 800; margin-bottom: 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.t-sec > h2 { font-size: 21px; font-weight: 650; margin-bottom: 14px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
 .t-card { border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; display: grid; gap: 12px; color: var(--ink); background: var(--paper); transition: border-color .2s, transform .25s var(--ease), box-shadow .25s var(--ease); }
 .t-card:hover { text-decoration: none; border-color: var(--ink-2); transform: translateY(-2px); box-shadow: var(--shadow); }
-.t-card h3 { font-size: 20px; font-weight: 800; overflow-wrap: anywhere; }
+.t-card h3 { font-size: 20px; font-weight: 650; overflow-wrap: anywhere; }
 .t-card .nums { display: flex; gap: 18px; font-size: 13px; color: var(--mute); }
-.t-card .nums b { display: block; font: 900 24px/1 var(--f-display); color: var(--ink); letter-spacing: -.03em; }
+.t-card .nums b { display: block; font: 700 24px/1 var(--f-display); color: var(--ink); letter-spacing: -.03em; }
 .code-chip { font: 700 13px/1 var(--f-mono); letter-spacing: .1em; padding: 6px 10px; border-radius: 8px; background: var(--paper-2); justify-self: start; }
 .t-create { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .t-create input { flex: 1 1 220px; min-width: 0; padding: 12px 15px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); font: 15px var(--f-body); }
@@ -816,9 +915,9 @@ table.mapping td, table.mapping th { text-align: left; }
 .t-hw + .t-hw { margin-top: 12px; }
 .t-hw > summary { list-style: none; cursor: pointer; padding: 16px 18px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; }
 .t-hw > summary::-webkit-details-marker { display: none; }
-.t-hw > summary h3 { font-size: 17px; font-weight: 800; }
+.t-hw > summary h3 { font-size: 17px; font-weight: 650; }
 .t-hw .sub { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 12.5px; color: var(--mute); margin-top: 6px; }
-.t-hw .rate { display: grid; gap: 6px; justify-items: end; font: 800 18px/1 var(--f-display); min-width: 110px; }
+.t-hw .rate { display: grid; gap: 6px; justify-items: end; font: 650 18px/1 var(--f-display); min-width: 110px; }
 .t-hw .rate small { font: 500 12px var(--f-body); color: var(--mute); }
 .t-hw .body { padding: 0 18px 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .t-hw .acts { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -827,7 +926,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .who a { color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .picker { border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .seg { display: inline-grid; grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: 999px; background: var(--paper-2); justify-self: start; max-width: 100%; overflow-x: auto; }
-.seg button { border: 0; background: none; padding: 9px 14px; border-radius: 999px; font: 700 13.5px/1 var(--f-display); color: var(--ink-2); white-space: nowrap; }
+.seg button { border: 0; background: none; padding: 9px 14px; border-radius: 999px; font: 600 13.5px/1 var(--f-display); color: var(--ink-2); white-space: nowrap; }
 .seg button.on { background: var(--paper); color: var(--ink); box-shadow: 0 1px 3px rgba(13,15,23,.12); }
 .seg button i { font-style: normal; color: var(--blue-ink); margin-left: 4px; }
 .pick-nums { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -851,7 +950,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .stud-picks input, .fld .stud-picks input { width: 16px; height: 16px; padding: 0; accent-color: var(--blue); margin: 0; flex: none; }
 .form-acts { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .t-empty { padding: 26px; border: 1px dashed var(--line); border-radius: 18px; color: var(--mute); display: grid; gap: 6px; }
-.t-empty b { color: var(--ink); font: 800 17px var(--f-display); }
+.t-empty b { color: var(--ink); font: 650 17px var(--f-display); }
 .prob.flash { animation: flash 1.6s var(--ease); }
 .read-btn { margin-top: 12px; }
 .me-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -859,7 +958,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .pnum { font: 700 12px/1 var(--f-mono); color: var(--mute); padding: 5px 7px; border-radius: 7px; background: var(--paper-2); white-space: nowrap; }
 .pick .pnum { padding: 3px 6px; margin-right: 2px; }
 /* пункт меню «ДЗ» со счётчиком */
-.nav-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--bad); color: #fff; font: 800 11px/1 var(--f-display); vertical-align: 1px; }
+.nav-n { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px; border-radius: 999px; background: var(--bad); color: #fff; font: 650 11px/1 var(--f-display); vertical-align: 1px; }
 /* раздел «ДЗ» */
 .hw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
 .hw-link { color: var(--ink); transition: border-color .2s, transform .25s var(--ease), box-shadow .25s var(--ease); }
@@ -867,21 +966,21 @@ table.mapping td, table.mapping th { text-align: left; }
 .hw-prog .go { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; color: var(--blue-ink); white-space: nowrap; }
 .hw-prog .go svg { width: 14px; height: 14px; }
 .hw-head { display: grid; gap: 12px; padding-bottom: 6px; }
-.hw-head h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 900; letter-spacing: -.045em; overflow-wrap: anywhere; }
+.hw-head h1 { font-size: clamp(28px, 4vw, 44px); font-weight: 700; letter-spacing: -.03em; overflow-wrap: anywhere; }
 .hw-head-meta { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .hw-sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--top-h, 64px)); z-index: 15; background: var(--paper); padding: 12px 0; border-bottom: 1px solid var(--line); display: grid; gap: 10px; }
 .hw-prog.big { font-size: 15px; }
 .hw-prog.big .pbar { height: 10px; }
 .hw-jump { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .hw-jump::-webkit-scrollbar { display: none; }
-.hw-jump .hwi { flex: none; cursor: pointer; font: 700 12.5px/1.2 var(--f-display); }
+.hw-jump .hwi { flex: none; cursor: pointer; font: 600 12.5px/1.2 var(--f-display); }
 button.hwi { font-family: inherit; }
 .hw-ege { border: 1px solid var(--line); border-radius: 20px; padding: 18px 20px; background: var(--paper); display: grid; gap: 12px; min-width: 0; }
 .hw-ege-h { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
 .hw-ege-h .lvl { width: 40px; height: 40px; font-size: 17px; }
-.hw-ege-h h3 { font-size: 19px; font-weight: 800; margin-top: 4px; }
+.hw-ege-h h3 { font-size: 19px; font-weight: 650; margin-top: 4px; }
 .hw-ege .task-goal { margin: 0; font-size: 16px; }
-.hw-more > summary { cursor: pointer; font: 700 14.5px var(--f-display); color: var(--blue-ink); padding: 4px 0; }
+.hw-more > summary { cursor: pointer; font: 600 14.5px var(--f-display); color: var(--blue-ink); padding: 4px 0; }
 .hw-more[open] > summary { margin-bottom: 14px; }
 .hw-more > *:not(summary) + *:not(summary) { margin-top: 16px; }
 .hw-finish { margin-top: 26px; background: var(--ok-soft); border-style: solid; border-color: transparent; color: var(--ink-2); }
@@ -905,9 +1004,9 @@ button.hwi { font-family: inherit; }
 .mx-tbl th.c a { color: var(--ink-2); font: 700 12px/1 var(--f-mono); letter-spacing: 0; text-transform: none; }
 .mx-tbl td:first-child, .mx-tbl th:first-child { position: sticky; left: 0; background: var(--paper); z-index: 1; box-shadow: 1px 0 0 var(--line); }
 .mx-tbl tbody tr:hover td:first-child { background: var(--paper-2); }
-.mx-tbl tfoot td { border-top: 1px solid var(--line); font: 700 12.5px var(--f-display); color: var(--mute); padding: 10px 6px; }
+.mx-tbl tfoot td { border-top: 1px solid var(--line); font: 600 12.5px var(--f-display); color: var(--mute); padding: 10px 6px; }
 .mx-tbl tfoot td:first-child { padding-left: 14px; }
-.mx { display: inline-grid; place-items: center; min-width: 30px; height: 28px; padding: 0 6px; border-radius: 8px; font: 800 14px/1 var(--f-display); color: var(--mute); background: var(--paper-2); }
+.mx { display: inline-grid; place-items: center; min-width: 30px; height: 28px; padding: 0 6px; border-radius: 8px; font: 650 14px/1 var(--f-display); color: var(--mute); background: var(--paper-2); }
 .mx small { font-size: 10px; margin-left: 2px; opacity: .8; }
 .mx.ok { background: var(--ok-soft); color: var(--ok); }
 .mx.bad { background: var(--bad-soft); color: var(--bad); }
@@ -917,7 +1016,7 @@ button.hwi { font-family: inherit; }
 .mfig { margin: 12px 0; display: grid; gap: 6px; justify-items: start; }
 .mfig .mimg { border: 1px solid var(--line); background: #fff; }
 .mfig figcaption { font-size: 13px; color: var(--mute); }
-.md-h { font-size: 17px; font-weight: 800; margin: 18px 0 8px; }
+.md-h { font-size: 17px; font-weight: 650; margin: 18px 0 8px; }
 .pauth { font-size: 12px; color: var(--mute); white-space: nowrap; }
 /* редактор */
 .ed-list { display: grid; gap: 4px; }
@@ -940,7 +1039,7 @@ button.hwi { font-family: inherit; }
 .ed-check { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--ink-2); }
 .ed-check input { width: 18px; height: 18px; accent-color: var(--blue); }
 .ed-data { border: 1px solid var(--line); border-radius: 16px; padding: 12px 16px; }
-.ed-data > summary { cursor: pointer; font: 700 14.5px var(--f-display); }
+.ed-data > summary { cursor: pointer; font: 600 14.5px var(--f-display); }
 .ed-data[open] > summary { margin-bottom: 12px; }
 .ed-data > * + * { margin-top: 12px; }
 .fld input[type=file] { padding: 9px 12px; font-size: 14px; }
@@ -951,7 +1050,7 @@ button.hwi { font-family: inherit; }
 .md-img { color: var(--blue-ink); }
 .md-img.busy { opacity: .5; pointer-events: none; }
 .md-help { margin-left: auto; position: relative; }
-.md-help > summary { list-style: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 13px var(--f-display); color: var(--mute); border: 1px solid var(--line); background: var(--paper); }
+.md-help > summary { list-style: none; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 600 13px var(--f-display); color: var(--mute); border: 1px solid var(--line); background: var(--paper); }
 .md-help > summary::-webkit-details-marker { display: none; }
 .md-help > div { position: absolute; right: 0; top: 32px; z-index: 30; width: min(380px, 80vw); padding: 12px 14px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 13px; line-height: 1.8; color: var(--ink-2); }
 @media (max-width: 960px) { .ed-split { grid-template-columns: minmax(0, 1fr); } .fld textarea.ed-body { min-height: 220px; } }
@@ -977,7 +1076,7 @@ button.hwi { font-family: inherit; }
   .side { display: none; }
   .numbar { display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 12px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + var(--top-h, 104px)); background: var(--paper); z-index: 10; scrollbar-width: none; }
   .numbar::-webkit-scrollbar { display: none; }
-  .numbar a { flex: none; min-width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--line); font: 800 15px/1 var(--f-display); color: var(--ink); }
+  .numbar a { flex: none; min-width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; border: 1px solid var(--line); font: 650 15px/1 var(--f-display); color: var(--ink); }
   .numbar a:hover { text-decoration: none; }
   .numbar a.on { background: var(--ink); color: var(--paper); border-color: var(--ink); }
   .topic { grid-template-columns: minmax(0, 1fr); }
@@ -1029,8 +1128,8 @@ button.hwi { font-family: inherit; }
 </div></header>
 <main id="app"></main>
 <footer class="foot"><div class="wrap">
-  <span><b>stackly</b> · методичка по ЕГЭ по информатике. Структура заданий — по плану изменений КИМ ЕГЭ 2027 (ФИПИ).</span>
-  <span>Задачи банка авторские, ответы проверены запуском решений.</span>
+  <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
+  <span>Курс ЕГЭ по информатике: структура заданий по плану изменений КИМ ЕГЭ 2027 (ФИПИ), ответы банка проверены запуском решений.</span>
 </div></footer>
 <script>
 window.LOOP_PATH = 'M-80.0 288.4 L-75.7 292.0 L-71.2 295.3 L-66.6 298.5 L-61.9 301.6 L-57.1 304.5 L-52.2 307.2 L-47.2 309.7 L-42.2 312.1 L-37.0 314.2 L-31.8 316.2 L-26.5 317.9 L-21.2 319.5 L-15.8 320.8 L-10.3 321.9 L-4.8 322.8 L0.7 323.5 L6.2 324.0 L11.7 324.3 L17.2 324.3 L22.8 324.1 L28.3 323.7 L33.7 323.0 L39.2 322.2 L44.6 321.1 L50.0 319.8 L55.3 318.2 L60.5 316.5 L65.7 314.5 L70.7 312.4 L75.7 310.0 L80.6 307.4 L85.4 304.6 L90.1 301.7 L94.6 298.5 L99.0 295.2 L103.3 291.7 L107.4 288.0 L111.4 284.2 L115.3 280.3 L118.9 276.1 L122.4 271.9 L125.7 267.5 L128.9 263.0 L131.9 258.5 L134.6 253.8 L137.2 249.0 L139.6 244.2 L141.8 239.2 L143.8 234.3 L145.6 229.3 L147.2 224.2 L148.5 219.2 L149.7 214.1 L150.7 209.0 L151.4 204.0 L152.0 199.0 L152.3 194.0 L152.4 189.0 L152.3 184.1 L152.0 179.3 L151.6 174.6 L150.9 170.0 L150.0 165.4 L148.9 161.0 L147.7 156.7 L146.2 152.6 L144.6 148.5 L142.8 144.7 L140.9 141.0 L138.8 137.5 L136.5 134.2 L134.1 131.0 L131.5 128.1 L128.8 125.4 L126.0 122.9 L123.1 120.6 L120.1 118.5 L116.9 116.7 L113.7 115.1 L110.4 113.8 L107.0 112.7 L103.6 111.9 L100.1 111.3 L96.6 111.0 L93.0 110.9 L89.4 111.2 L85.8 111.6 L82.2 112.4 L78.6 113.4 L75.1 114.7 L71.5 116.3 L68.0 118.1 L64.6 120.2 L61.2 122.5 L57.9 125.2 L54.6 128.0 L51.5 131.1 L48.4 134.5 L45.4 138.1 L42.6 141.9 L39.9 145.9 L37.3 150.2 L34.9 154.7 L32.6 159.4 L30.5 164.2 L28.6 169.3 L26.8 174.5 L25.2 180.0 L23.8 185.5 L22.6 191.2 L21.5 197.1 L20.7 203.0 L20.1 209.1 L19.7 215.3 L19.5 221.6 L19.6 228.0 L19.8 234.4 L20.3 240.9 L21.0 247.4 L22.0 253.9 L23.1 260.5 L24.5 267.1 L26.2 273.6 L28.0 280.2 L30.1 286.7 L32.4 293.1 L35.0 299.5 L37.7 305.8 L40.7 312.1 L43.9 318.2 L47.3 324.3 L50.9 330.2 L54.8 336.0 L58.8 341.6 L63.0 347.1 L67.4 352.4 L72.0 357.6 L76.7 362.6 L81.6 367.3 L86.7 371.9 L91.9 376.3 L97.3 380.5 L102.8 384.4 L108.4 388.1 L114.2 391.6 L120.0 394.8 L126.0 397.8 L132.0 400.5 L138.1 402.9 L144.3 405.1 L150.6 407.0 L156.9 408.7 L163.2 410.1 L169.6 411.2 L176.0 412.1 L182.4 412.6 L188.7 412.9 L195.1 412.9 L201.5 412.7 L207.8 412.2 L214.1 411.4 L220.3 410.4 L226.5 409.0 L232.6 407.5 L238.6 405.7 L244.5 403.6 L250.3 401.3 L256.0 398.7 L261.6 396.0 L267.1 393.0 L272.4 389.8 L277.6 386.4 L282.7 382.8 L287.6 379.0 L292.3 375.0 L296.9 370.9 L301.3 366.5 L305.5 362.1 L309.5 357.5 L313.3 352.8 L317.0 347.9 L320.5 342.9 L323.7 337.9 L326.8 332.8 L329.6 327.5 L332.2 322.3 L334.7 316.9 L336.9 311.6 L338.9 306.2 L340.7 300.7 L342.3 295.3 L343.7 289.9 L344.8 284.5 L345.8 279.1 L346.6 273.8 L347.1 268.5 L347.5 263.3 L347.7 258.2 L347.6 253.1 L347.4 248.1 L347.0 243.3 L346.4 238.5 L345.7 233.9 L344.8 229.4 L343.7 225.0 L342.4 220.8 L341.0 216.7 L339.5 212.8 L337.8 209.1 L336.0 205.5 L334.1 202.2 L332.1 199.0 L329.9 196.0 L327.7 193.2 L325.3 190.6 L322.9 188.3 L320.4 186.1 L317.8 184.1 L315.2 182.4 L312.5 180.9 L309.8 179.6 L307.1 178.5 L304.3 177.7 L301.5 177.1 L298.7 176.7 L296.0 176.5 L293.2 176.5 L290.4 176.8 L287.7 177.2 L285.0 177.9 L282.4 178.8 L279.8 179.9 L277.2 181.2 L274.7 182.8 L272.3 184.5 L270.0 186.4 L267.8 188.4 L265.6 190.7 L263.6 193.1 L261.7 195.7 L259.8 198.5 L258.1 201.4 L256.6 204.4 L255.1 207.6 L253.8 211.0 L252.6 214.4 L251.6 218.0 L250.7 221.6 L249.9 225.4 L249.3 229.3 L248.9 233.2 L248.6 237.2 L248.4 241.3 L248.4 245.4 L248.6 249.6 L249.0 253.8 L249.5 258.1 L250.1 262.3 L251.0 266.6 L252.0 270.9 L253.1 275.2 L254.4 279.4 L255.9 283.7 L257.5 287.9 L259.3 292.0 L261.2 296.1 L263.3 300.2 L265.6 304.2 L267.9 308.1 L270.5 312.0 L273.1 315.7 L275.9 319.4 L278.8 323.0 L281.9 326.4 L285.0 329.8 L288.3 333.0 L291.7 336.2 L295.2 339.2 L298.8 342.0 L302.5 344.7 L306.3 347.3 L310.2 349.8 L314.2 352.0 L318.2 354.2 L322.3 356.2 L326.5 358.0 L330.7 359.7 L335.0 361.2 L339.3 362.5 L343.7 363.7 L348.0 364.7 L352.5 365.5 L356.9 366.2 L361.4 366.7 L365.8 367.0 L370.3 367.2 L374.8 367.2 L379.2 367.1 L383.7 366.7 L388.1 366.3 L392.5 365.6 L396.8 364.8 L401.2 363.9 L405.5 362.8 L409.7 361.5 L413.9 360.1 L418.0 358.6 L422.1 356.9 L426.1 355.0 L430.1 353.1 L433.9 351.0 L437.7 348.8 L441.4 346.5 L445.1 344.1 L448.6 341.5 L452.1 338.9 L455.4 336.1 L458.7 333.3 L461.8 330.4 L464.9 327.3 L467.9 324.3 L470.7 321.1 L473.4 317.9 L476.1 314.6 L478.6 311.2 L481.0 307.9 L483.3 304.4 L485.5 301.0 L487.5 297.5 L489.5 293.9 L491.3 290.4 L493.0 286.8 L494.6 283.3 L496.1 279.7 L497.5 276.1 L498.8 272.6 L499.9 269.1 L501.0 265.5 L501.9 262.0 L502.7 258.6 L503.4 255.2 L504.0 251.8 L504.5 248.4 L504.9 245.1 L505.2 241.9 L505.4 238.7 L505.5 235.6 L505.5 232.6 L505.4 229.6 L505.3 226.8 L505.0 224.0 L504.7 221.2 L504.3 218.6 L503.8 216.1 L503.2 213.7 L502.6 211.3 L501.9 209.1 L501.2 207.0 L500.4 205.0 L499.5 203.1 L498.6 201.3 L497.7 199.6 L496.7 198.0 L495.7 196.6 L494.6 195.3 L493.5 194.1 L492.4 193.0 L491.3 192.1 L490.1 191.3 L488.9 190.6 L487.8 190.0 L486.6 189.6 L485.4 189.3 L484.3 189.1 L483.1 189.0 L482.0 189.1 L480.9 189.3 L479.8 189.6 L478.7 190.1 L477.7 190.7 L476.7 191.3 L475.7 192.2 L474.8 193.1 L473.9 194.1 L473.1 195.3 L472.3 196.6 L471.6 197.9 L471.0 199.4 L470.4 201.0 L469.9 202.7 L469.5 204.5 L469.1 206.4 L468.9 208.3 L468.7 210.4 L468.6 212.5 L468.6 214.7 L468.7 217.0 L468.8 219.4 L469.1 221.8 L469.5 224.3 L470.0 226.8 L470.6 229.4 L471.3 232.0 L472.1 234.7 L473.0 237.4 L474.0 240.1 L475.2 242.8 L476.4 245.6 L477.8 248.4 L479.3 251.2 L480.9 254.0 L482.6 256.7 L484.4 259.5 L486.4 262.3 L488.5 265.0 L490.7 267.7 L493.0 270.4 L495.4 273.0 L497.9 275.6 L500.6 278.1 L503.4 280.6 L506.2 283.0 L509.2 285.4 L512.3 287.6 L515.5 289.8 L518.8 291.9 L522.2 293.9 L525.7 295.8 L529.3 297.6 L533.0 299.3 L536.7 300.9 L540.6 302.3 L544.5 303.7 L548.5 304.9 L552.6 306.0 L556.7 306.9 L560.9 307.7 L565.2 308.4 L569.5 308.9 L573.8 309.2 L578.2 309.4 L582.7 309.5 L587.1 309.4 L591.6 309.1 L596.1 308.7 L600.7 308.1 L605.2 307.4 L609.7 306.4 L614.3 305.3 L618.8 304.1 L623.3 302.7 L627.8 301.1 L632.2 299.3 L636.6 297.4 L641.0 295.3 L645.4 293.0 L649.6 290.6 L653.9 288.0 L658.0 285.3 L662.1 282.4 L666.1 279.4 L670.0 276.2 L673.9 272.8 L677.6 269.4 L681.3 265.8 L684.8 262.0 L688.2 258.2 L691.5 254.2 L694.7 250.1 L697.8 245.9 L700.7 241.6 L703.5 237.2 L706.2 232.7 L708.7 228.1 L711.1 223.5 L713.3 218.7 L715.4 214.0 L717.3 209.2 L719.1 204.3 L720.7 199.4 L722.1 194.5 L723.4 189.5 L724.6 184.6 L725.5 179.6 L726.3 174.7 L726.9 169.8 L727.4 164.9 L727.7 160.0 L727.8 155.2 L727.8 150.4 L727.6 145.7 L727.2 141.1 L726.7 136.6 L726.0 132.1 L725.2 127.8 L724.2 123.5 L723.1 119.4 L721.8 115.4 L720.4 111.5 L718.9 107.8 L717.2 104.2 L715.4 100.8 L713.5 97.5 L711.5 94.4 L709.3 91.5 L707.1 88.8 L704.8 86.3 L702.4 83.9 L699.9 81.8 L697.3 79.8 L694.7 78.1 L692.0 76.6 L689.3 75.3 L686.5 74.2 L683.7 73.4 L680.8 72.8 L678.0 72.4 L675.1 72.2 L672.3 72.3 L669.4 72.6 L666.6 73.1 L663.8 73.9 L661.0 74.9 L658.3 76.1 L655.6 77.6 L653.0 79.2 L650.4 81.2 L647.9 83.3 L645.6 85.6 L643.3 88.2 L641.1 90.9 L639.0 93.9 L637.1 97.1 L635.2 100.4 L633.6 103.9 L632.0 107.6 L630.6 111.5 L629.4 115.6 L628.3 119.8 L627.4 124.1 L626.6 128.6 L626.0 133.2 L625.7 137.9 L625.5 142.7 L625.5 147.6 L625.7 152.6 L626.0 157.7 L626.6 162.9 L627.4 168.1 L628.5 173.3 L629.7 178.6 L631.1 183.9 L632.8 189.2 L634.6 194.5 L636.7 199.8 L639.0 205.1 L641.5 210.3 L644.2 215.5 L647.1 220.6 L650.2 225.6 L653.5 230.6 L657.0 235.4 L660.7 240.2 L664.7 244.8 L668.8 249.3 L673.0 253.7 L677.5 257.9 L682.1 262.0 L687.0 265.9 L691.9 269.6 L697.0 273.1 L702.3 276.4 L707.7 279.6 L713.2 282.5 L718.9 285.2 L724.7 287.6 L730.6 289.9 L736.5 291.9 L742.6 293.6 L748.8 295.1 L755.0 296.4 L761.2 297.4 L767.6 298.1 L773.9 298.6 L780.3 298.8 L786.7 298.7 L793.2 298.4 L799.6 297.8 L806.0 296.9 L812.4 295.8 L818.7 294.4 L825.0 292.7 L831.3 290.8 L837.5 288.6 L843.6 286.1 L849.7 283.4 L855.6 280.5 L861.5 277.3 L867.2 273.9 L872.8 270.2 L878.3 266.3 L883.6 262.3 L888.8 257.9 L893.9 253.4 L898.8 248.8 L903.5 243.9 L908.0 238.8 L912.4 233.6 L916.6 228.2 L920.5 222.7 L924.3 217.1 L927.9 211.3 L931.2 205.4 L934.4 199.5 L937.3 193.4 L940.0 187.3 L942.5 181.1 L944.7 174.9 L946.8 168.6 L948.6 162.3 L950.2 156.0 L951.5 149.7 L952.6 143.4 L953.5 137.1 L954.2 130.9 L954.6 124.7 L954.8 118.6 L954.8 112.5 L954.6 106.6 L954.1 100.7 L953.4 95.0 L952.6 89.4 L951.5 83.9 L950.3 78.6 L948.8 73.4 L947.2 68.4 L945.4 63.6 L943.4 58.9 L941.3 54.4 L939.0 50.2 L936.5 46.1 L933.9 42.3 L931.2 38.7 L928.4 35.4 L925.4 32.2 L922.4 29.4 L919.2 26.7 L916.0 24.3 L912.7 22.2 L909.3 20.4 L905.8 18.8 L902.4 17.5 L898.8 16.4 L895.3 15.6 L891.7 15.1 L888.2 14.9 L884.6 14.9 L881.1 15.2 L877.6 15.8 L874.1 16.6 L870.6 17.7 L867.3 19.1 L863.9 20.7 L860.7 22.6 L857.5 24.7 L854.5 27.1 L851.5 29.7 L848.6 32.5 L845.9 35.6 L843.3 38.8 L840.8 42.3 L838.5 46.0 L836.3 49.9 L834.2 53.9 L832.3 58.2 L830.6 62.6 L829.1 67.1 L827.7 71.8 L826.5 76.7 L825.5 81.6 L824.7 86.7 L824.1 91.9 L823.7 97.2 L823.5 102.5 L823.5 108.0 L823.7 113.4 L824.1 119.0 L824.7 124.6 L825.5 130.2 L826.5 135.8 L827.7 141.4 L829.1 147.0 L830.7 152.6 L832.6 158.2 L834.6 163.7 L836.8 169.1 L839.2 174.5 L841.9 179.9 L844.7 185.1 L847.6 190.3 L850.8 195.3 L854.1 200.3 L857.6 205.1 L861.3 209.8 L865.1 214.3 L869.1 218.7 L873.2 223.0 L877.5 227.1 L881.9 231.0 L886.4 234.7 L891.0 238.3 L895.8 241.7 L900.6 244.9 L905.6 247.9 L910.6 250.7 L915.7 253.3 L920.9 255.7 L926.2 257.8 L931.5 259.8 L936.8 261.6 L942.2 263.1 L947.6 264.4 L953.0 265.5 L958.5 266.4 L963.9 267.1 L969.4 267.6 L974.8 267.8 L980.2 267.8 L985.6 267.6 L991.0 267.3 L996.3 266.7 L1001.5 265.9 L1006.7 264.9 L1011.9 263.7 L1016.9 262.3 L1021.9 260.8 L1026.8 259.0 L1031.6 257.1 L1036.3 255.1 L1040.9 252.8 L1045.4 250.4 L1049.8 247.9 L1054.1 245.2 L1058.2 242.4 L1062.2 239.5 L1066.1 236.4 L1069.8 233.2 L1073.4 230.0 L1076.9 226.6 L1080.2 223.1 L1083.4 219.6 L1086.4 216.0 L1089.2 212.4 L1091.9 208.6 L1094.5 204.9 L1096.9 201.1 L1099.1 197.3 L1101.2 193.4 L1103.1 189.6 L1104.9 185.7 L1106.5 181.8 L1108.0 178.0 L1109.3 174.2 L1110.4 170.4 L1111.4 166.6 L1112.3 162.9 L1113.0 159.3 L1113.6 155.7 L1114.0 152.2 L1114.3 148.7 L1114.5 145.4 L1114.5 142.1 L1114.4 138.9 L1114.2 135.8 L1113.9 132.8 L1113.4 130.0 L1112.9 127.2 L1112.2 124.6 L1111.5 122.1 L1110.6 119.7 L1109.7 117.5 L1108.7 115.4 L1107.6 113.4 L1106.4 111.6 L1105.2 109.9 L1103.9 108.4 L1102.5 107.0 L1101.1 105.8 L1099.7 104.7 L1098.2 103.9 L1096.7 103.1 L1095.2 102.5 L1093.6 102.1 L1092.0 101.9 L1090.4 101.8 L1088.8 101.8 L1087.2 102.0 L1085.7 102.4 L1084.1 102.9 L1082.5 103.6 L1081.0 104.5 L1079.5 105.5 L1078.0 106.6 L1076.6 107.9 L1075.2 109.3 L1073.9 110.9 L1072.6 112.6 L1071.3 114.4 L1070.2 116.4 L1069.1 118.5 L1068.0 120.7 L1067.1 123.1 L1066.2 125.5 L1065.4 128.1 L1064.7 130.8 L1064.0 133.5 L1063.5 136.4 L1063.0 139.4 L1062.7 142.4 L1062.4 145.5 L1062.2 148.7 L1062.2 152.0 L1062.2 155.3 L1062.4 158.7 L1062.7 162.2 L1063.0 165.7 L1063.5 169.2 L1064.1 172.8 L1064.8 176.4 L1065.6 180.0 L1066.5 183.6 L1067.6 187.3 L1068.7 191.0 L1070.0 194.7 L1071.3 198.3 L1072.8 202.0 L1074.4 205.7 L1076.1 209.3 L1077.9 212.9 L1079.9 216.5 L1081.9 220.0 L1084.0 223.5 L1086.3 227.0 L1088.6 230.4 L1091.0 233.8 L1093.6 237.1 L1096.2 240.3 L1098.9 243.5 L1101.8 246.6 L1104.7 249.6 L1107.6 252.6 L1110.7 255.4 L1113.9 258.2 L1117.1 260.9 L1120.4 263.4 L1123.7 265.9 L1127.2 268.3 L1130.7 270.6 L1134.2 272.7 L1137.8 274.8 L1141.5 276.7 L1145.2 278.5 L1148.9 280.3 L1152.7 281.8 L1156.6 283.3 L1160.4 284.6 L1164.3 285.9 L1168.2 286.9 L1172.1 287.9 L1176.1 288.7 L1180.0 289.4 L1184.0 290.0 L1188.0 290.4 L1191.9 290.7 L1195.9 290.9 L1199.8 291.0 L1203.7 290.9 L1207.6 290.7 L1211.5 290.3 L1215.3 289.9 L1219.2 289.3 L1222.9 288.6 L1226.7 287.7 L1230.4 286.8 L1234.0 285.7 L1237.6 284.5 L1241.1 283.2 L1244.6 281.8 L1248.0 280.2 L1251.3 278.6 L1254.6 276.8 L1257.7 275.0 L1260.8 273.1 L1263.9 271.0 L1266.8 268.9 L1269.6 266.7 L1272.4 264.4 L1275.0 262.1 L1277.6 259.7 L1280.0 257.2';
@@ -1852,7 +1951,120 @@ function stacklyApp() {
         <span class="nm">${esc(t.short)}</span>${done ? '<span class="done" title="все задачи решены"></span>' : ''}</a>`;
     }).join('');
   }
+  /* ═════════════ ГЛАВНАЯ: ПЛАТФОРМА ДЛЯ ПРЕПОДАВАТЕЛЕЙ ═════════════ */
+  // превью на главной собраны из тех же классов, что и настоящие экраны учителя и ученика (.mx, .hwi, .due)
+  const HOME_MX = [
+    ['Аня Смирнова', [1, 1, 2, 1, 1, 1]],
+    ['Илья Петров', [1, 3, 1, 2, -2, 1]],
+    ['Маша Козлова', [2, 1, 1, 0, 0, 0]],
+    ['Дима Орлов', [1, -3, 2, 1, 1, 0]],
+    ['Катя Волкова', [1, 1, 1, 1, 2, 1]],
+  ];
+  const mxCell = v => v > 0 ? `<span class="mx ok">${v}</span>` : v < 0 ? `<span class="mx bad">${-v}</span>` : '<span class="mx">-</span>';
+  function homeCta() {
+    if (acct.cloud && (acct.role === 'teacher' || acct.role === 'admin')) return `<a class="btn blue" href="#teach">Мои группы <span class="arr">${I.arrow}</span></a>`;
+    if (acct.cloud) return `<a class="btn blue" href="#hw">Мои задания <span class="arr">${I.arrow}</span></a>`;
+    return `<a class="btn blue" href="#signup">Начать бесплатно <span class="arr">${I.arrow}</span></a>`;
+  }
   function pageHome() {
+    const done = HOME_MX.filter(([, r]) => r.every(v => v > 0)).length;
+    const subj = ['Математика', 'Физика', 'Информатика', 'Русский язык', 'Английский', 'Химия', 'Биология', 'История'];
+    return `<div class="page home">
+    <section class="h-hero"><div class="wrap h-hero-grid">
+      <div class="h-copy">
+        <span class="eyebrow">Для репетиторов и преподавателей</span>
+        <h1>Ученики, домашние задания и прогресс в одном месте</h1>
+        <p class="lead">Соберите группу, выдайте задачи с автопроверкой и смотрите, кто справился, а кому нужна помощь.</p>
+        <div class="cta">${homeCta()}<a class="btn ghost" href="#course">Готовый курс ЕГЭ</a></div>
+      </div>
+      <figure class="hpv h-pv" aria-label="Пример: статистика домашнего задания по группе">
+        <div class="pv-bar"><span>9Б · Алгебра</span><span class="due ok">Сдали ${done} из ${HOME_MX.length}</span></div>
+        <div class="pv-body">
+          <h3>Квадратные уравнения</h3>
+          <p class="pv-sub">6 задач · срок до четверга</p>
+          <table class="mx-tbl pv-mx"><thead><tr><th>Ученик</th>${[1, 2, 3, 4, 5, 6].map(n => `<th class="c">${n}</th>`).join('')}</tr></thead>
+          <tbody>${HOME_MX.map(([n, r], i) => `<tr style="--i:${i}"><td>${n}</td>${r.map(v => `<td class="c">${mxCell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>
+          <p class="pv-note"><span class="mx ok">1</span> верно, число попыток <span class="mx bad">3</span> пока ошибка</p>
+        </div>
+      </figure>
+    </div></section>
+
+    <section class="section h-feat"><div class="wrap">
+      <h2 class="h-title">Всё, что нужно для занятий</h2>
+      <div class="bento">
+        <article class="bx bx-groups">
+          <h3>Группы по коду приглашения</h3>
+          <p>Создайте группу и отправьте ученикам код. Они вводят его в кабинете и сразу видят ваши задания.</p>
+          <div class="bx-art"><span class="code-chip">FL4H-H4J4</span><span class="code-chip ghost">9Б · Пн 18:00</span><span class="code-chip ghost">ОГЭ, индивидуально</span></div>
+        </article>
+        <article class="bx bx-check">
+          <h3>Автопроверка ответов</h3>
+          <p>Ученик вводит ответ и сразу узнаёт, верно ли. Вы видите каждую попытку.</p>
+          <div class="bx-art"><div class="ans"><span>x₁ + x₂ =</span><b>7</b><i>${I.check}</i></div></div>
+        </article>
+        <article class="bx bx-subj">
+          <h3>Любой предмет</h3>
+          <p>Пишите свои задачи с картинками и формулами или берите готовые из банка.</p>
+          <div class="bx-art subj">${subj.map(x => `<span class="chip">${x}</span>`).join('')}</div>
+        </article>
+        <article class="bx bx-stats">
+          <h3>Статистика по каждому ученику</h3>
+          <p>Решено, точность, серия дней и сданные ДЗ. Сразу видно, кто отстаёт.</p>
+          <div class="bx-art st">
+            <div><b>86%</b><span>точность группы</span></div>
+            <div><b>4 из 5</b><span>сдали вовремя</span></div>
+            <div><b>12</b><span>дней подряд у Ани</span></div>
+          </div>
+        </article>
+      </div>
+    </div></section>
+
+    <section class="section h-student"><div class="wrap h-split">
+      <figure class="hpv" aria-label="Пример: домашнее задание глазами ученика">
+        <div class="pv-bar"><span>Мои задания</span><span class="due soon">до четверга</span></div>
+        <div class="pv-body">
+          <h3>Квадратные уравнения</h3>
+          <p class="hw-comment">Повторите теорему Виета. Задачи 4, 5 и 6 со звёздочкой.</p>
+          <div class="hw-items">
+            <span class="hwi ok">${I.check}<span>Задача 1</span></span><span class="hwi ok">${I.check}<span>Задача 2</span></span><span class="hwi ok">${I.check}<span>Задача 3</span></span>
+            <span class="hwi"><b>4</b><span>Дискриминант</span></span><span class="hwi"><b>5</b><span>Теорема Виета</span></span><span class="hwi"><b>6</b><span>Задача с параметром</span></span>
+          </div>
+          <div class="hw-prog">Решено 3 из 6</div>
+        </div>
+      </figure>
+      <div class="h-copy">
+        <h2 class="h-title">Ученику не нужно ничего объяснять</h2>
+        <p class="lead">Всё задание на одной странице: теория, задачи и проверка ответа. Ничего не нужно скачивать и пересылать.</p>
+        <ul class="h-list">
+          <li>${I.check}<span>Вход по почте, группа по коду</span></li>
+          <li>${I.check}<span>Сроки и напоминания о несданных заданиях</span></li>
+          <li>${I.check}<span>Работает с телефона</span></li>
+        </ul>
+      </div>
+    </div></section>
+
+    <section class="section h-course"><div class="wrap">
+      <span class="eyebrow">Готовый курс</span>
+      <h2 class="h-title">ЕГЭ по информатике уже внутри</h2>
+      <p class="lead">Разборы всех 27 заданий, учебник Python из ${PY.length} тем и ${BANK_TOTAL} задач с решениями. Выдавайте их в домашних заданиях как свои.</p>
+      <div class="tiles h-tiles" lang="ru">${mapTiles()}</div>
+      <a class="btn ghost" href="#course">Обзор курса <span class="arr">${I.arrow}</span></a>
+    </div></section>
+
+    <section class="section"><div class="wrap">
+      <div class="band">
+        <svg class="loop" viewBox="0 0 1200 440" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><path pathLength="1" d="${LOOP}"/></svg>
+        <div class="in">
+          <h3>Начните с одной группы</h3>
+          <p>Регистрация занимает минуту. Добавьте учеников и выдайте первое задание сегодня.</p>
+          ${homeCta()}
+        </div>
+      </div>
+    </div></section>
+    </div>`;
+  }
+
+  function pageCourse() {
     const pyCount = EGE.filter(t => toolKind(t) === 'py').length;
     const total = EGE.reduce((s, t) => s + t.time, 0);
     let x = 0;
@@ -1871,8 +2083,8 @@ function stacklyApp() {
     return `<div class="page">
     <section class="hero"><div class="wrap hero-grid">
       <div>
-        <div class="wordmark" aria-label="stackly"><span class="word">stackly</span></div>
-        <h1>ЕГЭ по информатике: все 27 заданий в одной методичке</h1>
+        <span class="eyebrow">Готовый курс</span>
+        <h1 class="course-h1">ЕГЭ по информатике: все 27 заданий в одной методичке</h1>
         <p class="lead">Для каждого задания — типы, теория и формулы, пошаговый ход решения и готовые конструкции на Python. Отдельно — учебник Python из 43 тем и банк задач с проверкой ответа и решениями.</p>
         <div class="cta">
           <a class="btn blue" href="#ege-1">Открыть методичку <span class="arr">${I.arrow}</span></a>
@@ -2008,7 +2220,17 @@ function stacklyApp() {
   }
 
   /* ═════════════ БАНК ═════════════ */
-  const bankF = { task: 0, level: '', status: '', q: '' };
+  const bankF = { task: 0, level: '', status: '', q: '', subj: '', src: '' };
+  // задача из ЕГЭ по информатике — с номером задания; любая другая (task = 0) — с предметом и темой от преподавателя
+  const EGE_SUBJ = 'ЕГЭ · информатика';
+  const psubj = p => p.task ? EGE_SUBJ : (p.src && p.src.subject) || 'Без предмета';
+  const ptag = p => p.task ? '№' + p.task : (p.src && (p.src.topic || p.src.subject)) || 'задача';
+  // platform — общий банк (встроенные и задачи администратора), mine — свои, teachers — других преподавателей
+  const psrc = p => !p.src || p.src.builtin || p.src.vis === 'platform' ? 'platform' : p.src.author_id === acct.uid ? 'mine' : 'teachers';
+  const subjList = list => {
+    const c = new Map(); list.forEach(p => c.set(psubj(p), (c.get(psubj(p)) || 0) + 1));
+    return [...c].sort((a, b) => (b[0] === EGE_SUBJ) - (a[0] === EGE_SUBJ) || a[0].localeCompare(b[0], 'ru'));
+  };
   const lvDots = { 'Б': 1, 'П': 2, 'В': 3 }, lvWord = { 'Б': 'базовая', 'П': 'средняя', 'В': 'сложная' };
   const norm = s => String(s).trim().toLowerCase().replace(/[,;]/g, ' ').split(/\s+/).filter(Boolean).join(' ');
   // 19–21 — комплект, как на экзамене: игра описана в задании 19, а 20 и 21 спрашивают о той же игре.
@@ -2029,7 +2251,7 @@ function stacklyApp() {
     const isS = solved.has(p.id), multi = p.answer.includes('\n');
     const lines = p.data ? p.data.split('\n').length : 0, kb = p.data ? (new Blob([p.data]).size / 1024).toFixed(1) : 0;
     return `<article class="prob ${isS ? 'solved' : ''}" style="--i:${Math.min(i, 8)}" data-pid="${p.id}">
-      <div class="prob-head"><span class="pn"><em>№</em>${p.task}</span><span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${p.src && !p.src.builtin ? `<span class="pauth">автор: ${esc(p.src.author || 'учитель')}</span>` : ''}${isS ? '<span class="badge-ok">решено</span>' : ''}
+      <div class="prob-head">${p.task ? `<span class="pn"><em>№</em>${p.task}</span>` : `<span class="pn pn-s">${esc(ptag(p))}</span>`}<span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${p.src && !p.src.builtin ? `<span class="pauth">автор: ${esc(p.src.author || 'учитель')}</span>` : ''}${isS ? '<span class="badge-ok">решено</span>' : ''}
         <span class="diff"><span>${lvWord[p.level]}</span>${[1, 2, 3].map(k => `<i class="${k <= lvDots[p.level] ? 'on' : ''}"></i>`).join('')}</span></div>
       <div class="prob-body">${setHTML(p)}${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}
         ${p.data ? `<div class="datafile"><span class="ico">TXT</span><span><span class="nm">${esc(p.dname)}</span><br><span class="sz">${lines} ${plural(lines, 'строка', 'строки', 'строк')} · ${kb} КБ</span></span>
@@ -2046,7 +2268,8 @@ function stacklyApp() {
   function filteredBank() {
     const q = bankF.q.trim().toLowerCase(), nums = parseNums(q);
     if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
-    return BANK.filter(p => (!bankF.task || p.task === bankF.task) && (!bankF.level || p.level === bankF.level)
+    return BANK.filter(p => (!bankF.src || psrc(p) === bankF.src) && (!bankF.subj || psubj(p) === bankF.subj)
+      && (!bankF.task || p.task === bankF.task) && (!bankF.level || p.level === bankF.level)
       && (!bankF.status || (bankF.status === 'done') === solved.has(p.id))
       && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
   }
@@ -2056,22 +2279,34 @@ function stacklyApp() {
   }
   function pageBank() {
     const counts = {}; BANK.forEach(p => counts[p.task] = (counts[p.task] || 0) + 1);
+    const pool = BANK.filter(p => !bankF.src || psrc(p) === bankF.src), subjs = subjList(pool);
+    if (bankF.subj && !subjs.some(([n]) => n === bankF.subj)) bankF.subj = '';
+    // номера 1–27 нужны, только когда видны задачи ЕГЭ по информатике
+    const showNums = subjs.some(([n]) => n === EGE_SUBJ) && (bankF.subj === EGE_SUBJ || subjs.length === 1);
+    const multi = subjs.length > 1 || subjs.some(([n]) => n !== EGE_SUBJ);
+    const srcs = [['', 'Все'], ['platform', 'Платформа'], ['teachers', 'Преподаватели'], ...(isTeacher() ? [['mine', 'Мои']] : [])];
     const allDone = n => counts[n] && BANK.filter(p => p.task === n).every(p => solved.has(p.id));
     const grp = (lbl, key, opts) => `<span class="grp"><span class="lbl">${lbl}</span>${opts.map(([v, n]) => `<button type="button" class="chip ${bankF[key] === v ? 'on' : ''}" data-f="${key}" data-v="${v}">${n}</button>`).join('')}</span>`;
     return `<div class="page wrap">
       <header class="bank-top"><div><span class="eyebrow">Тренировка</span><h1>Банк задач</h1>
-        <p>${BANK.length} задач по всем номерам в формате КЕГЭ. Введи ответ и нажми «Проверить». Данные для файловых заданий копируются кнопкой — сохрани их в файл с указанным именем и запусти своё решение.</p>
+        <p>${multi ? `Общий банк платформы и задачи преподавателей. Выберите предмет, введите ответ и нажмите «Проверить».` : `${BANK.length} задач по всем номерам в формате КЕГЭ. Введи ответ и нажми «Проверить». Данные для файловых заданий копируются кнопкой — сохрани их в файл с указанным именем и запусти своё решение.`}</p>
         ${isTeacher() ? `<div class="form-acts" style="margin-top:14px"><a class="btn small blue" href="#edit-p-new">Новая задача</a><a class="btn small ghost" href="#edit">Редактор задач</a></div>` : ''}</div>${ringHTML()}</header>
       <div class="filters">
-        <div class="filter-row" role="group" aria-label="Номер задания"><button type="button" class="chip num ${!bankF.task ? 'on' : ''}" data-task="0">Все · ${BANK.length}</button>
-          ${EGE.map(t => `<button type="button" class="chip num ${bankF.task === t.n ? 'on' : ''} ${allDone(t.n) ? 'all-done' : ''}" data-task="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
-        <div class="filter-sub">${grp('Сложность', 'level', [['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']])}
+        ${subjs.length > 1 ? `<div class="filter-row subj-row" role="group" aria-label="Предмет"><button type="button" class="chip ${!bankF.subj ? 'on' : ''}" data-subj="">Все · ${pool.length}</button>
+          ${subjs.map(([n, c]) => `<button type="button" class="chip ${bankF.subj === n ? 'on' : ''}" data-subj="${esc(n)}">${esc(n)} · ${c}</button>`).join('')}</div>` : ''}
+        ${showNums ? `<div class="filter-row" role="group" aria-label="Номер задания"><button type="button" class="chip num ${!bankF.task ? 'on' : ''}" data-task="0">${subjs.length > 1 ? 'Все номера' : 'Все · ' + BANK.length}</button>
+          ${EGE.map(t => `<button type="button" class="chip num ${bankF.task === t.n ? 'on' : ''} ${allDone(t.n) ? 'all-done' : ''}" data-task="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>` : ''}
+        <div class="filter-sub">${BANK.some(p => psrc(p) !== 'platform') ? grp('Банк', 'src', srcs) : ''}${grp('Сложность', 'level', [['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']])}
           ${grp('Статус', 'status', [['', 'Все'], ['todo', 'Не решённые'], ['done', 'Решённые']])}
           <input id="bankq" type="search" placeholder="#17, 5-9 или слова из условия" value="${esc(bankF.q)}"><span class="count-note" id="bankcount"></span></div>
       </div>
       <div id="banktheory">${bankTheory()}</div>
       <div class="plist" id="plist"></div>
     </div>`;
+  }
+  function redrawBank() {
+    if (/^#bank-\d+$/.test(location.hash)) history.replaceState(null, '', '#bank');
+    $('#app').innerHTML = pageBank(); renderProbs();
   }
   function bankTheory() {
     return bankF.task ? `<p style="margin:16px 0 0"><a class="chip wrap-ok" href="#ege-${bankF.task}">Теория к заданию ${bankF.task}: ${esc(egeBy[bankF.task].title)} →</a></p>` : '';
@@ -2398,6 +2633,8 @@ function stacklyApp() {
         <button class="btn blue wide" type="submit">Войти <span class="arr">${I.arrow}</span></button>
         <button type="button" class="linkbtn" data-mode="forgot">Забыли пароль?</button></form>`;
     if (m === 'register') return `${tabs}<form class="auth-form" data-auth="register" novalidate>
+        <div class="role-pick" role="radiogroup" aria-label="Кто вы"><label><input type="radio" name="au-role" value="teacher"><span><b>Я преподаватель</b><small>Веду группы и выдаю задания</small></span></label>
+          <label><input type="radio" name="au-role" value="student"><span><b>Я ученик</b><small>Решаю задачи и сдаю ДЗ</small></span></label></div>
         ${field('au-name', 'Имя', 'text', 'autocomplete="given-name" required maxlength="60"')}
         ${field('au-email', 'Почта', 'email', 'autocomplete="email" required inputmode="email"')}
         ${field('au-pass', 'Пароль — от 8 символов', 'password', 'autocomplete="new-password" required minlength="8"')}
@@ -2432,15 +2669,15 @@ function stacklyApp() {
         <h1>Войдите, чтобы открыть ${gate[2]}</h1>
         <p class="lead">Разборы всех 27 заданий, шпаргалка и банк задач с проверкой ответов доступны после входа. Нет аккаунта — зарегистрируйтесь, это минута.</p>`
       : `<span class="eyebrow">stackly · аккаунт</span>
-        <h1>Вход в stackly</h1>
-        <p class="lead">Войдите, чтобы открыть методичку, шпаргалку и банк задач. Прогресс хранится в аккаунте и виден на любом устройстве.</p>`;
+        <h1>${acct.mode === 'register' ? 'Регистрация в stackly' : 'Вход в stackly'}</h1>
+        <p class="lead">Преподаватели ведут здесь группы и домашние задания, ученики решают задачи и видят свой прогресс.</p>`;
     return `<div class="page wrap auth">
       <section class="auth-copy">
         ${head}
         <ul class="auth-list">
-          <li><span class="no">1</span><div><b>Прогресс в одном месте</b><span>Решённые задачи и изученные темы Python хранятся в аккаунте, а не в браузере.</span></div></li>
-          <li><span class="no">2</span><div><b>Личная статистика</b><span>Точность ответов, серия дней, прогноз первичных баллов и слабые места по номерам.</span></div></li>
-          <li><span class="no">3</span><div><b>Подсказки, что решать дальше</b><span>Кабинет показывает задания с ошибками и номера, к которым вы ещё не подступались.</span></div></li>
+          <li><span class="no">1</span><div><b>Группы и домашние задания</b><span>Преподаватель выдаёт задания группе или отдельным ученикам, ученик видит их в одном месте.</span></div></li>
+          <li><span class="no">2</span><div><b>Автопроверка и статистика</b><span>Ответ проверяется сразу. Прогресс виден и ученику, и преподавателю.</span></div></li>
+          <li><span class="no">3</span><div><b>Всё в аккаунте</b><span>Решённые задачи и сданные задания доступны с любого устройства.</span></div></li>
         </ul>
       </section>
       <div class="auth-card" id="authcard">${authForm()}${guestLink}</div>
@@ -2461,12 +2698,14 @@ function stacklyApp() {
     const email = v('au-email').trim(), pass = v('au-pass');
     if ('au-email' && form.querySelector('#au-email') && !/^\S+@\S+\.\S+$/.test(email)) { msg.textContent = 'Проверьте адрес почты'; return; }
     if (form.querySelector('#au-pass') && pass.length < 8) { msg.textContent = 'Пароль — от 8 символов'; return; }
+    const role = (form.querySelector('[name="au-role"]:checked') || {}).value;
+    if (kind === 'register' && !role) { msg.textContent = 'Выберите: вы преподаватель или ученик'; return; }
     if (kind === 'register' && !v('au-name').trim()) { msg.textContent = 'Укажите имя'; return; }
     btn.disabled = true;
     try {
       let r;
       if (kind === 'login') r = await api('/auth/login', 'POST', { email, password: pass });
-      else if (kind === 'register') r = await api('/auth/register', 'POST', { email, password: pass, name: v('au-name').trim() });
+      else if (kind === 'register') { r = await api('/auth/register', 'POST', { email, password: pass, name: v('au-name').trim(), role }); if (role === 'teacher') { try { sessionStorage.setItem(NEXT, 'teach'); } catch (e) { } } }
       else if (kind === 'reset') r = await api('/auth/reset', 'POST', { token: acct.resetToken, password: pass });
       else if (kind === 'forgot') { await api('/auth/forgot', 'POST', { email }); setMode('sent'); return; }
       setUser(r.user); acct.resetToken = ''; acct.mode = 'login';
@@ -2555,7 +2794,7 @@ function stacklyApp() {
     const activeDays = Object.values(stats.days).filter(n => n > 0).length;
     const recent = stats.events.slice(-8).reverse();
     const evText = e => {
-      if (e.k === 'a') { const p = BANK.find(b => b.id === e.id); return p ? [e.ok ? `Решена задача «${p.title}»` : `Ошибка в задаче «${p.title}»`, `#bank-${p.task}`, `№${p.task}`, e.ok ? 'ok' : 'bad'] : null; }
+      if (e.k === 'a') { const p = BANK.find(b => b.id === e.id); return p ? [e.ok ? `Решена задача «${p.title}»` : `Ошибка в задаче «${p.title}»`, `#p-${p.id}`, ptag(p), e.ok ? 'ok' : 'bad'] : null; }
       if (e.k === 'r') { const t = egeBy[+e.id]; return t ? [`${e.ok ? 'Разобрано' : 'Снята отметка'}: задание ${t.n} «${t.title}»`, `#ege-${t.n}`, '№' + t.n, e.ok ? 'ok' : ''] : null; }
       if (e.k === 's') { const t = pyBy[+e.id]; return t ? [`${e.ok ? 'Изучена' : 'Снята отметка'}: тема «${t.title}»`, `#py-${t.id}`, 'Py', e.ok ? 'ok' : ''] : null; }
       return null;
@@ -2652,7 +2891,7 @@ function stacklyApp() {
     const chip = (ok, href, tag, text) => `<a class="hwi ${ok ? 'ok' : ''}" href="${href}">${ok ? I.check : ''}<b>${tag}</b><span>${esc(text)}</span></a>`;
     return (it.ege || []).map(n => egeBy[n] ? chip(S && S.ege.has(+n), `#ege-${n}`, 'разбор ' + n, egeBy[n].title) : '').join('')
       + (it.py || []).map(id => pyBy[id] ? chip(S && S.py.has(+id), `#py-${id}`, 'Python ' + id, pyBy[id].title) : '').join('')
-      + (it.bank || []).map(id => { const p = BANK.find(x => x.id === id); return p ? chip(S && S.bank.has(id), `#p-${id}`, `#${pnum[id]} · №${p.task}`, p.title) : ''; }).join('');
+      + (it.bank || []).map(id => { const p = BANK.find(x => x.id === id); return p ? chip(S && S.bank.has(id), `#p-${id}`, `#${pnum[id]} · ${ptag(p)}`, p.title) : ''; }).join('');
   }
   const fmtDue = t => new Date(t).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).replace('.', '');
   const fmtAgo = s => { if (!s) return '—'; const d = Math.floor((Date.now() / 1000 - s) / 86400); return d <= 0 ? 'сегодня' : d === 1 ? 'вчера' : d < 30 ? `${d} ${plural(d, 'день', 'дня', 'дней')} назад` : fmtDate(s * 1000); };
@@ -2898,7 +3137,7 @@ function stacklyApp() {
     const D = hwDraft; if (!D || !$('#pickbody')) return;
     const sel = [...[...D.ege].sort((a, b) => a - b).map(n => ['ege', n, 'разбор ' + n, (egeBy[n] || {}).title]),
       ...[...D.py].sort((a, b) => a - b).map(id => ['py', id, 'Python ' + id, (pyBy[id] || {}).title]),
-      ...[...D.bank].sort((a, b) => (pnum[a] || 0) - (pnum[b] || 0)).map(id => { const p = BANK.find(x => x.id === id); return ['bank', id, p ? `#${pnum[id]} · №${p.task}` : '?', p ? p.title : 'задача удалена']; })];
+      ...[...D.bank].sort((a, b) => (pnum[a] || 0) - (pnum[b] || 0)).map(id => { const p = BANK.find(x => x.id === id); return ['bank', id, p ? `#${pnum[id]} · ${ptag(p)}` : '?', p ? p.title : 'задача удалена']; })];
     $('#selsum').innerHTML = sel.length ? sel.map(([k, v, tag, text]) => `<span class="hwi"><b>${tag}</b><span>${esc(text || '')}</span><button type="button" data-tact="unpick" data-k="${k}" data-v="${esc(v)}" aria-label="Убрать">×</button></span>`).join('')
       : '<span class="muted" style="font-size:14px">Пока ничего не выбрано — отметьте задачи и темы ниже</span>';
     $$('[data-ptab]').forEach(b => { b.classList.toggle('on', b.dataset.ptab === D.tab); $('i', b).textContent = D[b.dataset.ptab].size || ''; });
@@ -2908,9 +3147,11 @@ function stacklyApp() {
     let html = '';
     if (D.tab === 'bank') {
       const counts = {}; BANK.forEach(p => counts[p.task] = (counts[p.task] || 0) + 1);
+      const pkSubjs = subjList(BANK), pkNums = pkSubjs.some(([n]) => n === EGE_SUBJ) && (D.subj === EGE_SUBJ || pkSubjs.length === 1);
       html = `<div class="pk-bar"><input id="pkq" type="search" value="${esc(D.q)}" placeholder="Номер задачи: 17, 5-9, 3, 12 — или слова из условия" aria-label="Поиск задач по номеру или тексту" autocomplete="off">
           <div class="seg">${[['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']].map(([v, n]) => `<button type="button" class="${D.lvl === v ? 'on' : ''}" data-plvl="${v}">${n}</button>`).join('')}</div></div>
-        <div class="pick-nums" role="group" aria-label="Номер задания ЕГЭ"><button type="button" class="chip ${!D.num ? 'on' : ''}" data-pnum="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${D.num === t.n ? 'on' : ''} ${BANK.some(p => p.task === t.n && D.bank.has(p.id)) ? 'has' : ''}" data-pnum="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
+        ${pkSubjs.length > 1 ? `<div class="pick-nums" role="group" aria-label="Предмет"><button type="button" class="chip ${!D.subj ? 'on' : ''}" data-psubj="">Все предметы</button>${pkSubjs.map(([n, c]) => `<button type="button" class="chip ${D.subj === n ? 'on' : ''}" data-psubj="${esc(n)}">${esc(n)} · ${c}</button>`).join('')}</div>` : ''}
+        <div class="pick-nums" role="group" aria-label="Номер задания ЕГЭ" ${pkNums ? '' : 'hidden'}><button type="button" class="chip ${!D.num ? 'on' : ''}" data-pnum="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${D.num === t.n ? 'on' : ''} ${BANK.some(p => p.task === t.n && D.bank.has(p.id)) ? 'has' : ''}" data-pnum="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
         <div id="pklist"></div>`;
     } else if (D.tab === 'py') {
       html = `<div class="pick-list">${BLOCKS.map(b => `<div class="pick-h">${b.id}. ${esc(b.title)}</div>` + PY.filter(t => t.id >= b.from && t.id <= b.to).map(t => row('py', t.id, `${t.id}. ${t.title}`, t.ege.length ? '№ ' + t.ege.join(', ') : 'основа')).join('')).join('')}</div>`;
@@ -2930,7 +3171,7 @@ function stacklyApp() {
   const pkFound = () => {
     const D = hwDraft, nums = parseNums(D.q), q = D.q.trim().toLowerCase();
     if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
-    return BANK.filter(p => (!D.num || p.task === D.num) && (!D.lvl || p.level === D.lvl) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
+    return BANK.filter(p => (!D.subj || psubj(p) === D.subj) && (!D.num || p.task === D.num) && (!D.lvl || p.level === D.lvl) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
   };
   const pkPreview = p => `${gameSet(p) && p.task !== 19 ? `<div class="pgame"><div style="padding-top:12px">${gameText(gameSet(p).set[0])}</div></div>` : ''}${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}${p.data ? `<p class="muted" style="font-size:13px">К задаче прилагается файл ${esc(p.dname)} — ученик скопирует его со страницы задания.</p>` : ''}<p class="muted" style="font-size:13px;margin:8px 0 0">Ответ: <b>${esc(p.answer)}</b></p>`;
   // список найденных задач; при поиске по номеру условие раскрыто сразу
@@ -2940,7 +3181,7 @@ function stacklyApp() {
     box.innerHTML = `<div class="pk-found"><span class="muted">${list.length ? `Найдено: ${list.length}` : 'Ничего не найдено — проверьте номер или сбросьте фильтры'}</span>
         ${list.length && fresh && list.length <= 60 ? `<button type="button" class="linkbtn" data-tact="pick-all">Добавить ${list.length === 1 ? (gameSet(list[0]) ? 'комплект 19–21' : 'задачу') : `все ${fresh}`}</button>` : ''}</div>
       <div class="pick-list pk-list">${list.map(p => { const on = D.bank.has(p.id); return `<div class="pk-row ${on ? 'on' : ''}">
-          <label class="pick"><input type="checkbox" data-pick="bank" value="${p.id}" ${on ? 'checked' : ''}><span><b class="pnum">#${pnum[p.id]}</b> №${p.task} · ${esc(p.title)}${gameSet(p) ? ' <span class="muted">· комплект 19–21, добавится целиком</span>' : ''}</span><small>${lvWord[p.level]}</small></label>
+          <label class="pick"><input type="checkbox" data-pick="bank" value="${p.id}" ${on ? 'checked' : ''}><span><b class="pnum">#${pnum[p.id]}</b> ${esc(ptag(p))} · ${esc(p.title)}${gameSet(p) ? ' <span class="muted">· комплект 19–21, добавится целиком</span>' : ''}</span><small>${lvWord[p.level]}</small></label>
           <button type="button" class="pk-eye" data-pkx="${p.id}" aria-expanded="${open}">${open ? 'Скрыть' : 'Условие'}</button>
           <div class="pk-prev prob-body" ${open ? '' : 'hidden'}>${open ? pkPreview(p) : ''}</div></div>`; }).join('')}</div>`;
   }
@@ -2969,7 +3210,7 @@ function stacklyApp() {
             <div class="hw-prog">${barHTML(x[0], x[1])}<span>${x[0]} / ${x[1]}</span></div><div class="hw-items">${hwItemsHTML(h.items, S)}</div></article>`; }).join('')}</div>`
             : '<p class="muted" style="margin:0">Заданий этому ученику пока не выдавали.</p>'}</div>
         <div class="panel"><div class="panel-h"><h2>Ошибки без верного ответа</h2></div>
-          ${mistakes.length ? mistakes.map(p => `<a class="next" href="#p-${p.id}"><span class="lvl lvl-${p.level}">${p.task}</span><span><b>${esc(p.title)}</b><small>${att[p.id].n - att[p.id].c} ${plural(att[p.id].n - att[p.id].c, 'неверный ответ', 'неверных ответа', 'неверных ответов')}</small></span>${I.arrow}</a>`).join('')
+          ${mistakes.length ? mistakes.map(p => `<a class="next" href="#p-${p.id}"><span class="lvl lvl-${p.level}">${p.task || p.level}</span><span><b>${esc(p.title)}</b><small>${att[p.id].n - att[p.id].c} ${plural(att[p.id].n - att[p.id].c, 'неверный ответ', 'неверных ответа', 'неверных ответов')}</small></span>${I.arrow}</a>`).join('')
             : '<p class="muted" style="margin:0">Нерешённых задач с ошибками нет.</p>'}</div>
         <div class="panel"><div class="panel-h"><h2>Учебник Python</h2><span class="muted">${s.studied} из ${PY.length} тем</span></div>
           ${blocks.map(x => `<div class="row-stat"><span class="rs-no">${x.b.id}</span><span class="rs-name">${esc(x.b.title)}</span>${barHTML(x.done, x.total)}<b>${x.done}/${x.total}</b></div>`).join('')}</div>
@@ -2980,7 +3221,7 @@ function stacklyApp() {
     const h = r.homework, it = h.items, st = r.students, N = st.length;
     const cols = [...(it.ege || []).filter(n => egeBy[n]).map(n => ({ k: 'e', v: n, lbl: 'Р' + n, title: `Разбор ${n}: ${egeBy[n].title}`, href: `#ege-${n}` })),
       ...(it.py || []).filter(id => pyBy[id]).map(id => ({ k: 't', v: id, lbl: 'Py' + id, title: `Python ${id}: ${pyBy[id].title}`, href: `#py-${id}` })),
-      ...(it.bank || []).filter(id => pnum[id]).map(id => { const p = BANK.find(x => x.id === id); return { k: 'p', v: id, lbl: '#' + pnum[id], title: `#${pnum[id]} · №${p.task} · ${p.title}`, href: `#p-${id}`, p }; })];
+      ...(it.bank || []).filter(id => pnum[id]).map(id => { const p = BANK.find(x => x.id === id); return { k: 'p', v: id, lbl: '#' + pnum[id], title: `#${pnum[id]} · ${ptag(p)} · ${p.title}`, href: `#p-${id}`, p }; })];
     const has = (s, c) => c.k === 'p' ? !!(s.bank[c.v] || [])[0] : c.k === 't' ? s.py.includes(c.v) : s.ege.includes(c.v);
     const isDone = s => !!s.done_at || (s.total > 0 && s.done >= s.total);
     const done = st.filter(isDone), late = done.filter(s => h.due && s.done_at && s.done_at > h.due).length;
@@ -3031,7 +3272,7 @@ function stacklyApp() {
   }
 
   /* ═════════════ ПОСЕЩАЕМОСТЬ ═════════════ */
-  const PAGE_NAMES = { home: 'Главная', ege: 'Методичка', bank: 'Банк задач', task: 'Задача по ссылке', set: 'Комплект 19–21', python: 'Учебник Python',
+  const PAGE_NAMES = { home: 'Главная', course: 'Обзор курса ЕГЭ', ege: 'Методичка', bank: 'Банк задач', task: 'Задача по ссылке', set: 'Комплект 19–21', python: 'Учебник Python',
     cheat: 'Шпаргалка', login: 'Вход и регистрация', me: 'Личный кабинет', hw: 'Домашние задания', teach: 'Кабинет учителя', edit: 'Редактор', admin: 'Администратор', other: 'Другое' };
   const pageName = p => { const [b, n] = p.split('-'); return n ? `${PAGE_NAMES[b]} · №${n}` : PAGE_NAMES[b] || p; };
   const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
@@ -3096,9 +3337,9 @@ function stacklyApp() {
   const problemBadge = p => !p.src ? '<span class="tag">встроенная</span>' : p.src.builtin ? '<span class="tag ed">встроенная · изменена</span>' : `<span class="tag own">${isOwnProblem(p) ? 'ваша' : esc(p.src.author || 'учитель')}</span>`;
   function eListRows() {
     const nums = parseNums(eF.q), q = eF.q.trim().toLowerCase();
-    const list = BANK.filter(p => nums ? nums.has(pnum[p.id]) : (!eF.task || p.task === eF.task) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q))
+    const list = BANK.filter(p => nums ? nums.has(pnum[p.id]) : (!eF.task || (eF.task < 0 ? !p.task : p.task === eF.task)) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q))
       && (eF.scope === 'all' || (eF.scope === 'mine' ? isOwnProblem(p) : eF.scope === 'custom' ? p.src && !p.src.builtin : !p.src || p.src.builtin)));
-    return list.length ? list.map(p => `<div class="ed-row"><span class="pnum">#${pnum[p.id]}</span><span class="ed-t"><b>${esc(p.title)}</b><small>№${p.task} · ${lvWord[p.level]} ${problemBadge(p)}</small></span>
+    return list.length ? list.map(p => `<div class="ed-row"><span class="pnum">#${pnum[p.id]}</span><span class="ed-t"><b>${esc(p.title)}</b><small>${esc(p.task ? '№' + p.task : psubj(p) + (p.src.topic ? ' · ' + p.src.topic : ''))} · ${lvWord[p.level]} ${problemBadge(p)}</small></span>
         <span class="ed-acts"><a class="btn small ghost" href="#p-${p.id}">Открыть</a>${canEditProblem(p) ? `<a class="btn small" href="#edit-p-${p.id}">Изменить</a>` : ''}<a class="btn small ghost" href="#edit-p-copy-${p.id}" title="Новая задача на основе этой">Копия</a></span></div>`).join('')
       : '<div class="t-empty"><b>Ничего не найдено</b>Проверьте номер или сбросьте фильтры.</div>';
   }
@@ -3109,7 +3350,7 @@ function stacklyApp() {
       <section class="t-sec"><div class="form-acts" style="margin-bottom:14px"><a class="btn blue" href="#edit-p-new">Новая задача <span class="arr">${I.arrow}</span></a><span class="muted" style="font-size:14px">ваших задач: ${mine}</span></div>
         <div class="pk-bar"><input id="eq" type="search" value="${esc(eF.q)}" placeholder="#17, 1001-1005 или слова из условия" aria-label="Поиск задач" autocomplete="off">
           <div class="seg">${[['all', 'Все'], ['mine', 'Мои'], ['custom', 'Учителей'], ['builtin', 'Встроенные']].map(([v, n]) => `<button type="button" class="${eF.scope === v ? 'on' : ''}" data-escope="${v}">${n}</button>`).join('')}</div></div>
-        <div class="pick-nums" style="margin:12px 0"><button type="button" class="chip ${!eF.task ? 'on' : ''}" data-etask="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${eF.task === t.n ? 'on' : ''}" data-etask="${t.n}" title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
+        <div class="pick-nums" style="margin:12px 0"><button type="button" class="chip ${!eF.task ? 'on' : ''}" data-etask="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${eF.task === t.n ? 'on' : ''}" data-etask="${t.n}" title="${esc(t.title)}">${t.n}</button>`).join('')}<button type="button" class="chip ${eF.task < 0 ? 'on' : ''}" data-etask="-1">Другие предметы</button></div>
         <div id="elist" class="ed-list">${eListRows()}</div></section>`;
   }
   // панель разметки над полем ввода: вставка вокруг выделения, картинка — загрузкой
@@ -3128,22 +3369,30 @@ function stacklyApp() {
   function eProblemHTML(p, mode) {
     const src = p && p.src, orig = p && ORIG.bank.find(x => x.id === p.id);
     const body = !p ? '' : src ? src.body : htmlToMd(orig ? orig.text : p.text);
-    const v = p ? { task: p.task, level: p.level, title: mode === 'copy' ? p.title + ' (копия)' : p.title, answer: p.answer, sol: p.code || '', note: p.note || '', data: p.data || '', dname: p.dname || '' }
-      : { task: eF.task || 1, level: 'Б', title: '', answer: '', sol: '', note: '', data: '', dname: '' };
+    const v = p ? { task: p.task, level: p.level, title: mode === 'copy' ? p.title + ' (копия)' : p.title, answer: p.answer, sol: p.code || '', note: p.note || '', data: p.data || '', dname: p.dname || '',
+        subject: (src && src.subject) || '', topic: (src && src.topic) || '', vis: mode === 'edit' && src && src.vis || '' }
+      : { task: Math.max(eF.task, 0), level: 'Б', title: '', answer: '', sol: '', note: '', data: '', dname: '', subject: '', topic: '', vis: '' };
+    const subjects = [...new Set(BANK.map(x => x.src && x.src.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
+    const visOpts = [...(acct.role === 'admin' ? [['platform', 'Общий банк платформы']] : []), ['private', 'Я и ученики моих групп'], ['public', 'Все пользователи']];
+    const vis = v.vis || (acct.role === 'admin' ? 'platform' : 'private');
     const builtin = p && !p.id.startsWith('u') && mode !== 'copy';
     const keep = builtin && orig && shownExtra(orig.extra) ? (src ? src.keep_extra : true) : false;
     return `<a class="t-back" href="#edit">← Банк задач</a>
       <header class="t-head"><div><span class="eyebrow">Редактор${p && mode !== 'copy' ? ` · задача #${pnum[p.id]}` : ''}</span><h1>${mode === 'new' ? 'Новая задача' : mode === 'copy' ? 'Копия задачи' : 'Изменить задачу'}</h1>
         ${builtin ? `<p>Это встроенная задача. Изменения сохраняются поверх неё — исходный вариант можно вернуть в любой момент.</p>` : mode === 'copy' ? `<p>Новая задача с постоянным номером от #1001. Исходная остаётся как была.${orig && shownExtra(orig.extra) ? ' Иллюстрация не копируется — загрузите картинку кнопкой «картинка».' : ''}</p>` : ''}</div></header>
       <form class="ed-form t-sec" data-eform="problem" data-id="${p && mode === 'edit' ? p.id : ''}" novalidate>
-        <div class="ed-three"><label class="fld"><span>Задание ЕГЭ</span><select name="task">${EGE.map(t => `<option value="${t.n}" ${v.task === t.n ? 'selected' : ''}>${t.n}. ${esc(t.title)}</option>`).join('')}</select></label>
+        <div class="ed-three"><label class="fld"><span>Раздел</span><select name="task"><option value="0" ${!v.task ? 'selected' : ''}>Свой предмет и тема</option>
+            <optgroup label="ЕГЭ по информатике">${EGE.map(t => `<option value="${t.n}" ${v.task === t.n ? 'selected' : ''}>${t.n}. ${esc(t.title)}</option>`).join('')}</optgroup></select></label>
           <label class="fld"><span>Сложность</span><select name="level">${[['Б', 'базовая'], ['П', 'средняя'], ['В', 'сложная']].map(([k, n]) => `<option value="${k}" ${v.level === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
+        <div class="ed-three ed-subj" ${v.task ? 'hidden' : ''}>${field2('subject', 'Предмет', v.subject, 'maxlength="60" list="e-subjects" placeholder="Например: Математика"')}${field2('topic', 'Тема (необязательно)', v.topic, 'maxlength="80" placeholder="Например: Квадратные уравнения"')}
+          <datalist id="e-subjects">${[...new Set([...subjects, 'Математика', 'Физика', 'Информатика', 'Русский язык', 'Английский язык', 'Химия', 'Биология', 'История', 'Обществознание'])].map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+        ${builtin ? '' : `<label class="fld ed-vis"><span>Кто видит задачу</span><select name="vis">${visOpts.map(([k, n]) => `<option value="${k}" ${vis === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`}
         ${field2('title', 'Название', v.title, 'maxlength="120" placeholder="Например: Длина дороги ГЕ"')}
         <div class="ed-split"><div class="fld"><span>Условие</span>${mdTools('e-body')}<textarea id="e-body" name="body" class="ed-body" placeholder="Текст условия. **Жирным** — важные числа, таблицы — через |">${esc(body)}</textarea></div>
           <div class="fld"><span>Как увидит ученик</span><div class="ed-prev prob-body" id="e-prev"></div></div></div>
         ${builtin && orig && shownExtra(orig.extra) ? `<label class="ed-check"><input type="checkbox" name="keep_extra" ${keep ? 'checked' : ''}> Оставить исходную иллюстрацию (схему или таблицу под условием)</label>` : ''}
         <div class="ed-three">${field2('answer', 'Ответ', v.answer, 'maxlength="2000" placeholder="Для нескольких чисел — через пробел"')}${field2('note', 'Пояснение к ответу (необязательно)', v.note, 'maxlength="2000"')}</div>
-        ${area('solution', 'Решение на Python (необязательно) — ученик откроет его кнопкой «Решение»', v.sol, 'class="mono" spellcheck="false" rows="8"')}
+        ${area('solution', 'Решение (необязательно): ученик откроет его кнопкой «Решение». Для ЕГЭ по информатике это код на Python', v.sol, 'class="mono" spellcheck="false" rows="8"')}
         <details class="ed-data" ${v.data ? 'open' : ''}><summary>Файл с данными для задачи ${v.data ? `· ${esc(v.dname)}, ${v.data.split('\n').length} строк` : '(для заданий 9, 17, 24, 26, 27)'}</summary>
           <div class="ed-three"><label class="fld"><span>Загрузить .txt / .csv</span><input type="file" accept=".txt,.csv,text/plain" data-efile></label>${field2('dname', 'Имя файла для ученика', v.dname, 'maxlength="60" placeholder="24.txt"')}</div>
           ${area('data', 'Содержимое файла', v.data, 'class="mono" spellcheck="false" rows="6"')}</details>
@@ -3262,7 +3511,8 @@ function stacklyApp() {
     const nums = s => String(s).split(/[\s,;]+/).map(Number).filter(x => x > 0);
     try {
       if (kind === 'problem') {
-        const r = await api('/content/problem', 'POST', { id: f.dataset.id || undefined, task: +E.task.value, level: E.level.value, title: E.title.value, body: E.body.value,
+        const r = await api('/content/problem', 'POST', { id: f.dataset.id || undefined, task: +E.task.value, subject: E.subject.value, topic: E.topic.value, vis: E.vis ? E.vis.value : undefined,
+          level: E.level.value, title: E.title.value, body: E.body.value,
           answer: E.answer.value, note: E.note.value, solution: E.solution.value, data: E.data.value, dname: E.dname.value.trim(), keep_extra: !!(E.keep_extra && E.keep_extra.checked) });
         await loadContent(true); toast(f.dataset.id ? 'Задача сохранена' : `Задача #${pnum[r.id] || ''} создана`); location.hash = 'p-' + r.id;
       } else {
@@ -3285,6 +3535,7 @@ function stacklyApp() {
   document.addEventListener('change', async e => {
     const t = e.target;
     if (t.name === 'keep_extra') ePreview();
+    else if (t.name === 'task' && t.closest('[data-eform="problem"]')) { const sb = $('.ed-subj'); if (sb) sb.hidden = +t.value > 0; }
     else if (t.dataset.mdimg !== undefined && t.files[0]) {
       const ta = $('#' + t.dataset.mdimg), lbl = t.closest('.md-img'); lbl.classList.add('busy');
       try { const id = await uploadImage(t.files[0]); const a = ta.selectionStart; const lead = a && ta.value[a - 1] !== '\n' ? '\n\n' : ''; ta.setRangeText(`${lead}![](media:${id})\n`, a, ta.selectionEnd, 'end'); ePreview(); toast('Картинка загружена'); }
@@ -3352,6 +3603,7 @@ function stacklyApp() {
     }
     if (b.dataset.ptab) { hwDraft.tab = b.dataset.ptab; return renderPicker(true); }
     if (b.dataset.pnum) { hwDraft.num = +b.dataset.pnum; hwDraft.q = ''; return renderPicker(true); }
+    if (b.dataset.psubj !== undefined) { hwDraft.subj = b.dataset.psubj; hwDraft.num = 0; return renderPicker(true); }
     if (b.dataset.plvl !== undefined) { hwDraft.lvl = b.dataset.plvl; $$('[data-plvl]').forEach(x => x.classList.toggle('on', x === b)); return renderPkList(); }
     if (b.dataset.pkx) {
       const row = b.closest('.pk-row'), pv = $('.pk-prev', row), open = pv.hidden;
@@ -3419,7 +3671,7 @@ function stacklyApp() {
   function buildIndex() { index = [
     ...EGE.map(t => ({ k: 'Задание', ic: 'e', n: t.n, title: `${t.n}. ${t.title}`, sub: t.short, href: '#ege-' + t.n, text: (t.title + ' ' + t.short + ' ' + t.lead + ' ' + strip(t.theory || '') + ' ' + (t.types || []).flat().join(' ')).toLowerCase() })),
     ...PY.map(t => ({ k: 'Python', ic: 'p', n: t.id, title: t.title, sub: 'тема ' + t.id, href: '#py-' + t.id, text: (t.title + ' ' + strip(t.text)).toLowerCase() })),
-    ...BANK.map(p => ({ k: 'Задача', ic: '', n: p.task, title: `#${pnum[p.id]} ${p.title}`, sub: 'банк, задание ' + p.task, href: '#p-' + p.id, text: ('#' + pnum[p.id] + ' ' + p.title + ' ' + strip(p.text)).toLowerCase() })),
+    ...BANK.map(p => ({ k: 'Задача', ic: '', n: p.task, title: `#${pnum[p.id]} ${p.title}`, sub: p.task ? 'банк, задание ' + p.task : 'банк, ' + psubj(p), href: '#p-' + p.id, text: ('#' + pnum[p.id] + ' ' + p.title + ' ' + strip(p.text)).toLowerCase() })),
   ]; }
   function openSearch() {
     if ($('.scrim')) return;
@@ -3455,7 +3707,7 @@ function stacklyApp() {
 
   /* ═════════════ ПОЯВЛЕНИЕ ПРИ ПРОКРУТКЕ ═════════════ */
   // блоки ниже первого экрана всплывают, когда до них доходит прокрутка; то, что видно сразу, не трогаем
-  const REVEAL = '.section, .block, .panel, .kpi, .type, .cards4 > *, .news > *, .cheat, .topic, .prob, .me-settings, .danger';
+  const REVEAL = '.section, .block, .panel, .kpi, .type, .cards4 > *, .news > *, .bento > *, .cheat, .topic, .prob, .me-settings, .danger';
   const revealIO = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
     let k = 0;
     for (const e of entries) {
@@ -3486,13 +3738,13 @@ function stacklyApp() {
   /* ═════════════ МАРШРУТЫ ═════════════ */
   let curNav = '';
   // посещаемость: отправляем только раздел (без id задач, групп и ДЗ), источник — только при входе на сайт
-  const HIT_PAGES = ['home', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin'];
+  const HIT_PAGES = ['home', 'course', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin'];
   // визит — первое открытие сайта во вкладке: перезагрузка после входа или выхода новым визитом не считается
   let hitFirst = (() => { try { if (sessionStorage.getItem('stackly-visit')) return false; sessionStorage.setItem('stackly-visit', '1'); } catch (e) { } return true; })(), hitLast = null;
   function pageHit(h) {
     if (h === hitLast) return; hitLast = h;
     let p = /^(ege|bank)-\d{1,2}$/.test(h) ? h : (/^[a-z]+/.exec(h) || ['home'])[0];
-    p = { p: 'task', py: 'python', reset: 'login' }[p] || p;
+    p = { p: 'task', py: 'python', reset: 'login', signup: 'login' }[p] || p;
     if (!HIT_PAGES.includes(p.replace(/-\d+$/, ''))) p = 'other';
     let r = '';
     if (hitFirst) { try { const u = new URL(document.referrer); if (u.host !== location.host) r = u.hostname; } catch (e) { } }
@@ -3513,7 +3765,9 @@ function stacklyApp() {
     else if ((m = h.match(/^py-(\d+)$/)) || h === 'python') { html = pagePython(); nav = 'python'; scrollTo = m ? +m[1] : null; }
     else if ((m = h.match(/^bank(?:-(\d+))?$/))) {
       if (bankF.fromSet) { Object.assign(bankF, { q: '', fromSet: false }); curNav = ''; }   // из комплекта — снова весь банк
-      bankF.task = m[1] ? +m[1] : 0; html = pageBank(); nav = 'bank';
+      bankF.task = m[1] ? +m[1] : 0;
+      if (bankF.task && bankF.subj !== EGE_SUBJ && (bankF.subj || bankF.src)) { Object.assign(bankF, { subj: EGE_SUBJ, src: '' }); curNav = ''; }
+      html = pageBank(); nav = 'bank';
     }
     else if ((m = h.match(/^set-([\w.-]+)$/)) && BANK.some(p => p.id === '19-' + m[1]) && gameSet(BANK.find(p => p.id === '19-' + m[1]))) {
       // комплект 19–21 одной игры: все три задачи подряд
@@ -3523,16 +3777,18 @@ function stacklyApp() {
     else if ((m = h.match(/^p-([\w.-]+)$/)) && BANK.some(p => p.id === m[1])) {
       // ссылка на одну задачу (из домашнего задания): открываем её номер без фильтров
       const p = BANK.find(x => x.id === m[1]);
-      Object.assign(bankF, { task: p.task, level: '', status: '', q: '' }); html = pageBank(); nav = 'bank'; focusPid = p.id; curNav = '';
+      Object.assign(bankF, { task: p.task, subj: psubj(p), src: '', level: '', status: '', q: '' }); html = pageBank(); nav = 'bank'; focusPid = p.id; curNav = '';
     }
     else if (/^(teach|admin|edit)/.test(h)) { html = teachShell(); nav = 'teach'; }
     else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
-    else if (h === 'login') {
+    else if (h === 'login' || h === 'signup') {
       if (acct.cloud) { location.replace('#me'); return; }
       try { sessionStorage.removeItem(NEXT); } catch (e) { }
+      if (h === 'signup') acct.mode = 'register';
       html = pageLogin(); nav = 'login';
     }
+    else if (h === 'course') { html = pageCourse(); nav = 'course'; }
     else if (h === 'me') {
       // кабинет считает прогресс по банку задач — гостю без него нечего показать
       if (LOCKED && !acct.cloud) { location.replace('#login'); return; }
@@ -3598,7 +3854,7 @@ function stacklyApp() {
     if (nav === 'teach') loadTeach(h);
     if (nav === 'hw') loadHW(h); else curHW = 0;
     if (nav === 'me') loadMyClass();
-    document.title = { home: 'stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly' }[nav];
+    document.title = { home: 'stackly · платформа для репетиторов', course: 'Курс ЕГЭ по информатике · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly' }[nav];
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', nav === 'me' || nav === 'login');
   }
 
@@ -3650,11 +3906,13 @@ function stacklyApp() {
     } else if ((b = t.closest('[data-copy]'))) { const box = b.closest('.code'); copyText(codeStore[b.dataset.copy][+(box.dataset.cur || 0)].c, b); }
     else if ((b = t.closest('[data-map]'))) { mapFilter = b.dataset.map; $$('[data-map]').forEach(x => x.classList.toggle('on', x === b)); $$('#tiles .tile').forEach((el, i) => el.classList.toggle('dim', !!mapFilter && toolKind(EGE[i]) !== mapFilter)); }
     else if ((b = t.closest('[data-task]'))) { const n = +b.dataset.task; location.hash = n ? 'bank-' + n : 'bank'; }
+    else if ((b = t.closest('[data-subj]'))) { bankF.subj = b.dataset.subj; bankF.task = 0; redrawBank(); }
+    else if ((b = t.closest('[data-f="src"]'))) { bankF.src = b.dataset.v; bankF.subj = ''; bankF.task = 0; redrawBank(); }
     else if ((b = t.closest('[data-f]'))) { bankF[b.dataset.f] = b.dataset.v; $$(`[data-f="${b.dataset.f}"]`).forEach(x => x.classList.toggle('on', x === b)); renderProbs(); }
     else if ((b = t.closest('[data-show]'))) {
       const p = BANK.find(x => x.id === b.dataset.p), rv = $('.reveal', b.closest('.prob'));
       rv.innerHTML = b.dataset.show === 'ans' ? `<div class="ansbox">${esc(p.answer)}</div>`
-        : codeBlock([{ t: 'Решение', c: p.code }], `solution_${p.task}.py`) + (p.note ? `<p class="muted" style="font-size:13.5px;margin:8px 0 0">${esc(p.note)}</p>` : '');
+        : (p.task ? codeBlock([{ t: 'Решение', c: p.code }], `solution_${p.task}.py`) : `<div class="prob-body sol-md">${md(p.code)}</div>`) + (p.note ? `<p class="muted" style="font-size:13.5px;margin:8px 0 0">${esc(p.note)}</p>` : '');
     } else if ((b = t.closest('[data-copydata]'))) { copyText(BANK.find(x => x.id === b.dataset.copydata).data, null); }
     else if ((b = t.closest('[data-preview]'))) {
       const p = BANK.find(x => x.id === b.dataset.preview), pv = $('.pv', b.closest('.prob'));

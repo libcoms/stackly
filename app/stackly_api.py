@@ -40,7 +40,7 @@ ROLES = ('student', 'teacher', 'admin')
 CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'      # без похожих 0/O и 1/I
 BANK_ID_RE = re.compile(r'^[\w.-]{1,40}$')
 # посещаемость: страницы сайта, которые считаем (ege-5, bank-19 — с номером задания)
-METRIC_PAGES = ('home', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin', 'other')
+METRIC_PAGES = ('home', 'course', 'ege', 'bank', 'task', 'set', 'python', 'cheat', 'login', 'me', 'hw', 'teach', 'edit', 'admin', 'other')
 PAGE_RE = re.compile(r'^([a-z]{2,8})(?:-(\d{1,2}))?$')
 HOST_RE = re.compile(r'^[a-z0-9-]{1,63}(\.[a-z0-9-]{1,63}){1,5}$')
 BOT_RE = re.compile(r'bot|crawl|spider|slurp|headless|preview|monitor|curl|wget|python-requests', re.I)
@@ -136,6 +136,17 @@ def migrate():
     cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
     if 'role' not in cols:
         db().execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'")
+    # задачи любого предмета: task = 0 — не ЕГЭ, тогда предмет обязателен, тема — по желанию.
+    # vis: platform — общий банк платформы (задачи администратора), public — видят все,
+    # private — автор, ученики его групп и те, кому задачу выдали в ДЗ
+    cols = [r['name'] for r in db().execute('PRAGMA table_info(problems)')]
+    if 'vis' not in cols:
+        db().execute("ALTER TABLE problems ADD COLUMN subject TEXT NOT NULL DEFAULT ''")
+        db().execute("ALTER TABLE problems ADD COLUMN topic TEXT NOT NULL DEFAULT ''")
+        db().execute("ALTER TABLE problems ADD COLUMN vis TEXT NOT NULL DEFAULT 'private'")
+        # задачи, созданные до разделения банков, были видны всем — так и оставляем
+        db().execute("UPDATE problems SET vis = CASE WHEN author_id IN (SELECT id FROM users WHERE role = 'admin') "
+                     "THEN 'platform' ELSE 'public' END WHERE builtin = 0")
 
 # ---------------------------------------------------------------- посещаемость
 def metric_day(ts):
@@ -507,11 +518,12 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, 'bad_email', 'Проверьте адрес почты')
         if not 1 <= len(name) <= 60:
             raise ApiError(400, 'bad_name', 'Укажите имя — от 1 до 60 символов')
+        role = 'teacher' if d.get('role') == 'teacher' else 'student'
         check_new_password(pw, email)
         hit('reg:' + ip)
         try:
-            cur = db().execute('INSERT INTO users (email, name, pw_hash, created) VALUES (?,?,?,?)',
-                               (email, name, hash_password(pw), int(time.time())))
+            cur = db().execute('INSERT INTO users (email, name, pw_hash, created, role) VALUES (?,?,?,?,?)',
+                               (email, name, hash_password(pw), int(time.time()), role))
         except sqlite3.IntegrityError:
             raise ApiError(409, 'email_taken', 'На эту почту уже есть аккаунт — войдите или восстановите пароль')
         u = db().execute('SELECT * FROM users WHERE id = ?', (cur.lastrowid,)).fetchone()
@@ -682,6 +694,23 @@ class Handler(BaseHTTPRequestHandler):
         except (TypeError, ValueError):
             raise ApiError(400, 'bad_request', 'Некорректный запрос')
 
+    @staticmethod
+    def visible_problems(u):
+        """Условие и параметры SQL: задачи, которые видит пользователь u (None — гость)."""
+        if u is None:
+            return '0', ()
+        if u['role'] == 'admin':
+            return '(p.hidden = 0 OR p.builtin = 1)', ()
+        # задачи из ДЗ групп, где пользователь учится или которые ведёт
+        assigned = set()
+        for r in db().execute('SELECT h.items FROM homework h JOIN study_groups g ON g.id = h.group_id '
+                              'WHERE g.teacher_id = ? OR g.id IN (SELECT group_id FROM group_members WHERE user_id = ?)',
+                              (u['id'], u['id'])):
+            assigned.update(str(x) for x in json.loads(r['items']).get('bank', []))
+        return ("(p.builtin = 1 OR (p.hidden = 0 AND (p.vis IN ('platform', 'public') OR p.author_id = ? "
+                "OR p.author_id IN (SELECT g.teacher_id FROM group_members m JOIN study_groups g ON g.id = m.group_id WHERE m.user_id = ?) "
+                "OR p.id IN (SELECT value FROM json_each(?)))))"), (u['id'], u['id'], json.dumps(sorted(assigned)))
+
     def teacher(self):
         u = self.current_user()
         if u['role'] not in ('teacher', 'admin'):
@@ -819,6 +848,16 @@ class Handler(BaseHTTPRequestHandler):
         ege = sorted(x for x in _ints(raw.get('ege')) if 1 <= x <= 27)
         if not (bank or py or ege):
             raise ApiError(400, 'empty', 'Добавьте в задание хотя бы одну задачу или тему')
+        custom = [x for x in bank if x.startswith('u')]
+        if custom:
+            # номера задач идут подряд — без проверки можно было бы выдать чужую закрытую задачу, угадав её id
+            had = set(json.loads(h['items']).get('bank', [])) if h else set()
+            where, args = self.visible_problems(u)
+            ok = {r['id'] for r in db().execute(f'SELECT p.id FROM problems p WHERE p.id IN (SELECT value FROM json_each(?)) AND {where}',
+                                                (json.dumps(custom), *args))}
+            bad = [x for x in custom if x not in ok and x not in had]
+            if bad:
+                raise ApiError(400, 'bad_problem', 'Некоторые задачи недоступны: ' + ', '.join('#' + x[1:] for x in bad[:5]))
         due = d.get('due')
         if due is not None:
             due = self.int_arg(d, 'due')
@@ -895,10 +934,11 @@ class Handler(BaseHTTPRequestHandler):
                 lessons[r['kind']][str(r['key'])] = dict(d, updated=r['updated'])
             v = max([x['updated'] for k in lessons for x in lessons[k].values()] + [0])
             return self.send_json(200, {'v': v, 'problems': [], 'lessons': lessons})
+        where, args = self.visible_problems(self.current_user(required=False))
         rows = db().execute('SELECT p.*, u.name AS author FROM problems p LEFT JOIN users u ON u.id = p.author_id '
-                            'WHERE p.hidden = 0 OR p.builtin = 1 ORDER BY p.task, p.num').fetchall()
+                            f'WHERE {where} ORDER BY p.task, p.num', args).fetchall()
         problems = [{k: r[k] for k in ('id', 'num', 'task', 'level', 'title', 'body', 'answer', 'solution', 'note', 'data',
-                                       'dname', 'author', 'author_id', 'updated')}
+                                       'dname', 'author', 'author_id', 'updated', 'subject', 'topic', 'vis')}
                     | {'keep_extra': bool(r['keep_extra']), 'builtin': bool(r['builtin']), 'hidden': bool(r['hidden'])} for r in rows]
         lessons = {'ege': {}, 'py': {}}
         for r in db().execute('SELECT kind, key, data, updated FROM lessons'):
@@ -918,15 +958,21 @@ class Handler(BaseHTTPRequestHandler):
         u = self.teacher()
         d = self.body(MAX_CONTENT_BODY)
         try:
-            task = int(d.get('task'))
+            task = int(d.get('task') or 0)
         except (TypeError, ValueError):
-            task = 0
-        if not 1 <= task <= 27:
+            task = -1
+        if not 0 <= task <= 27:
             raise ApiError(400, 'bad_task', 'Номер задания ЕГЭ — от 1 до 27')
+        # task = 0 — задача не из ЕГЭ по информатике: тогда нужен предмет
+        subject = '' if task else re.sub(r'\s+', ' ', self.text_field(d, 'subject', 1, 60, 'Предмет'))
+        topic = '' if task else re.sub(r'\s+', ' ', self.text_field(d, 'topic', 0, 80, 'Тема'))
+        vis = str(d.get('vis') or ('platform' if u['role'] == 'admin' else 'private'))
+        if vis not in (('platform', 'public', 'private') if u['role'] == 'admin' else ('public', 'private')):
+            raise ApiError(400, 'bad_vis', 'Некорректная видимость задачи')
         level = str(d.get('level', ''))
         if level not in ('Б', 'П', 'В'):
             raise ApiError(400, 'bad_level', 'Укажите сложность')
-        f = {'task': task, 'level': level,
+        f = {'task': task, 'subject': subject, 'topic': topic, 'vis': vis, 'level': level,
              'title': re.sub(r'\s+', ' ', self.text_field(d, 'title', 1, 120, 'Название')),
              'body': self.text_field(d, 'body', 1, 20000, 'Условие'),
              'answer': self.text_field(d, 'answer', 1, 2000, 'Ответ'),

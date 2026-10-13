@@ -324,7 +324,7 @@ class ContentTest(ServerCase):
     def test_teacher_problem_lifecycle(self):
         t, other, s = self.user('teacher'), self.user('teacher'), self.user('student')
         self.assertEqual(s.call('POST', '/content/problem', self.P)[0], 403)
-        st, r = t.call('POST', '/content/problem', self.P)
+        st, r = t.call('POST', '/content/problem', dict(self.P, vis='public'))
         self.assertEqual(st, 200, r)
         pid = r['id']
         self.assertTrue(pid.startswith('u'))
@@ -341,6 +341,42 @@ class ContentTest(ServerCase):
         self.assertNotIn(pid, [x['id'] for x in self.content(t)['problems']])
         pid2 = t.call('POST', '/content/problem', self.P)[1]['id']
         self.assertNotEqual(pid, pid2)
+
+    def test_register_as_teacher(self):
+        for i, (asked, got) in enumerate((('teacher', 'teacher'), ('admin', 'student'), (None, 'student'))):
+            c = Client(self.base)
+            st, body = c.call('POST', '/auth/register', {'email': f'role{i}@example.com', 'name': 'Учитель', 'password': 'Strong-pass-1', 'role': asked},
+                              {'X-Real-IP': f'10.9.0.{i + 1}'})
+            self.assertEqual((st, body['user']['role']), (201, got))
+        self.assertEqual(c.call('GET', '/teach/groups')[0], 403)
+
+    def test_subject_problems_and_visibility(self):
+        t, other, s, stranger = self.user('teacher'), self.user('teacher'), self.user('student'), self.user('student')
+        math = {'task': 0, 'level': 'Б', 'title': 'Дроби', 'body': 'Сложите 1/2 и 1/3.', 'answer': '5/6', 'solution': '1/2 + 1/3 = 5/6'}
+        self.assertEqual(t.call('POST', '/content/problem', math)[1]['error'], 'bad_subject')     # без номера ЕГЭ нужен предмет
+        self.assertEqual(t.call('POST', '/content/problem', dict(math, subject='Математика', vis='platform'))[1]['error'], 'bad_vis')
+        st, r = t.call('POST', '/content/problem', dict(math, subject='Математика', topic='Дроби'))
+        self.assertEqual(st, 200, r)
+        pid = r['id']
+        ids = lambda c: [x['id'] for x in self.content(c)['problems']]
+        p = next(x for x in self.content(t)['problems'] if x['id'] == pid)
+        self.assertEqual((p['task'], p['subject'], p['topic'], p['vis']), (0, 'Математика', 'Дроби', 'private'))
+        # закрытую задачу видят только автор и ученики его групп
+        self.assertNotIn(pid, ids(other)); self.assertNotIn(pid, ids(s))
+        g = t.call('POST', '/teach/groups', {'name': '9Б'})[1]['group']
+        self.assertEqual(s.call('POST', '/me/groups/join', {'code': g['code']})[0], 200)
+        self.assertIn(pid, ids(s)); self.assertNotIn(pid, ids(stranger))
+        # чужую закрытую задачу нельзя выдать в ДЗ, даже зная её номер
+        g2 = other.call('POST', '/teach/groups', {'name': '10А'})[1]['group']
+        hw = {'group_id': g2['id'], 'title': 'Дроби', 'items': {'bank': [pid]}}
+        self.assertEqual(other.call('POST', '/teach/homework', hw)[1]['error'], 'bad_problem')
+        # открытую — можно; ученики второго учителя видят её и после того, как автор снова её закроет
+        self.assertEqual(t.call('POST', '/content/problem', dict(math, id=pid, subject='Математика', vis='public'))[0], 200)
+        self.assertIn(pid, ids(other)); self.assertIn(pid, ids(stranger))
+        self.assertEqual(other.call('POST', '/teach/homework', hw)[0], 201)
+        self.assertEqual(stranger.call('POST', '/me/groups/join', {'code': g2['code']})[0], 200)
+        self.assertEqual(t.call('POST', '/content/problem', dict(math, id=pid, subject='Математика', vis='private'))[0], 200)
+        self.assertIn(pid, ids(stranger)); self.assertIn(pid, ids(other))
 
     def test_old_custom_numbers_move_past_builtin_range(self):
         # задачи учителей раньше нумеровались с 101 — теперь встроенный банк до 1000, их номера сдвигаются
