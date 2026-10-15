@@ -73,7 +73,7 @@ class PayTest(T.ServerCase):
     def test_pro_payment(self):
         t, s, a = self.user('teacher'), self.user('student'), self.user('admin')
         me = t.call('GET', '/auth/me')[1]['user']
-        self.assertEqual((me['pay'], me['prices']), (True, {'month': 350, 'year': 3700}))
+        self.assertEqual((me['pay'], me['prices']), (True, {'month': 10, 'year': 10}))      # временная цена для проверки оплаты
         trial_until = me['plan']['until']
         self.assertEqual(s.call('POST', '/pay/pro', {'period': 'month'})[0], 403)          # ученику платить не за что
         self.assertEqual(t.call('POST', '/pay/pro', {'period': 'week'})[1]['error'], 'bad_period')
@@ -81,7 +81,7 @@ class PayTest(T.ServerCase):
         self.assertEqual(st, 200, r)
         pid = r['url'].rsplit('/', 1)[-1]
         sent = self.yk.payments[pid]
-        self.assertEqual((sent['amount'], sent['capture'], sent['metadata']['user_id']), ({'value': '350.00', 'currency': 'RUB'}, True, me['id']))
+        self.assertEqual((sent['amount'], sent['capture'], sent['metadata']['user_id']), ({'value': '10.00', 'currency': 'RUB'}, True, me['id']))
         self.assertEqual(sent['confirmation']['return_url'], T.ORIGIN + '/#pay-return')
         self.assertTrue(self.yk.idem[-1] and self.yk.auth_ok)
         # пока не оплачено — тариф не меняется
