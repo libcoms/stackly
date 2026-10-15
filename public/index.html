@@ -108,13 +108,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .icon-btn:hover { border-color: var(--ink-2); transform: rotate(-12deg); }
 .icon-btn:active { transform: scale(.94); }
 .icon-btn svg { width: 18px; height: 18px; }
-.score-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px 6px 7px; border-radius: 999px; background: var(--paper-2); color: var(--ink); font: 600 14px/1 var(--f-display); white-space: nowrap; box-shadow: inset 0 0 0 1px var(--line); }
-.score-pill:hover { text-decoration: none; box-shadow: inset 0 0 0 1px var(--ink-2); }
-.score-pill .ball { --s: 20px; }
-.score-pill.bump { animation: bump .5s var(--ease); }
 /* подпись у логотипа не помещается рядом с меню из 5–6 пунктов (контейнер не шире 1240px) */
 .logo small { display: none; }
-@media (max-width: 1400px) { .score-pill .lbl { display: none; } .score-pill { padding-right: 11px; } }
 @media (max-width: 1180px) and (min-width: 901px) { .nav a { padding: 8px 10px; } .top .wrap { gap: 12px; } }
 @media (max-width: 900px) {
   .top .wrap { flex-wrap: wrap; gap: 8px 12px; padding-block: 10px; }
@@ -132,8 +127,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .logo { font-size: 22px; }
   .logo .ball { --s: 21px; }
   .tools { gap: 6px; }
-  .score-pill { padding: 6px 11px 6px 6px; }
-  .score-pill .lbl { display: none; }
   .nav { margin-inline: calc(var(--gutter) * -1); padding-inline: var(--gutter); width: calc(100% + var(--gutter) * 2); }
   .nav a { font-size: 14.5px; padding: 10px 13px; }
 }
@@ -371,7 +364,7 @@ footer.foot b { color: var(--ink); font-family: var(--f-display); }
 
 
 /* шапка гостя */
-.guest .nav, .guest #scorePill, .guest #searchbtn, .guest #themebtn { display: none; }
+.guest .nav, .guest #searchbtn, .guest #themebtn { display: none; }
 .guest .tools { margin-left: auto; }
 .guest .acct-btn { width: auto; background: var(--blue); border-color: var(--blue); color: #fff; padding-inline: 18px; font-weight: 600; }
 @media (max-width: 380px) { .guest .acct-btn { padding-inline: 14px; font-size: 13px; } }
@@ -872,7 +865,6 @@ table.mapping td, table.mapping th { text-align: left; }
 @keyframes swapIn { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 @keyframes roll { from { opacity: 0; transform: translateX(-.6em) rotate(-260deg); } to { opacity: 1; transform: none; } }
 @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
-@keyframes bump { 40% { transform: scale(1.14); } }
 @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
 @keyframes fade { from { opacity: 0; } }
 @keyframes flash { 0% { background: var(--lime-soft); } 100% { background: transparent; } }
@@ -1271,7 +1263,6 @@ button.hwi { font-family: inherit; }
     <a href="#teach" data-nav="teach" hidden>Учителю</a>
   </nav>
   <div class="tools">
-    <a class="score-pill" id="scorePill" href="#bank" title="Решено задач в банке"><span class="ball" aria-hidden="true"></span><b>0</b><span class="lbl">&nbsp;решено</span></a>
     <a class="acct-btn" id="acctbtn" href="#login" aria-label="Войти"></a>
     <button class="icon-btn" id="searchbtn" type="button" aria-label="Поиск (Ctrl+K)"></button>
     <button class="icon-btn" id="themebtn" type="button" aria-label="Сменить тему"></button>
@@ -2085,11 +2076,6 @@ function stacklyApp() {
     const t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<span class="ball"></span>${esc(msg)}`;
     document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 1900);
   }
-  function updScore(bump) {
-    const p = $('#scorePill'); if (!p) return;
-    p.querySelector('b').textContent = solved.size;
-    if (bump) { p.classList.remove('bump'); void p.offsetWidth; p.classList.add('bump'); }
-  }
 
   /* ═════════════ ГЛАВНАЯ ═════════════ */
   let mapFilter = '';
@@ -2769,13 +2755,11 @@ function stacklyApp() {
     if (!inp.value.trim()) { vd.className = 'verdict bad'; vd.textContent = 'Сначала введи ответ.'; return; }
     inp.classList.remove('ok', 'bad'); void inp.offsetWidth;
     if (norm(inp.value) === norm(p.answer)) {
-      const first = !solved.has(id);
       solved.add(id); track('a', id, true);
       inp.classList.add('ok'); box.classList.add('solved');
       vd.className = 'verdict ok'; vd.textContent = 'Верно! Задача отмечена как решённая.';
       if (!box.querySelector('.badge-ok')) box.querySelector('.prob-head h3').insertAdjacentHTML('afterend', '<span class="badge-ok">решено</span>');
       const ring = $('.ring'); if (ring) ring.outerHTML = ringHTML();
-      updScore(first);
     } else {
       track('a', id, false);
       inp.classList.add('bad'); vd.className = 'verdict bad'; vd.textContent = 'Не сходится. Проверь решение на примере из условия и попробуй ещё раз.';
@@ -3025,7 +3009,7 @@ function stacklyApp() {
       acct.cloud = true;
       store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]);
       await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok';
-      updScore(false); renderAcctBtn(); refreshHW();
+      renderAcctBtn(); refreshHW();
       if (!silent) toast(`Вы вошли как ${acct.name}`);
       return true;
     } catch (e) { if (!silent) toast(e.message || 'Не получилось загрузить прогресс'); return false; }
@@ -3043,7 +3027,7 @@ function stacklyApp() {
     acct.cloud = false; acct.uid = null; acct.role = ''; myHW = [];
     solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null);
     store.set('solved', []); store.set('studied', []); store.set('egeRead', []); store.set('stats', stats); store.set('content', null);
-    updScore(false); renderAcctBtn(); toast('Вы вышли. Прогресс сохранён в аккаунте');
+    renderAcctBtn(); toast('Вы вышли. Прогресс сохранён в аккаунте');
     location.hash = 'login';
     location.reload();          // закрытые материалы не должны остаться в памяти вкладки
   }
@@ -3188,7 +3172,7 @@ function stacklyApp() {
     msg.textContent = ''; msg.className = 'form-msg'; btn.disabled = true;
     try {
       if (kind === 'password') { await api('/auth/password', 'POST', { old: v('st-old'), new: v('st-new') }); form.reset(); msg.textContent = 'Пароль изменён. Остальные устройства вышли из аккаунта'; msg.className = 'form-msg ok'; }
-      if (kind === 'delete') { await api('/account/delete', 'POST', { password: v('st-del') }); acct.cloud = false; acct.role = ''; myHW = []; solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist(); store.set('content', null); updScore(false); renderAcctBtn(); toast('Аккаунт удалён'); location.hash = 'home'; location.reload(); return; }
+      if (kind === 'delete') { await api('/account/delete', 'POST', { password: v('st-del') }); acct.cloud = false; acct.role = ''; myHW = []; solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist(); store.set('content', null); renderAcctBtn(); toast('Аккаунт удалён'); location.hash = 'home'; location.reload(); return; }
     } catch (e) { msg.textContent = e.message; msg.className = 'form-msg bad'; }
     btn.disabled = false;
   }
@@ -3325,7 +3309,7 @@ function stacklyApp() {
     </div>`;
   }
   function resetAll() {
-    solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist(); updScore(false);
+    solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist();
     toast('Прогресс сброшен'); route();
   }
 
@@ -4477,7 +4461,7 @@ function stacklyApp() {
   const savedTheme = store.get('theme', null);
   if (savedTheme) document.documentElement.dataset.theme = savedTheme;
   $('#searchbtn').innerHTML = I.search;
-  themeIcon(); updScore(false); renderAcctBtn();
+  themeIcon(); renderAcctBtn();
   // кеш правок — только для вошедших: гостю нужен свой, урезанный ответ сервера
   if (!LOCKED) { try { applyContent(store.get('content', null)); } catch (e) { } }
   buildIndex();
