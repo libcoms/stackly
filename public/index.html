@@ -1669,6 +1669,10 @@ td.name .plan-chip { margin-top: 6px; }
   .offer-body { box-shadow: none; padding: 0; max-width: none; }
   .page { animation: none !important; }
 }
+
+/* ── оплата Про ── */
+.pay-box { display: grid; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
+.pay-box .form-acts { gap: 8px; }
 </style>
 <header class="top"><div class="wrap">
   <a class="logo" href="#home" aria-label="stackly — на главную"><span class="ball" aria-hidden="true"></span>stackly<small>ЕГЭ · Информатика</small></a>
@@ -1689,7 +1693,7 @@ td.name .plan-chip { margin-top: 6px; }
 <nav class="tabbar" id="tabbar" aria-label="Разделы сайта"></nav>
 <footer class="foot"><div class="wrap">
   <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
-  <span><a href="#offer">Публичная оферта</a> · Глумов Д. А., самозанятый, ИНН 762202636745</span>
+  <span><a href="#offer">Публичная оферта</a> · <a href="#privacy">Политика обработки персональных данных</a> · Глумов Д. А., самозанятый, ИНН 762202636745</span>
   <span>Курс ЕГЭ по информатике: структура заданий по плану изменений КИМ ЕГЭ 2027 (ФИПИ), ответы банка проверены запуском решений.</span>
 </div></footer>
 <script>
@@ -2748,6 +2752,7 @@ function stacklyApp() {
       'Исполнитель обрабатывает персональные данные Пользователей (имя, адрес электронной почты, данные об активности и выполнении заданий) в соответствии с Федеральным законом № 152-ФЗ «О персональных данных» исключительно для исполнения Договора. Данные хранятся на серверах, расположенных в Российской Федерации.',
       'Принимая оферту, Пользователь даёт согласие на обработку своих персональных данных в целях исполнения Договора. Согласие можно отозвать, удалив Аккаунт или направив заявление Исполнителю.',
       'Пользователь, подключивший Telegram-бот, соглашается на получение уведомлений через сервис Telegram. Сообщения бота могут содержать имена учеников и названия заданий и передаются через серверы Telegram. Отключить бота можно в любое время командой /stop или в личном кабинете.',
+      'Подробно о том, какие данные обрабатываются, кому передаются и как их удалить, — в Политике обработки персональных данных по адресу stackly.su/#privacy.',
       'Исполнитель направляет Пользователю служебные сообщения (восстановление пароля, изменения условий) на адрес электронной почты, указанный при регистрации.',
     ]],
     ['Ответственность', [
@@ -2780,6 +2785,79 @@ function stacklyApp() {
     if (go) { e.preventDefault(); const el = $('#offer-' + go.dataset.offerGo); if (el) window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - 16, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); return; }
     if (e.target.closest('[data-act="print"]')) window.print();
   });
+
+  /* ── политика обработки персональных данных (152-ФЗ). Оператор — тот же исполнитель, что в оферте ── */
+  const PRIVACY_DATE = '15 октября 2026 г.';
+  const PRIVACY = [
+    ['Общие положения', [
+      `Настоящая политика определяет порядок обработки и защиты персональных данных пользователей платформы stackly (stackly.su, далее — «Платформа») в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ «О персональных данных».`,
+      `Оператор персональных данных — ${EXECUTOR.name}, ${EXECUTOR.status}, ИНН ${EXECUTOR.inn}, адрес: ${EXECUTOR.address}, электронная почта: ${EXECUTOR.email} (далее — «Оператор»).`,
+      'Политика применяется ко всем данным, которые Оператор получает от пользователей Платформы — преподавателей, учеников и посетителей сайта. Политика опубликована в открытом доступе по адресу stackly.su/#privacy.',
+    ]],
+    ['Какие данные обрабатываются', [
+      'Данные учётной записи: имя, адрес электронной почты, роль (преподаватель или ученик), дата регистрации. Пароль хранится только в виде необратимого хеша — Оператор не знает и не может узнать пароль.',
+      'Учебные данные: решённые задачи, ответы и число попыток, отметки об изученных темах и материалах, выполнение домашних заданий, дни занятий, членство в учебных группах.',
+      'Данные, которые размещает преподаватель: группы, задачи, материалы, изображения и рисунки, домашние задания и комментарии к ним.',
+      'Технические данные: сессионные cookie для входа; обезличенные сведения о посещениях (раздел сайта, тип устройства, сайт, с которого пришёл посетитель, и идентификатор посетителя, который меняется каждые сутки). IP-адрес в базе данных не хранится и используется только кратковременно, чтобы ограничивать подбор паролей.',
+      'Данные Telegram — только если пользователь подключил бота: идентификатор чата и имя пользователя в Telegram.',
+      'Данные об оплате — только у преподавателей, оплативших тариф: идентификатор платежа, сумма, срок тарифа и статус. Данные банковских карт вводятся на стороне платёжного сервиса и Оператору не передаются.',
+    ]],
+    ['Цели обработки', [
+      'Регистрация и вход, работа аккаунта и восстановление пароля.',
+      'Работа учебных групп и домашних заданий: показ преподавателю выполнения заданий и статистики учеников его групп.',
+      'Приём оплаты тарифа «Про» и выполнение обязанностей, связанных с налогом на профессиональный доход.',
+      'Уведомления по электронной почте и, если пользователь подключил бота, в Telegram.',
+      'Защита Платформы от злоупотреблений и подбора паролей, обезличенная статистика посещаемости для улучшения Платформы.',
+    ]],
+    ['Правовые основания', [
+      'Исполнение договора, стороной которого является пользователь (публичная оферта Платформы), — п. 5 ч. 1 ст. 6 152-ФЗ.',
+      'Согласие пользователя — для обработки, не требуемой договором, в том числе для уведомлений через Telegram. Согласие даётся при регистрации и при подключении бота и может быть отозвано.',
+      'Данные лица младше 14 лет обрабатываются с согласия его родителя или иного законного представителя. Лицо от 14 до 18 лет пользуется Платформой с согласия законного представителя.',
+    ]],
+    ['Кому передаются данные', [
+      'Преподавателю — имя, адрес электронной почты и учебные данные учеников, которые вступили в его группу. Ученику — имя его преподавателя и названия групп.',
+      'Лицам, которые обеспечивают работу Платформы по поручению Оператора: хостинг-провайдеру, на серверах которого в Российской Федерации размещены Платформа и база данных, и почтовому сервису, через который отправляются служебные письма.',
+      'ООО НКО «ЮМани» (сервис ЮKassa) — для приёма оплаты: сумма и описание платежа. Чек формируется в приложении «Мой налог» (ФНС России).',
+      'Telegram — только если пользователь сам подключил бота. Серверы Telegram находятся за пределами Российской Федерации, поэтому сообщения бота (в них могут быть имена учеников и названия заданий) передаются трансгранично. Пользователь соглашается на это, подключая бота, и может отключить его в любой момент.',
+      'Для отображения сайта браузер загружает шрифты с серверов Google Fonts; при этом сервису становятся известны IP-адрес и сведения о браузере посетителя.',
+      'Иным лицам данные не передаются, кроме случаев, предусмотренных законом. Данные не продаются и не используются для рекламы.',
+    ]],
+    ['Сроки хранения', [
+      'Данные аккаунта и учебные данные хранятся, пока существует аккаунт. Пользователь может удалить аккаунт в личном кабинете: данные удаляются из базы сразу, а из резервных копий — в течение 14 дней.',
+      'Обезличенные сведения о посещениях хранятся не более 400 дней.',
+      'Сведения о платежах хранятся в течение сроков, установленных налоговым законодательством, в том числе после удаления аккаунта.',
+    ]],
+    ['Как данные защищаются', [
+      'Соединение с Платформой шифруется (HTTPS). Пароли хранятся в виде хеша scrypt. Доступ к серверу и базе данных есть только у Оператора.',
+      'Каждый пользователь видит только свои данные и данные, открытые ему по роли: преподаватель — данные учеников своих групп, ученик — задания, выданные ему.',
+      'Ежедневно создаются резервные копии базы данных, они хранятся 14 дней.',
+    ]],
+    ['Cookie и хранилище браузера', [
+      'Платформа использует только необходимые cookie: stackly_session — для входа (до 30 дней) и stackly_accounts — список аккаунтов, в которые выполнен вход на этом устройстве.',
+      'В хранилище браузера (localStorage) сохраняются выбранная тема оформления и прогресс, сделанный до входа в аккаунт. Рекламные и сторонние аналитические cookie не используются.',
+    ]],
+    ['Права пользователя', [
+      'Пользователь вправе получить сведения об обработке своих данных, потребовать их уточнения, блокирования или удаления, отозвать согласие на обработку, а также обжаловать действия Оператора в Роскомнадзоре или в суде.',
+      'Сменить пароль и удалить аккаунт можно в личном кабинете. Остальные запросы направляются на электронную почту Оператора с адреса, связанного с аккаунтом. Оператор отвечает в течение 10 рабочих дней.',
+      'Родитель или законный представитель несовершеннолетнего вправе запросить сведения о его данных или их удаление.',
+    ]],
+    ['Изменение политики', [
+      'Оператор вправе изменять политику, публикуя новую редакцию на Платформе. Новая редакция действует с момента публикации, если в ней не указано иное.',
+    ]],
+    ['Контакты оператора', []],
+  ];
+  function pagePrivacy() {
+    const reqs = [['Оператор', EXECUTOR.name], ['Статус', EXECUTOR.status], ['ИНН', EXECUTOR.inn], ['Адрес', EXECUTOR.address], ['Электронная почта', EXECUTOR.email], ['Телефон', EXECUTOR.phone]];
+    return `<div class="page wrap t-page offer">
+      <header class="t-head"><div><span class="eyebrow">Документы · редакция от ${PRIVACY_DATE}</span><h1>Политика обработки персональных данных</h1>
+        <p>Какие данные собирает stackly, зачем, кому они видны и как удалить их. Связанный документ — <a href="#offer">публичная оферта</a>.</p></div>
+        <button type="button" class="btn small ghost" data-act="print">Распечатать</button></header>
+      <nav class="offer-toc" aria-label="Содержание">${PRIVACY.map(([t], i) => `<a href="#privacy" data-offer-go="${i + 1}">${i + 1}. ${esc(t)}</a>`).join('')}</nav>
+      <article class="offer-body">${PRIVACY.map(([t, ps], i) => `<section class="offer-sec" id="offer-${i + 1}"><h2><span class="offer-n">${i + 1}.</span>${esc(t)}</h2>
+        ${ps.map((p, j) => `<p><span class="offer-n">${i + 1}.${j + 1}.</span>${esc(p)}</p>`).join('')}
+        ${i === PRIVACY.length - 1 ? `<dl class="offer-req">${reqs.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}</section>`).join('')}</article>
+    </div>`;
+  }
 
   function pageHome() {
     const done = HOME_MX.filter(([, r]) => r.every(v => v > 0)).length;
@@ -3701,7 +3779,7 @@ function stacklyApp() {
     const seen = new Set(); stats.events = [...stats.events, ...r.events].sort((x, y) => x.t - y.t).filter(e => { const k = e.t + e.k + e.id; if (seen.has(k)) return false; seen.add(k); return true; }).slice(-120);
     stats.since = Math.min(stats.since, r.since);
   }
-  function setUser(u) { acct.uid = u.id; acct.name = u.name; acct.email = u.email; acct.created = u.created * 1000; acct.role = u.role || 'student'; acct.subjects = u.subjects || []; acct.materials = u.materials || []; acct.plan = u.plan || null; acct.usage = u.usage || null; acct.limits = u.limits || null; }
+  function setUser(u) { acct.uid = u.id; acct.name = u.name; acct.email = u.email; acct.created = u.created * 1000; acct.role = u.role || 'student'; acct.subjects = u.subjects || []; acct.materials = u.materials || []; acct.plan = u.plan || null; acct.usage = u.usage || null; acct.limits = u.limits || null; acct.pay = !!u.pay; acct.prices = u.prices || null; }
   async function connect(silent) {
     // вызывается после входа/регистрации или при открытии сайта с живой сессией
     try {
@@ -3828,7 +3906,7 @@ function stacklyApp() {
         ${field('au-pass', 'Пароль — от 8 символов', 'password', 'autocomplete="new-password" required minlength="8"')}
         <div class="form-msg" role="alert"></div>
         <button class="btn blue wide" type="submit">Создать аккаунт <span class="arr">${I.arrow}</span></button>
-        <p class="auth-note">Создавая аккаунт, вы принимаете условия <a href="#offer" target="_blank" rel="noopener">публичной оферты</a> и соглашаетесь на обработку персональных данных для работы платформы.</p>
+        <p class="auth-note">Создавая аккаунт, вы принимаете условия <a href="#offer" target="_blank" rel="noopener">публичной оферты</a> и соглашаетесь на обработку персональных данных по <a href="#privacy" target="_blank" rel="noopener">политике</a>.</p>
         <p class="auth-note">Если вы уже изучали темы Python без входа, отметки сохранятся в новом аккаунте.</p></form>`;
     if (m === 'forgot') return `<h3 class="auth-h">Восстановление пароля</h3><form class="auth-form" data-auth="forgot" novalidate>
         <p class="auth-note">Пришлём на почту ссылку для нового пароля. Она действует один час.</p>
@@ -4651,7 +4729,36 @@ function stacklyApp() {
     const note = p.active
       ? (p.plan === 'trial' ? `<p class="plan-note">Пробный период — всё как в Про. После ${fmtDay(p.until)} останется бесплатный тариф: до ${L.groups} групп, ${L.students} учеников и 2 ГБ, без материалов платформы.</p>` : '')
       : `<p class="plan-note">В Про нет ограничений по ученикам, группам и месту, а ещё: ${PRO_EXTRAS.join(', ')}. Чтобы подключить Про, напишите администратору платформы.</p>`;
-    return `<section class="t-sec"><div class="panel plan-card"><div class="panel-h"><h2>Тариф</h2>${planChip(p)}</div>${usageRows(u, L, p.active)}${note}</div></section>`;
+    return `<section class="t-sec"><div class="panel plan-card"><div class="panel-h"><h2>Тариф</h2>${planChip(p)}</div>${usageRows(u, L, p.active)}${note.replace('Чтобы подключить Про, напишите администратору платформы.', acct.pay ? '' : 'Чтобы подключить Про, напишите администратору платформы.')}${payHTML()}</div></section>`;
+  }
+  // оплата Про через ЮKassa: кнопки ведут на страницу оплаты, после неё — #pay-return
+  function payHTML() {
+    if (!acct.pay || !acct.prices) return '';
+    const p = acct.plan, P = acct.prices;
+    return `<div class="pay-box"><b>${p.active && p.plan === 'pro' ? 'Продлить Про' : 'Подключить Про'}</b>
+      <div class="form-acts"><button type="button" class="btn small" data-pay="month">${P.month} ₽ за месяц</button><button type="button" class="btn small ghost" data-pay="year">${P.year.toLocaleString('ru-RU')} ₽ за год</button></div>
+      <p class="plan-note">${p.active ? 'Оплаченный срок прибавится к текущему. ' : ''}Оплата через ЮKassa. Нажимая кнопку оплаты, вы принимаете условия <a href="#offer" target="_blank" rel="noopener">публичной оферты</a>. Тариф не продлевается автоматически.</p></div>`;
+  }
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-pay]'); if (!b) return;
+    $$('[data-pay]').forEach(x => x.disabled = true);
+    try { const { url } = await api('/pay/pro', 'POST', { period: b.dataset.pay }); location.href = url; }
+    catch (err) { toast(err.message || 'Не получилось начать оплату'); $$('[data-pay]').forEach(x => x.disabled = false); }
+  });
+  // вернулись со страницы оплаты: сверяем платёж (ЮKassa может подтвердить его не сразу — проверяем несколько раз)
+  function pagePayReturn() {
+    return `<div class="page wrap t-page"><div class="t-empty pay-ret" id="payret" style="margin-top:24px"><b>Проверяем оплату…</b>Это займёт несколько секунд.</div></div>`;
+  }
+  async function checkPay(tries = 0) {
+    const box = $('#payret'); if (!box) return;
+    let r; try { r = await api('/pay/check', 'POST', {}); } catch (e) { box.innerHTML = `<b>Не получилось проверить оплату</b>${esc(e.message || '')} <div class="cta-row"><button type="button" class="btn small" data-act="reload">Проверить ещё раз</button></div>`; return; }
+    const paid = r.payments.some(x => x.status === 'paid'), pending = r.payments.some(x => x.status === 'pending' || x.status === 'waiting_for_capture');
+    if (pending && !paid && tries < 6) return setTimeout(() => checkPay(tries + 1), 2500);
+    try { setUser((await api('/auth/me')).user); } catch (e) { }
+    box.innerHTML = paid ? `<b>Оплата прошла — тариф Про подключён</b>${esc(planLabel(r.plan))}. Чек придёт на почту, указанную при оплате.<div class="cta-row"><a class="btn small" href="#teach">К группам</a></div>`
+      : !r.payments.length ? `<b>Новых платежей нет</b>Сейчас у вас: ${esc(planLabel(r.plan))}.<div class="cta-row"><a class="btn small" href="#teach">К группам</a></div>`
+      : pending ? '<b>Платёж ещё обрабатывается</b>Как только ЮKassa его подтвердит, тариф включится сам. Обновите страницу через минуту.<div class="cta-row"><button type="button" class="btn small" data-act="reload">Обновить</button></div>'
+      : '<b>Оплата не прошла</b>Деньги не списаны. Попробуйте ещё раз на странице «Мои группы».<div class="cta-row"><a class="btn small" href="#teach">К группам</a></div>';
   }
 
   // карточка любого пользователя для администратора: #admin-u-<id>
@@ -4686,6 +4793,10 @@ function stacklyApp() {
           ${r.subjects.length ? `<p class="plan-note">Предметы: ${r.subjects.map(esc).join(', ')}</p>` : ''}</div></section>
       <section class="t-sec"><h2 class="sec-h">Группы</h2>${r.groups.length ? `<ul class="bk-list">${r.groups.map(g => `<li><a class="bk-row" href="#teach-g-${g.id}"><span class="bk-t"><b>${esc(g.name)}</b><span class="bk-meta"><span>${g.members} ${plural(g.members, 'ученик', 'ученика', 'учеников')}</span><span>${g.homework} ${plural(g.homework, 'задание', 'задания', 'заданий')}</span><span class="pnum">${esc(g.code)}</span></span></span><span class="bk-chev">${I.chev}</span></a></li>`).join('')}</ul>`
         : '<div class="t-empty"><b>Групп нет</b>Преподаватель ещё не создал ни одной группы.</div>'}</section>
+      ${(r.payments || []).length ? `<section class="t-sec"><h2 class="sec-h">Платежи</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Дата</th><th>Срок</th><th class="num">Сумма</th><th>Статус</th><th>Платёж в ЮKassa</th></tr></thead><tbody>
+        ${r.payments.map(p => `<tr><td>${fmtDate(p.created * 1000)}</td><td>${p.period === 'year' ? '12 месяцев' : '1 месяц'}</td><td class="num">${(p.amount / 100).toLocaleString('ru-RU')} ₽</td>
+          <td>${p.applied ? '<span class="due ok">оплачен</span>' : { pending: '<span class="due">ожидает оплаты</span>', waiting_for_capture: '<span class="due">ожидает подтверждения</span>', canceled: '<span class="due">отменён</span>', mismatch: '<span class="due late">не сходится сумма</span>' }[p.status] || esc(p.status)}</td>
+          <td><code>${esc(p.id)}</code></td></tr>`).join('')}</tbody></table></div></section>` : ''}
       ${r.materials.length ? `<section class="t-sec"><h2 class="sec-h">Материалы</h2><ul class="bk-list">${r.materials.map(m => `<li><a class="bk-row" href="#mat-${m.id}"><span class="bk-t"><b>${esc(m.title)}</b><span class="bk-meta">${[m.subject, m.shared ? 'видят ученики групп' : 'только по ДЗ', 'изменён ' + fmtAgo(m.updated)].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('')}</span></span><span class="bk-chev">${I.chev}</span></a></li>`).join('')}</ul></section>` : ''}`;
   }
   document.addEventListener('click', e => {
@@ -5520,6 +5631,8 @@ function stacklyApp() {
     }
     else if (h === 'course') { html = pageCourse(); nav = 'course'; }
     else if (h === 'offer') { html = pageOffer(); nav = 'offer'; }
+    else if (h === 'privacy') { html = pagePrivacy(); nav = 'offer'; }
+    else if (h === 'pay-return') { html = pagePayReturn(); nav = 'pay'; setTimeout(checkPay, 300); }
     else if (h === 'materials') { html = pageMaterials(); nav = 'materials'; }
     else if ((m = h.match(/^mat-(?:(new)|edit-(\d+)|(\d+))$/))) { html = pageMatRoute(m); nav = 'materials'; if (m[1] || m[2]) setTimeout(ePreview); }
     else if (h === 'me') {
@@ -5587,7 +5700,7 @@ function stacklyApp() {
     if (nav === 'teach') loadTeach(h);
     if (nav === 'hw') loadHW(h); else curHW = 0;
     if (nav === 'me') { loadMyClass(); loadTg(); }
-    document.title = { home: 'stackly · платформа для репетиторов', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', offer: 'Публичная оферта · stackly' }[nav] || 'stackly';
+    document.title = { home: 'stackly · платформа для репетиторов', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', nav === 'me' || nav === 'login');
   }
 

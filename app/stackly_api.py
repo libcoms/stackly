@@ -13,6 +13,7 @@
   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM — почта для восстановления пароля
 """
 import base64, calendar, hashlib, hmac, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
+import urllib.error, urllib.request
 from urllib.parse import parse_qs
 from email.message import EmailMessage
 from http import HTTPStatus
@@ -141,6 +142,12 @@ def migrate():
         id INTEGER PRIMARY KEY, chat_id INTEGER NOT NULL, text TEXT NOT NULL, markup TEXT NOT NULL DEFAULT '',
         created INTEGER NOT NULL, tries INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS tg_sent (key TEXT PRIMARY KEY, ts INTEGER NOT NULL);
+      -- оплата тарифа Про через ЮKassa: id — id платежа в ЮKassa, amount — копейки, status — как в ЮKassa
+      -- (pending / succeeded / canceled), applied — когда Про продлён по этому платежу (продлевается один раз)
+      CREATE TABLE IF NOT EXISTS payments (
+        id TEXT PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, period TEXT NOT NULL,
+        amount INTEGER NOT NULL, status TEXT NOT NULL, created INTEGER NOT NULL, paid_at INTEGER, applied INTEGER);
+      CREATE INDEX IF NOT EXISTS payments_user ON payments(user_id);
       CREATE TABLE IF NOT EXISTS media (
         id TEXT PRIMARY KEY, owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         type TEXT NOT NULL, data BLOB NOT NULL, created INTEGER NOT NULL);
@@ -425,6 +432,56 @@ def record_homework_done(user_id, data):
                 name = db().execute('SELECT name FROM users WHERE id = ?', (user_id,)).fetchone()['name']
                 tg_teacher(h['teacher_id'], 'done', f'✅ <b>{tg_esc(name)}</b>: выполнено задание «{tg_esc(h["title"])}» · {tg_esc(h["group_name"])}')
 
+# ---------------------------------------------------------------- оплата Про через ЮKassa
+# Платёж создаётся на сервере ЮKassa, человек платит на её странице и возвращается на сайт.
+# Факт оплаты сервер всегда перепроверяет запросом к ЮKassa (GET /payments/<id>) — тело уведомления не доверяем.
+YK_SHOP = os.environ.get('STACKLY_YK_SHOP', '')
+YK_KEY = os.environ.get('STACKLY_YK_KEY', '')
+YK_API = os.environ.get('STACKLY_YK_API', 'https://api.yookassa.ru/v3').rstrip('/')
+PRO_PRICES = {'month': (35000, 30, '1 месяц'), 'year': (370000, 365, '12 месяцев')}     # копейки, дни, подпись
+
+def yk(method, path, body=None, key=None):
+    """Запрос к API ЮKassa (Basic-авторизация shopId:секретный ключ). Ошибка — ApiError 502."""
+    auth = base64.b64encode(f'{YK_SHOP}:{YK_KEY}'.encode()).decode()
+    req = urllib.request.Request(YK_API + path, method=method, data=json.dumps(body).encode() if body is not None else None,
+                                 headers={'Authorization': 'Basic ' + auth, 'Content-Type': 'application/json',
+                                          **({'Idempotence-Key': key} if key else {})})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return json.load(r)
+    except (urllib.error.URLError, OSError, ValueError) as e:
+        log.warning('ЮKassa %s %s: %s', method, path, e)
+        raise ApiError(502, 'payment_error', 'Платёжный сервис не ответил. Попробуйте ещё раз через минуту')
+
+def apply_payment(pid):
+    """Сверяет платёж с ЮKassa и, если он оплачен и сходится с нашей записью, один раз продлевает Про.
+    Срок прибавляется к текущему Про (или пробному), а если тариф уже закончился — отсчитывается от сейчас."""
+    p = db().execute('SELECT * FROM payments WHERE id = ?', (pid,)).fetchone()
+    if not p or p['applied'] or p['status'] == 'canceled':
+        return p
+    yp = yk('GET', f'/payments/{pid}')
+    value = round(float((yp.get('amount') or {}).get('value') or 0) * 100)
+    meta = yp.get('metadata') or {}
+    status = yp.get('status') if yp.get('status') in ('pending', 'waiting_for_capture', 'succeeded', 'canceled') else 'pending'
+    now = int(time.time())
+    if status == 'succeeded' and yp.get('paid') and value == p['amount'] and str(meta.get('user_id')) == str(p['user_id']) \
+            and (yp.get('amount') or {}).get('currency') == 'RUB':
+        # отметка applied ставится условно — второй одновременный вызов ничего не продлит
+        if db().execute('UPDATE payments SET status = ?, paid_at = ?, applied = ? WHERE id = ? AND applied IS NULL',
+                        ('succeeded', now, now, pid)).rowcount:
+            u = db().execute('SELECT * FROM users WHERE id = ?', (p['user_id'],)).fetchone()
+            if u:
+                pl = plan_of(u)
+                base = u['plan_until'] if pl['active'] and u['plan_until'] else now
+                db().execute("UPDATE users SET plan = 'pro', plan_until = ? WHERE id = ?", (base + PRO_PRICES[p['period']][1] * 86400, u['id']))
+                log.info('оплата %s: Про для пользователя %s на %s', pid, u['id'], p['period'])
+    elif status == 'succeeded':
+        log.warning('оплата %s не сходится с записью: сумма %s, метаданные %s', pid, value, meta)
+        db().execute("UPDATE payments SET status = 'mismatch' WHERE id = ?", (pid,))
+    else:
+        db().execute('UPDATE payments SET status = ? WHERE id = ?', (status, pid))
+    return db().execute('SELECT * FROM payments WHERE id = ?', (pid,)).fetchone()
+
 # ---------------------------------------------------------------- Telegram: очередь сообщений
 # Бот (app/stackly_bot.py) забирает сообщения из tg_outbox и отправляет их; API в Telegram сам не ходит.
 TG_TOKEN = os.environ.get('STACKLY_TG_TOKEN', '')
@@ -675,6 +732,10 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/admin/role'): self.a_role,
             ('POST', '/api/admin/groups/add'): self.a_group_add,
             ('GET', '/api/admin/user'): self.a_user,
+            # оплата Про через ЮKassa
+            ('POST', '/api/pay/pro'): self.pay_pro,
+            ('POST', '/api/pay/check'): self.pay_check,
+            ('POST', '/api/pay/webhook'): self.pay_webhook,
             # Telegram-бот
             ('GET', '/api/tg'): self.tg_status,
             ('POST', '/api/tg/link'): self.tg_link,
@@ -730,6 +791,8 @@ class Handler(BaseHTTPRequestHandler):
             j['plan'] = plan_of(u)
             j['usage'] = teacher_usage(u['id'])
             j['limits'] = FREE_LIMITS
+            j['pay'] = bool(YK_SHOP and YK_KEY) and u['role'] == 'teacher'
+            j['prices'] = {k: v[0] // 100 for k, v in PRO_PRICES.items()}
         return j
 
     def save_teaching(self):
@@ -1598,6 +1661,8 @@ class Handler(BaseHTTPRequestHandler):
             out['materials'] = [dict(r, shared=bool(r['shared'])) for r in db().execute(
                 'SELECT id, title, subject, shared, updated FROM materials WHERE author_id = ? AND hidden = 0 ORDER BY updated DESC', (u['id'],))]
             out['subjects'] = json.loads(u['subjects'] or '[]')
+            out['payments'] = [dict(r) for r in db().execute(
+                'SELECT id, period, amount, status, created, paid_at, applied FROM payments WHERE user_id = ? ORDER BY created DESC LIMIT 20', (u['id'],))]
         else:
             data, updated = load_progress(u['id'])
             hws = assigned_homework(u['id'])
@@ -1630,6 +1695,58 @@ class Handler(BaseHTTPRequestHandler):
             until = u['plan_until'] or int(time.time())
         db().execute('UPDATE users SET plan = ?, plan_until = ? WHERE id = ?', (plan, until, u['id']))
         self.send_json(200, {'plan': plan_of(db().execute('SELECT * FROM users WHERE id = ?', (u['id'],)).fetchone())})
+
+    # --- оплата Про
+    def pay_pro(self):
+        """Создаёт платёж в ЮKassa и отдаёт адрес страницы оплаты."""
+        u = self.teacher()
+        if not (YK_SHOP and YK_KEY):
+            raise ApiError(503, 'pay_off', 'Оплата на сайте ещё не подключена')
+        if u['role'] == 'admin':
+            raise ApiError(400, 'admin', 'У администратора ограничений нет — оплачивать не нужно')
+        period = str(self.body().get('period', ''))
+        if period not in PRO_PRICES:
+            raise ApiError(400, 'bad_period', 'Выберите срок: месяц или год')
+        if too_many(f'pay:{u["id"]}', 10, 3600):
+            raise ApiError(429, 'rate_limited', 'Слишком много попыток оплаты. Попробуйте через час')
+        hit(f'pay:{u["id"]}')
+        kop, _, label = PRO_PRICES[period]
+        yp = yk('POST', '/payments', {
+            'amount': {'value': f'{kop // 100}.{kop % 100:02d}', 'currency': 'RUB'},
+            'capture': True,
+            'confirmation': {'type': 'redirect', 'return_url': f'{ORIGIN}/#pay-return'},
+            'description': f'stackly: тариф Про, {label}',
+            'metadata': {'user_id': u['id'], 'period': period},
+        }, key=secrets.token_hex(16))
+        url = (yp.get('confirmation') or {}).get('confirmation_url')
+        if not yp.get('id') or not url:
+            raise ApiError(502, 'payment_error', 'Платёжный сервис не вернул страницу оплаты')
+        db().execute('INSERT INTO payments (id, user_id, period, amount, status, created) VALUES (?,?,?,?,?,?)',
+                     (yp['id'], u['id'], period, kop, 'pending', int(time.time())))
+        self.send_json(200, {'url': url})
+
+    def pay_check(self):
+        """Вернулись со страницы оплаты: сверяем с ЮKassa все неоконченные платежи этого человека."""
+        u, now = self.current_user(), int(time.time())
+        out = []
+        for r in db().execute("SELECT id FROM payments WHERE user_id = ? AND applied IS NULL AND status IN ('pending', 'waiting_for_capture') "
+                              'AND created > ? ORDER BY created DESC LIMIT 5', (u['id'], now - 7 * 86400)).fetchall():
+            p = apply_payment(r['id'])
+            out.append({'status': 'paid' if p['applied'] else p['status'], 'period': p['period']})
+        # уведомление ЮKassa могло засчитать платёж раньше, чем человек вернулся на сайт
+        out += [{'status': 'paid', 'period': r['period']} for r in db().execute(
+            'SELECT period FROM payments WHERE user_id = ? AND applied > ? ORDER BY applied DESC LIMIT 5', (u['id'], now - 2 * 3600))
+            if not any(x['status'] == 'paid' for x in out)]
+        u = db().execute('SELECT * FROM users WHERE id = ?', (u['id'],)).fetchone()
+        self.send_json(200, {'payments': out, 'plan': plan_of(u)})
+
+    def pay_webhook(self):
+        """Уведомление ЮKassa: берём из него только id платежа и сверяем платёж запросом к ЮKassa."""
+        d = self.body()
+        pid = str((d.get('object') or {}).get('id') or '')
+        if re.match(r'^[\w-]{10,60}$', pid) and db().execute('SELECT 1 FROM payments WHERE id = ?', (pid,)).fetchone():
+            apply_payment(pid)
+        self.send_json(200, {'ok': True})        # ЮKassa ждёт 200, иначе будет повторять уведомление
 
     # --- Telegram-бот: подключение из кабинета
     def tg_status(self):
