@@ -561,6 +561,58 @@ class ContentTest(ServerCase):
         self.assertEqual(t.call('POST', '/media', {'type': 'image/png', 'data': svg})[0], 400)
 
 
+class PlansTest(ServerCase):
+    """Тарифы преподавателей: пробный Про, лимиты бесплатного, материалы платформы, карточка пользователя у админа."""
+    user = ContentTest.user
+    set_role = ClassroomTest.set_role
+
+    def uid(self, c):
+        return c.call('GET', '/auth/me')[1]['user']['id']
+
+    def test_trial_limits_and_admin_card(self):
+        a, t, s = self.user('admin'), self.user('teacher'), self.user('student')
+        me = t.call('GET', '/auth/me')[1]['user']
+        self.assertEqual((me['plan']['plan'], me['plan']['active']), ('trial', True))    # новый учитель — на пробном Про
+        self.assertNotIn('plan', s.call('GET', '/auth/me')[1]['user'])
+        tid = me['id']
+        # тариф меняет только администратор; у пробного обязателен срок
+        self.assertEqual(t.call('POST', '/admin/plan', {'user_id': tid, 'plan': 'pro'})[0], 403)
+        self.assertEqual(a.call('POST', '/admin/plan', {'user_id': tid, 'plan': 'trial'})[1]['error'], 'bad_until')
+        st, r = a.call('POST', '/admin/plan', {'user_id': tid, 'plan': 'free'})
+        self.assertEqual((st, r['plan']['active']), (200, False))
+        # бесплатный: до 5 групп
+        groups = [t.call('POST', '/teach/groups', {'name': f'Г{i}'}) for i in range(6)]
+        self.assertEqual([x[0] for x in groups], [201] * 5 + [403])
+        self.assertEqual(groups[5][1]['error'], 'plan_limit')
+        # и до 5 учеников во всех группах; ученик, который уже учится у преподавателя, вступает и во вторую группу
+        codes = [g[1]['group']['code'] for g in groups[:2]]
+        kids = [self.user('student') for _ in range(6)]
+        res = [k.call('POST', '/me/groups/join', {'code': codes[0]})[0] for k in kids]
+        self.assertEqual(res, [200] * 5 + [403])
+        self.assertEqual(kids[0].call('POST', '/me/groups/join', {'code': codes[1]})[0], 200)
+        # материалы платформы ученик получает, только пока у преподавателя Про
+        t.call('POST', '/me/teaching', {'subjects': ['Информатика'], 'materials': ['inf-ege']})
+        self.assertEqual(kids[0].call('GET', '/auth/me')[1]['user']['materials'], [])
+        st, r = a.call('POST', '/admin/plan', {'user_id': tid, 'plan': 'pro', 'until': None})
+        self.assertEqual((st, r['plan']['active'], r['plan']['until']), (200, True, None))     # Про без срока — бессрочно
+        self.assertEqual(kids[0].call('GET', '/auth/me')[1]['user']['materials'], ['inf-ege'])
+        self.assertEqual(kids[5].call('POST', '/me/groups/join', {'code': codes[0]})[0], 200)  # на Про лимитов нет
+        # пробный период выдаётся один раз: повторное назначение роли его не возвращает
+        a.call('POST', '/admin/plan', {'user_id': tid, 'plan': 'free'})
+        a.call('POST', '/admin/role', {'user_id': tid, 'role': 'student'})
+        a.call('POST', '/admin/role', {'user_id': tid, 'role': 'teacher'})
+        self.assertEqual(t.call('GET', '/auth/me')[1]['user']['plan']['active'], False)
+        # карточка пользователя — только администратору
+        self.assertEqual(t.call('GET', f'/admin/user?id={tid}')[0], 403)
+        st, r = a.call('GET', f'/admin/user?id={tid}')
+        self.assertEqual(st, 200, r)
+        self.assertEqual((r['user']['role'], r['usage']['groups'], r['usage']['students'], len(r['groups'])), ('teacher', 5, 6, 5))
+        st, r = a.call('GET', f'/admin/user?id={self.uid(kids[0])}')
+        self.assertEqual((st, len(r['groups']), r['homework']['total']), (200, 2, 0))
+        self.assertIn('solved', r['stats'])
+        self.assertEqual(a.call('GET', '/admin/user?id=999999')[0], 404)
+
+
 class MaterialsTest(ServerCase):
     """Свои материалы учителей: видимость, права, выдача в ДЗ и отметка «изучено»."""
     user = ContentTest.user

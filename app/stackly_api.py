@@ -168,6 +168,55 @@ def migrate():
         # задачи, созданные до разделения банков, были видны всем — так и оставляем
         db().execute("UPDATE problems SET vis = CASE WHEN author_id IN (SELECT id FROM users WHERE role = 'admin') "
                      "THEN 'platform' ELSE 'public' END WHERE builtin = 0")
+    # тариф преподавателя: free — бесплатный, trial — пробный Про, pro — Про. plan_until — до какого момента
+    # действует trial/pro (у pro NULL — бессрочно). Учителям, которые были до тарифов, — пробный период с этого дня,
+    # чтобы лимиты бесплатного тарифа не сработали у них внезапно
+    cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
+    if 'plan' not in cols:
+        db().execute("ALTER TABLE users ADD COLUMN plan TEXT NOT NULL DEFAULT 'free'")
+        db().execute('ALTER TABLE users ADD COLUMN plan_until INTEGER')
+        db().execute("UPDATE users SET plan = 'trial', plan_until = ? WHERE role = 'teacher'", (int(time.time()) + TRIAL_DAYS * 86400,))
+
+# ---------------------------------------------------------------- тарифы
+TRIAL_DAYS = 14
+PLANS = ('free', 'trial', 'pro')
+# бесплатный тариф; на Про (и пробном Про) ограничений нет, у администратора — тоже
+FREE_LIMITS = {'groups': 5, 'students': 5, 'storage': 2 * 1024 ** 3}
+
+def plan_of(u):
+    """Тариф пользователя: plan как записан, until, active — действует ли сейчас Про."""
+    if u['role'] == 'admin':
+        return {'plan': 'pro', 'until': None, 'active': True}
+    p, until = u['plan'] or 'free', u['plan_until']
+    active = p == 'pro' and until is None or p in ('trial', 'pro') and until is not None and until > time.time()
+    return {'plan': p, 'until': until, 'active': bool(active)}
+
+def start_trial(user_id):
+    """Пробный Про — один раз: только тому, у кого тарифа ещё не было."""
+    db().execute("UPDATE users SET plan = 'trial', plan_until = ? WHERE id = ? AND plan = 'free' AND plan_until IS NULL",
+                 (int(time.time()) + TRIAL_DAYS * 86400, user_id))
+
+def teacher_usage(uid):
+    """Сколько преподаватель занимает: группы, ученики во всех его группах, место (байты)."""
+    one = lambda sql: db().execute(sql, (uid,)).fetchone()[0]
+    return {
+        'groups': one('SELECT COUNT(*) FROM study_groups WHERE teacher_id = ?'),
+        'students': one('SELECT COUNT(DISTINCT m.user_id) FROM group_members m JOIN study_groups g ON g.id = m.group_id WHERE g.teacher_id = ?'),
+        'storage': one('SELECT COALESCE(SUM(length(data)), 0) FROM media WHERE owner_id = ?')
+            + one('SELECT COALESCE(SUM(length(CAST(title || body || answer || solution || note || data AS BLOB))), 0) FROM problems WHERE author_id = ? AND builtin = 0')
+            + one('SELECT COALESCE(SUM(length(CAST(h.title || h.comment || h.items AS BLOB))), 0) FROM homework h JOIN study_groups g ON g.id = h.group_id WHERE g.teacher_id = ?')
+            + one('SELECT COALESCE(SUM(length(CAST(title || subject || body AS BLOB))), 0) FROM materials WHERE author_id = ?'),
+    }
+
+def plan_limit(u, key, adding=1):
+    """Бросает ошибку, если на бесплатном тарифе после добавления будет больше лимита."""
+    if plan_of(u)['active']:
+        return
+    used = teacher_usage(u['id'])[key]
+    if used + adding > FREE_LIMITS[key]:
+        msg = {'groups': f'На бесплатном тарифе — до {FREE_LIMITS["groups"]} групп. Подключите Про, чтобы создавать больше',
+               'storage': 'На бесплатном тарифе — до 2 ГБ: место закончилось. Удалите лишнее или подключите Про'}[key]
+        raise ApiError(403, 'plan_limit', msg)
 
 # ---------------------------------------------------------------- посещаемость
 def metric_day(ts):
@@ -589,6 +638,8 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/admin/metrics'): self.a_metrics,
             ('POST', '/api/admin/role'): self.a_role,
             ('POST', '/api/admin/groups/add'): self.a_group_add,
+            ('GET', '/api/admin/user'): self.a_user,
+            ('POST', '/api/admin/plan'): self.a_plan,
             ('GET', '/api/admin/overview'): self.a_overview,
             ('POST', '/api/me/teaching'): self.save_teaching,
             # редактор задач и методички
@@ -627,12 +678,17 @@ class Handler(BaseHTTPRequestHandler):
         j = {'id': u['id'], 'email': u['email'], 'name': u['name'], 'created': u['created'], 'role': u['role'],
              'subjects': json.loads(u['subjects'] or '[]'), 'materials': json.loads(u['materials'] or '[]')}
         if u['role'] == 'student':
-            # ученику открыты материалы, которые включили его учителя
+            # ученику открыты материалы платформы, которые включили его учителя на тарифе Про
             mats = set()
-            for r in db().execute('SELECT t.materials FROM group_members m JOIN study_groups g ON g.id = m.group_id '
+            for r in db().execute('SELECT t.* FROM group_members m JOIN study_groups g ON g.id = m.group_id '
                                   'JOIN users t ON t.id = g.teacher_id WHERE m.user_id = ?', (u['id'],)):
-                mats.update(json.loads(r['materials'] or '[]'))
+                if plan_of(r)['active']:
+                    mats.update(json.loads(r['materials'] or '[]'))
             j['materials'] = sorted(mats)
+        else:
+            j['plan'] = plan_of(u)
+            j['usage'] = teacher_usage(u['id'])
+            j['limits'] = FREE_LIMITS
         return j
 
     def save_teaching(self):
@@ -668,6 +724,8 @@ class Handler(BaseHTTPRequestHandler):
                                (email, name, hash_password(pw), int(time.time()), role))
         except sqlite3.IntegrityError:
             raise ApiError(409, 'email_taken', 'На эту почту уже есть аккаунт — войдите или восстановите пароль')
+        if role == 'teacher':
+            start_trial(cur.lastrowid)            # новому преподавателю — пробный Про
         u = db().execute('SELECT * FROM users WHERE id = ?', (cur.lastrowid,)).fetchone()
         self.send_json(201, {'user': self.user_json(u)}, [self.start_session(u['id'])] + self.keep_current(d, u['id']))
 
@@ -815,6 +873,13 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(404, 'bad_code', 'Группа с таким кодом не найдена — проверьте код у учителя')
         if g['teacher_id'] == u['id']:
             raise ApiError(400, 'own_group', 'Это ваша собственная группа')
+        # бесплатный тариф преподавателя — до 5 учеников во всех его группах (кто уже учится у него, проходит)
+        t = db().execute('SELECT * FROM users WHERE id = ?', (g['teacher_id'],)).fetchone()
+        already = db().execute('SELECT 1 FROM group_members m JOIN study_groups g ON g.id = m.group_id WHERE g.teacher_id = ? AND m.user_id = ?',
+                               (g['teacher_id'], u['id'])).fetchone()
+        if t and not already and not plan_of(t)['active'] and teacher_usage(t['id'])['students'] >= FREE_LIMITS['students']:
+            raise ApiError(403, 'plan_limit', f'В группах этого преподавателя уже {FREE_LIMITS["students"]} учеников — '
+                                              'больше на бесплатном тарифе нельзя. Сообщите преподавателю')
         db().execute('INSERT OR IGNORE INTO group_members VALUES (?,?,?)', (g['id'], u['id'], int(time.time())))
         data, _ = load_progress(u['id'])
         record_homework_done(u['id'], data)       # уже выполненное засчитываем сразу
@@ -899,6 +964,7 @@ class Handler(BaseHTTPRequestHandler):
         name = self.group_name(self.body())
         if db().execute('SELECT COUNT(*) FROM study_groups WHERE teacher_id = ?', (u['id'],)).fetchone()[0] >= 200:
             raise ApiError(400, 'too_many', 'Слишком много групп')
+        plan_limit(u, 'groups')
         cur = db().execute('INSERT INTO study_groups (teacher_id, name, code, created) VALUES (?,?,?,?)',
                            (u['id'], name, new_group_code(), int(time.time())))
         self.send_json(201, {'group': dict(db().execute('SELECT * FROM study_groups WHERE id = ?', (cur.lastrowid,)).fetchone())})
@@ -1149,6 +1215,7 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, 'bad_dname', 'Имя файла — латиница, цифры, точка, например 24.txt')
         if not f['data']:
             f['dname'] = ''
+        plan_limit(u, 'storage', sum(len(str(v).encode()) for v in f.values()))
         now, pid = int(time.time()), str(d.get('id') or '')
         cols = ', '.join(f'{k} = ?' for k in f)
         if pid and not pid.startswith('u'):
@@ -1254,6 +1321,7 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, 'bad_image', 'Поддерживаются картинки PNG, JPEG, WebP и GIF')
         if len(raw) > MAX_IMAGE:
             raise ApiError(413, 'too_large', 'Картинка больше 1,5 МБ — уменьшите её')
+        plan_limit(u, 'storage', len(raw))
         hit(key)
         mid = secrets.token_urlsafe(12)
         db().execute('INSERT INTO media VALUES (?,?,?,?,?)', (mid, u['id'], kind, raw, int(time.time())))
@@ -1294,6 +1362,7 @@ class Handler(BaseHTTPRequestHandler):
              'subject': re.sub(r'\s+', ' ', self.text_field(d, 'subject', 0, 60, 'Предмет')),
              'body': self.text_field(d, 'body', 0, 60000, 'Текст', strip=False).strip(),
              'shared': 1 if d.get('shared') else 0}
+        plan_limit(u, 'storage', len((f['title'] + f['subject'] + f['body']).encode()))
         now = int(time.time())
         if d.get('id'):
             mid = self.own_material(u, self.int_arg(d, 'id'))['id']
@@ -1407,7 +1476,7 @@ class Handler(BaseHTTPRequestHandler):
         seen = {r['uid']: r['ts'] for r in db().execute('SELECT uid, MAX(ts) AS ts FROM hits WHERE uid IS NOT NULL GROUP BY uid')}
         # место: картинки, свои задачи (с файлами данных) и выданные задания — в байтах
         teachers = [dict(r) for r in db().execute(
-            "SELECT u.id, u.name, u.email, u.role, u.subjects, u.created, "
+            "SELECT u.id, u.name, u.email, u.role, u.subjects, u.created, u.plan, u.plan_until, "
             "(SELECT COUNT(*) FROM study_groups g WHERE g.teacher_id = u.id) AS groups, "
             "(SELECT COUNT(DISTINCT m.user_id) FROM group_members m JOIN study_groups g ON g.id = m.group_id WHERE g.teacher_id = u.id) AS students, "
             "(SELECT COUNT(*) FROM homework h JOIN study_groups g ON g.id = h.group_id WHERE g.teacher_id = u.id) AS homework, "
@@ -1422,6 +1491,7 @@ class Handler(BaseHTTPRequestHandler):
             t['subjects'] = json.loads(t['subjects'] or '[]')
             t['storage'] = t['media_b'] + t['problems_b'] + t['homework_b']
             t['seen'] = seen.get(t['id'])
+            t['plan'] = plan_of(t)
         teachers.sort(key=lambda t: -t['storage'])
         students = roles.get('student', 0)
         recent = [dict(r) | {'seen': seen.get(r['id'])} for r in db().execute(
@@ -1443,7 +1513,7 @@ class Handler(BaseHTTPRequestHandler):
     def a_users(self):
         self.admin()
         q = '%' + str(self.query.get('q', '')).strip().lower().replace('%', '').replace('_', '') + '%'
-        rows = db().execute('SELECT u.id, u.name, u.email, u.role, u.created, p.updated, '
+        rows = db().execute('SELECT u.id, u.name, u.email, u.role, u.created, u.plan, u.plan_until, p.updated, '
                             '(SELECT COUNT(*) FROM group_members m WHERE m.user_id = u.id) AS groups_in, '
                             '(SELECT COUNT(*) FROM study_groups g WHERE g.teacher_id = u.id) AS groups_own '
                             'FROM users u LEFT JOIN progress p ON p.user_id = u.id '
@@ -1451,7 +1521,7 @@ class Handler(BaseHTTPRequestHandler):
                             "ORDER BY CASE u.role WHEN 'admin' THEN 0 WHEN 'teacher' THEN 1 ELSE 2 END, u.created DESC LIMIT 300",
                             (q, q)).fetchall()
         total = db().execute('SELECT COUNT(*) FROM users').fetchone()[0]
-        self.send_json(200, {'users': [dict(r) for r in rows], 'total': total})
+        self.send_json(200, {'users': [dict(r, plan=plan_of(r) if r['role'] != 'student' else None) for r in rows], 'total': total})
 
     def a_role(self):
         me = self.admin()
@@ -1463,7 +1533,61 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, 'self', 'Свою роль менять нельзя — попросите другого администратора')
         if not db().execute('UPDATE users SET role = ? WHERE id = ?', (role, uid)).rowcount:
             raise ApiError(404, 'not_found', 'Пользователь не найден')
+        if role == 'teacher':
+            start_trial(uid)
         self.send_json(200, {'ok': True})
+
+    def a_user(self):
+        """Карточка любого пользователя для администратора: учётная запись, тариф и нагрузка преподавателя,
+        группы, задачи, материалы; у ученика — его группы, задания и сводка прогресса."""
+        self.admin()
+        u = db().execute('SELECT * FROM users WHERE id = ?', (self.int_arg(self.query, 'id'),)).fetchone()
+        if not u:
+            raise ApiError(404, 'not_found', 'Пользователь не найден')
+        seen = db().execute('SELECT MAX(ts) FROM hits WHERE uid = ?', (u['id'],)).fetchone()[0]
+        out = {'user': {k: u[k] for k in ('id', 'name', 'email', 'role', 'created')} | {'seen': seen}}
+        if u['role'] in ('teacher', 'admin'):
+            out['plan'], out['usage'], out['limits'] = plan_of(u), teacher_usage(u['id']), FREE_LIMITS
+            out['groups'] = [dict(r) for r in db().execute(
+                'SELECT g.id, g.name, g.code, g.created, (SELECT COUNT(*) FROM group_members m WHERE m.group_id = g.id) AS members, '
+                '(SELECT COUNT(*) FROM homework h WHERE h.group_id = g.id) AS homework FROM study_groups g WHERE g.teacher_id = ? ORDER BY g.created DESC',
+                (u['id'],))]
+            out['problems'] = db().execute('SELECT COUNT(*) FROM problems WHERE author_id = ? AND builtin = 0 AND hidden = 0', (u['id'],)).fetchone()[0]
+            out['materials'] = [dict(r, shared=bool(r['shared'])) for r in db().execute(
+                'SELECT id, title, subject, shared, updated FROM materials WHERE author_id = ? AND hidden = 0 ORDER BY updated DESC', (u['id'],))]
+            out['subjects'] = json.loads(u['subjects'] or '[]')
+        else:
+            data, updated = load_progress(u['id'])
+            hws = assigned_homework(u['id'])
+            done = {r['hw_id'] for r in db().execute('SELECT hw_id FROM homework_done WHERE user_id = ?', (u['id'],))}
+            out['stats'] = summary(data, updated)
+            out['groups'] = [dict(r) for r in db().execute(
+                'SELECT g.id, g.name, t.id AS teacher_id, t.name AS teacher, m.joined FROM group_members m JOIN study_groups g ON g.id = m.group_id '
+                'JOIN users t ON t.id = g.teacher_id WHERE m.user_id = ? ORDER BY m.joined DESC', (u['id'],))]
+            out['homework'] = {'total': len(hws), 'done': sum(h['id'] in done for h in hws)}
+        self.send_json(200, out)
+
+    def a_plan(self):
+        """Тариф преподавателя: free, trial или pro; until — срок (секунды), у pro можно без срока."""
+        self.admin()
+        d = self.body()
+        u = db().execute('SELECT * FROM users WHERE id = ?', (self.int_arg(d, 'user_id'),)).fetchone()
+        if not u or u['role'] != 'teacher':
+            raise ApiError(404, 'not_found', 'Преподаватель не найден')
+        plan, until = str(d.get('plan', '')), d.get('until')
+        if plan not in PLANS:
+            raise ApiError(400, 'bad_plan', 'Неизвестный тариф')
+        if until is not None:
+            until = self.int_arg(d, 'until')
+            if not 1_600_000_000 < until < 4_000_000_000:
+                raise ApiError(400, 'bad_until', 'Некорректный срок')
+        if plan == 'trial' and until is None:
+            raise ApiError(400, 'bad_until', 'У пробного периода должен быть срок')
+        if plan == 'free':
+            # у бесплатного срока нет; дата остаётся отметкой, что пробный период уже выдавался
+            until = u['plan_until'] or int(time.time())
+        db().execute('UPDATE users SET plan = ?, plan_until = ? WHERE id = ?', (plan, until, u['id']))
+        self.send_json(200, {'plan': plan_of(db().execute('SELECT * FROM users WHERE id = ?', (u['id'],)).fetchone())})
 
     def a_group_add(self):
         """Администратор добавляет уже зарегистрированного ученика в любую группу — без кода."""
@@ -1487,6 +1611,8 @@ def cli_set_role(email, role):
         sys.exit(f'Роль должна быть одной из: {", ".join(ROLES)}')
     if not db().execute('UPDATE users SET role = ? WHERE email = ?', (role, email.strip().lower())).rowcount:
         sys.exit(f'Пользователь {email} не найден — сначала зарегистрируйтесь на сайте')
+    if role == 'teacher':
+        start_trial(db().execute('SELECT id FROM users WHERE email = ?', (email.strip().lower(),)).fetchone()['id'])
     print(f'{email}: роль {role}')
 
 
