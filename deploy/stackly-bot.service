@@ -1,0 +1,28 @@
+[Unit]
+Description=stackly Telegram-бот (уведомления преподавателям, напоминания ученикам)
+After=network-online.target stackly-api.service
+Wants=network-online.target
+
+[Service]
+User=stackly
+Group=stackly
+EnvironmentFile=/etc/stackly/stackly.env
+ExecStart=/usr/bin/python3 /opt/stackly/app/stackly_bot.py
+# без STACKLY_TG_TOKEN бот сразу завершается с кодом 0 — перезапуска не будет
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/stackly
+MemoryMax=150M
+
+[Install]
+WantedBy=multi-user.target

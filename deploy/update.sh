@@ -14,7 +14,7 @@ if [ -f /var/lib/stackly/stackly.db ]; then
 fi
 
 echo "== Сайт, материалы и API"
-install -m 644 "$HERE/app/stackly_api.py" /opt/stackly/app/stackly_api.py
+install -m 644 "$HERE/app/stackly_api.py" "$HERE/app/stackly_bot.py" /opt/stackly/app/
 # закрытые материалы — вне папки сайта: их отдаёт API только вошедшим
 install -d -m 755 /opt/stackly/content
 rsync -a --delete "$HERE/content/" /opt/stackly/content/ 2>/dev/null || cp -r "$HERE/content/." /opt/stackly/content/
@@ -23,9 +23,12 @@ rsync -a --delete "$HERE/public/" /var/www/stackly/ 2>/dev/null || cp -r "$HERE/
 chmod -R a+rX /var/www/stackly
 
 echo "== Сервисы"
-install -m 644 "$HERE/deploy/stackly-api.service" "$HERE/deploy/stackly-backup.service" "$HERE/deploy/stackly-backup.timer" /etc/systemd/system/
+install -m 644 "$HERE/deploy/stackly-api.service" "$HERE/deploy/stackly-bot.service" "$HERE/deploy/stackly-backup.service" "$HERE/deploy/stackly-backup.timer" /etc/systemd/system/
 systemctl daemon-reload
 systemctl restart stackly-api
+# Telegram-бот: без STACKLY_TG_TOKEN в /etc/stackly/stackly.env он сразу завершается — это не ошибка
+systemctl enable stackly-bot.service >/dev/null 2>&1 || true
+systemctl restart stackly-bot || echo "Telegram-бот не запустился: journalctl -u stackly-bot"
 
 echo "== nginx"
 SITE=/etc/nginx/sites-available/stackly

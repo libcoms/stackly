@@ -18,7 +18,7 @@ id stackly >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbi
 install -d -m 755 /opt/stackly/app /opt/stackly/content /var/www/stackly /var/www/letsencrypt
 install -d -m 750 -o stackly -g stackly /var/lib/stackly
 install -d -m 700 /etc/stackly /var/backups/stackly
-install -m 644 "$HERE/app/stackly_api.py" /opt/stackly/app/stackly_api.py
+install -m 644 "$HERE/app/stackly_api.py" "$HERE/app/stackly_bot.py" /opt/stackly/app/
 # закрытые материалы — вне папки сайта: их отдаёт API только вошедшим
 cp -r "$HERE/content/." /opt/stackly/content/
 chmod -R a+rX /opt/stackly/content
@@ -32,9 +32,9 @@ fi
 chmod 600 /etc/stackly/stackly.env
 
 echo "== 4/7 Сервисы"
-install -m 644 "$HERE/deploy/stackly-api.service" "$HERE/deploy/stackly-backup.service" "$HERE/deploy/stackly-backup.timer" /etc/systemd/system/
+install -m 644 "$HERE/deploy/stackly-api.service" "$HERE/deploy/stackly-bot.service" "$HERE/deploy/stackly-backup.service" "$HERE/deploy/stackly-backup.timer" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now stackly-api.service stackly-backup.timer
+systemctl enable --now stackly-api.service stackly-bot.service stackly-backup.timer
 systemctl restart stackly-api.service
 
 echo "== 5/7 Файрвол"

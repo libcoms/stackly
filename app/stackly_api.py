@@ -130,6 +130,17 @@ def migrate():
         subject TEXT NOT NULL DEFAULT '', title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '',
         shared INTEGER NOT NULL DEFAULT 0, hidden INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL, updated INTEGER NOT NULL);
       CREATE INDEX IF NOT EXISTS materials_author ON materials(author_id);
+      -- Telegram-бот (app/stackly_bot.py): привязка чата к аккаунту, одноразовые ссылки для привязки,
+      -- очередь сообщений (API только ставит их в очередь, отправляет бот) и отметки разовых событий (сводка по сроку ДЗ)
+      CREATE TABLE IF NOT EXISTS tg_links (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, chat_id INTEGER NOT NULL UNIQUE,
+        username TEXT NOT NULL DEFAULT '', prefs TEXT NOT NULL DEFAULT '{}', linked INTEGER NOT NULL, digest_day TEXT NOT NULL DEFAULT '');
+      CREATE TABLE IF NOT EXISTS tg_tokens (
+        token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS tg_outbox (
+        id INTEGER PRIMARY KEY, chat_id INTEGER NOT NULL, text TEXT NOT NULL, markup TEXT NOT NULL DEFAULT '',
+        created INTEGER NOT NULL, tries INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS tg_sent (key TEXT PRIMARY KEY, ts INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS media (
         id TEXT PRIMARY KEY, owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         type TEXT NOT NULL, data BLOB NOT NULL, created INTEGER NOT NULL);
@@ -396,7 +407,7 @@ def hw_json(h):
 
 def assigned_homework(user_id):
     """ДЗ, выданные ученику: во всех его группах, кроме адресованных другим ученикам."""
-    rows = db().execute('SELECT h.*, g.name AS group_name, t.name AS teacher_name FROM homework h '
+    rows = db().execute('SELECT h.*, g.name AS group_name, g.teacher_id, t.name AS teacher_name FROM homework h '
                         'JOIN group_members m ON m.group_id = h.group_id AND m.user_id = ? '
                         'JOIN study_groups g ON g.id = h.group_id JOIN users t ON t.id = g.teacher_id '
                         'ORDER BY COALESCE(h.due, h.created + 315360000), h.id', (user_id,)).fetchall()
@@ -410,7 +421,32 @@ def record_homework_done(user_id, data):
             continue
         d, t = hw_progress(json.loads(h['items']), sets)
         if t and d == t:
-            db().execute('INSERT OR IGNORE INTO homework_done VALUES (?,?,?)', (h['id'], user_id, now))
+            if db().execute('INSERT OR IGNORE INTO homework_done VALUES (?,?,?)', (h['id'], user_id, now)).rowcount:
+                name = db().execute('SELECT name FROM users WHERE id = ?', (user_id,)).fetchone()['name']
+                tg_teacher(h['teacher_id'], 'done', f'✅ <b>{tg_esc(name)}</b>: выполнено задание «{tg_esc(h["title"])}» · {tg_esc(h["group_name"])}')
+
+# ---------------------------------------------------------------- Telegram: очередь сообщений
+# Бот (app/stackly_bot.py) забирает сообщения из tg_outbox и отправляет их; API в Telegram сам не ходит.
+TG_TOKEN = os.environ.get('STACKLY_TG_TOKEN', '')
+TG_BOT = os.environ.get('STACKLY_TG_BOT', '').lstrip('@')          # имя бота без @ — для ссылки t.me/<бот>
+TG_PREFS = {'done': True, 'join': True, 'due': True, 'digest': True}   # что присылать преподавателю
+
+def tg_esc(s):
+    return str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+def tg_queue(chat_id, text, markup=None):
+    db().execute('INSERT INTO tg_outbox (chat_id, text, markup, created) VALUES (?,?,?,?)',
+                 (chat_id, text, json.dumps(markup, ensure_ascii=False) if markup else '', int(time.time())))
+
+def tg_prefs(link):
+    return TG_PREFS | {k: bool(v) for k, v in json.loads(link['prefs'] or '{}').items() if k in TG_PREFS}
+
+def tg_teacher(teacher_id, pref, text, markup=None):
+    """Сообщение преподавателю, если у него подключён бот, включена настройка и действует Про."""
+    r = db().execute('SELECT l.*, u.role, u.plan, u.plan_until FROM tg_links l JOIN users u ON u.id = l.user_id WHERE l.user_id = ?',
+                     (teacher_id,)).fetchone()
+    if r and tg_prefs(r)[pref] and plan_of(r)['active']:
+        tg_queue(r['chat_id'], text, markup)
 
 def new_group_code():
     while True:
@@ -639,6 +675,11 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/admin/role'): self.a_role,
             ('POST', '/api/admin/groups/add'): self.a_group_add,
             ('GET', '/api/admin/user'): self.a_user,
+            # Telegram-бот
+            ('GET', '/api/tg'): self.tg_status,
+            ('POST', '/api/tg/link'): self.tg_link,
+            ('POST', '/api/tg/unlink'): self.tg_unlink,
+            ('POST', '/api/tg/prefs'): self.tg_set_prefs,
             ('POST', '/api/admin/plan'): self.a_plan,
             ('GET', '/api/admin/overview'): self.a_overview,
             ('POST', '/api/me/teaching'): self.save_teaching,
@@ -880,7 +921,8 @@ class Handler(BaseHTTPRequestHandler):
         if t and not already and not plan_of(t)['active'] and teacher_usage(t['id'])['students'] >= FREE_LIMITS['students']:
             raise ApiError(403, 'plan_limit', f'В группах этого преподавателя уже {FREE_LIMITS["students"]} учеников — '
                                               'больше на бесплатном тарифе нельзя. Сообщите преподавателю')
-        db().execute('INSERT OR IGNORE INTO group_members VALUES (?,?,?)', (g['id'], u['id'], int(time.time())))
+        if db().execute('INSERT OR IGNORE INTO group_members VALUES (?,?,?)', (g['id'], u['id'], int(time.time()))).rowcount:
+            tg_teacher(g['teacher_id'], 'join', f'👋 Новый ученик в группе «{tg_esc(g["name"])}»: <b>{tg_esc(u["name"])}</b>')
         data, _ = load_progress(u['id'])
         record_homework_done(u['id'], data)       # уже выполненное засчитываем сразу
         self.send_json(200, {'group': {'id': g['id'], 'name': g['name']}})
@@ -1588,6 +1630,45 @@ class Handler(BaseHTTPRequestHandler):
             until = u['plan_until'] or int(time.time())
         db().execute('UPDATE users SET plan = ?, plan_until = ? WHERE id = ?', (plan, until, u['id']))
         self.send_json(200, {'plan': plan_of(db().execute('SELECT * FROM users WHERE id = ?', (u['id'],)).fetchone())})
+
+    # --- Telegram-бот: подключение из кабинета
+    def tg_status(self):
+        u = self.current_user()
+        r = db().execute('SELECT * FROM tg_links WHERE user_id = ?', (u['id'],)).fetchone()
+        teacher = u['role'] != 'student'
+        self.send_json(200, {'enabled': bool(TG_TOKEN and TG_BOT), 'bot': TG_BOT, 'linked': bool(r),
+                             'username': r['username'] if r else '', 'prefs': tg_prefs(r) if r and teacher else None,
+                             'pro_required': teacher and not plan_of(u)['active']})
+
+    def tg_link(self):
+        """Одноразовая ссылка t.me/<бот>?start=<токен> на 15 минут: бот по ней привяжет чат к этому аккаунту."""
+        u = self.current_user()
+        if not (TG_TOKEN and TG_BOT):
+            raise ApiError(503, 'tg_off', 'Бот ещё не настроен на сервере')
+        if u['role'] != 'student' and not plan_of(u)['active']:
+            raise ApiError(403, 'plan_limit', 'Telegram-бот для преподавателей входит в тариф Про')
+        if too_many(f'tg:{u["id"]}', 10, 3600):
+            raise ApiError(429, 'rate_limited', 'Слишком много ссылок. Попробуйте через час')
+        hit(f'tg:{u["id"]}')
+        tok, now = secrets.token_urlsafe(18), int(time.time())
+        db().execute('DELETE FROM tg_tokens WHERE user_id = ? OR expires < ?', (u['id'], now))
+        db().execute('INSERT INTO tg_tokens VALUES (?,?,?)', (sha(tok), u['id'], now + 15 * 60))
+        self.send_json(200, {'url': f'https://t.me/{TG_BOT}?start={tok}'})
+
+    def tg_unlink(self):
+        u = self.current_user()
+        db().execute('DELETE FROM tg_links WHERE user_id = ?', (u['id'],))
+        self.send_json(200, {'ok': True})
+
+    def tg_set_prefs(self):
+        u = self.teacher()
+        r = db().execute('SELECT * FROM tg_links WHERE user_id = ?', (u['id'],)).fetchone()
+        if not r:
+            raise ApiError(404, 'not_found', 'Telegram не подключён')
+        d = self.body()
+        prefs = tg_prefs(r) | {k: bool(d[k]) for k in TG_PREFS if k in d}
+        db().execute('UPDATE tg_links SET prefs = ? WHERE user_id = ?', (json.dumps(prefs), u['id']))
+        self.send_json(200, {'prefs': prefs})
 
     def a_group_add(self):
         """Администратор добавляет уже зарегистрированного ученика в любую группу — без кода."""

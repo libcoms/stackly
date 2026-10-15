@@ -54,13 +54,14 @@ class Client:
 
 class ServerCase(unittest.TestCase):
     """Свой процесс API с пустой базой на каждый класс тестов."""
+    extra_env = {}                 # дополнительные переменные окружения процесса API
     @classmethod
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory()
         cls.db = os.path.join(cls.tmp.name, 'stackly.db')
         port = free_port()
         env = dict(os.environ, STACKLY_DB=cls.db, STACKLY_PORT=str(port), STACKLY_ORIGIN=ORIGIN,
-                   STACKLY_COOKIE_SECURE='0', SMTP_HOST='')
+                   STACKLY_COOKIE_SECURE='0', SMTP_HOST='', **cls.extra_env)
         cls.proc = subprocess.Popen([sys.executable, os.path.join(ROOT, 'app', 'stackly_api.py')], env=env,
                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         cls.base = f'http://127.0.0.1:{port}/api'
