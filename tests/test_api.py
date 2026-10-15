@@ -18,7 +18,15 @@ def free_port():
 
 class Client:
     def __init__(self, base):
-        self.base, self.cookie = base, None
+        self.base, self.jar = base, {}
+
+    @property
+    def cookie(self):
+        return '; '.join(f'{k}={v}' for k, v in self.jar.items()) or None
+
+    @cookie.setter
+    def cookie(self, value):
+        self.jar = dict(p.split('=', 1) for p in (value or '').split('; ') if '=' in p)
 
     def call(self, method, path, data=None, headers=None):
         body = json.dumps(data).encode() if data is not None else None
@@ -35,10 +43,11 @@ class Client:
         except urllib.error.HTTPError as e:
             r = e
         for c in r.headers.get_all('Set-Cookie') or []:
-            m = SimpleCookie(c)
-            if 'stackly_session' in m:
-                v = m['stackly_session'].value
-                self.cookie = f'stackly_session={v}' if v else None
+            for k, m in SimpleCookie(c).items():
+                if m.value:
+                    self.jar[k] = m.value
+                else:
+                    self.jar.pop(k, None)
         raw = r.read()
         return r.status, (json.loads(raw) if raw else None)
 
@@ -100,6 +109,40 @@ class ApiTest(ServerCase):
         self.assertEqual(c.call('POST', '/auth/logout', {})[0], 200)
         self.assertEqual(c.call('GET', '/auth/me')[0], 401)
         self.assertEqual(c.call('POST', '/auth/login', {'email': email, 'password': 'Strong-pass-1'})[0], 200)
+
+    def test_several_accounts(self):
+        c, e1 = self.register()
+        uid1 = c.call('GET', '/auth/me')[1]['user']['id']
+        _, e2 = self.register()
+        # второй аккаунт добавляется к первому, первый остаётся в списке
+        st, body = c.call('POST', '/auth/login', {'email': e2, 'password': 'Strong-pass-1', 'add': True})
+        self.assertEqual(st, 200, body)
+        uid2 = body['user']['id']
+        accs = c.call('GET', '/auth/accounts')[1]['accounts']
+        self.assertEqual([(a['id'], a['active']) for a in accs], [(uid2, True), (uid1, False)])
+        # переключение без пароля — и обратно
+        self.assertEqual(c.call('POST', '/auth/switch', {'user_id': uid1})[1]['user']['id'], uid1)
+        self.assertEqual(c.call('GET', '/auth/me')[1]['user']['id'], uid1)
+        self.assertEqual([(a['id'], a['active']) for a in c.call('GET', '/auth/accounts')[1]['accounts']], [(uid1, True), (uid2, False)])
+        self.assertEqual(c.call('POST', '/auth/switch', {'user_id': 999999})[0], 404)
+        # чужой браузер переключиться на аккаунт не может — токенов у него нет
+        other, _ = self.register()
+        self.assertEqual(other.call('POST', '/auth/switch', {'user_id': uid2})[0], 404)
+        # повторный вход в уже сохранённый аккаунт не плодит дублей
+        c.call('POST', '/auth/login', {'email': e2, 'password': 'Strong-pass-1', 'add': True})
+        self.assertEqual(sorted(a['id'] for a in c.call('GET', '/auth/accounts')[1]['accounts']), sorted([uid1, uid2]))
+        # выход из текущего — активным становится сохранённый, выход из последнего — гость
+        st, body = c.call('POST', '/auth/logout', {})
+        self.assertEqual(body['user']['id'], uid1)
+        self.assertEqual(c.call('GET', '/auth/me')[1]['user']['id'], uid1)
+        st, body = c.call('POST', '/auth/logout', {})
+        self.assertIsNone(body['user'])
+        self.assertEqual(c.call('GET', '/auth/me')[0], 401)
+        self.assertEqual(c.jar, {})
+        # обычный вход (без add) прежний аккаунт не сохраняет
+        c.call('POST', '/auth/login', {'email': e1, 'password': 'Strong-pass-1'})
+        c.call('POST', '/auth/login', {'email': e2, 'password': 'Strong-pass-1'})
+        self.assertEqual(len(c.call('GET', '/auth/accounts')[1]['accounts']), 1)
 
     def test_weak_password_rejected(self):
         c = Client(self.base)

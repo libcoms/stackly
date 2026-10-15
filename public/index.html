@@ -716,6 +716,20 @@ table.mapping td, table.mapping th { text-align: left; }
 .ava.sm { width: 30px; height: 30px; font-size: 12px; }
 .ava.lg { width: 56px; height: 56px; font-size: 20px; }
 .ava.xl { width: 84px; height: 84px; font-size: 30px; box-shadow: 0 0 0 4px var(--paper), 0 0 0 6px var(--lime); }
+.tools { position: relative; }
+.acct-menu { position: absolute; top: calc(100% + 10px); right: 0; z-index: 60; width: min(320px, calc(100vw - 32px)); padding: 6px; border-radius: 18px; border: 1px solid var(--line); background: var(--paper); box-shadow: var(--shadow); display: grid; gap: 2px; animation: am-in .16s var(--ease); transform-origin: top right; }
+@keyframes am-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .acct-menu { animation: none; } }
+.am-item, .am-acc { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border: 0; border-radius: 12px; background: none; color: var(--ink); font: 500 14.5px/1.25 var(--f-body); text-align: left; cursor: pointer; }
+.am-item:hover, button.am-acc:hover, .am-item:focus-visible, button.am-acc:focus-visible { background: var(--paper-2); text-decoration: none; outline: none; }
+.am-accs { display: grid; gap: 2px; padding: 4px 0; margin: 4px 0; border-block: 1px solid var(--line); }
+.am-acc > span:not(.ava) { min-width: 0; flex: 1; }
+.am-acc b, .am-acc small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.am-acc b { font-weight: 600; }
+.am-acc small { color: var(--mute); font-size: 12.5px; }
+.am-acc.on { cursor: default; }
+.am-check { color: var(--blue); font-weight: 700; }
+.am-plus { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1.5px dashed var(--line-2); font-size: 17px; color: var(--mute); flex: none; }
 
 /* ---------- страница входа ---------- */
 .auth { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding-block: clamp(40px, 7vw, 90px); }
@@ -3025,15 +3039,60 @@ function stacklyApp() {
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
     if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
   }
-  async function logout() {
-    try { await api('/auth/logout', 'POST', {}); } catch (e) { }
+  // прогресс и материалы прежнего аккаунта не должны попасть в другой
+  function forgetLocal() {
     acct.cloud = false; acct.uid = null; acct.role = ''; myHW = [];
     solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null);
     store.set('solved', []); store.set('studied', []); store.set('egeRead', []); store.set('stats', stats); store.set('content', null);
+  }
+  // открыть сайт заново уже под другим аккаунтом — со стартовой страницы его роли
+  const reopen = () => location.replace(location.pathname);
+  async function logout() {
+    let next = null;
+    try { next = (await api('/auth/logout', 'POST', {})).user; } catch (e) { }
+    forgetLocal();
+    // сохранённый аккаунт становится текущим; если его нет — на страницу входа
+    if (next) return reopen();
     renderAcctBtn(); toast('Вы вышли. Прогресс сохранён в аккаунте');
     location.hash = 'login';
     location.reload();          // закрытые материалы не должны остаться в памяти вкладки
   }
+  async function switchAccount(id) {
+    try { await api('/auth/switch', 'POST', { user_id: id }); } catch (e) { toast(e.message || 'Не получилось переключиться'); return; }
+    forgetLocal(); reopen();
+  }
+
+  /* ── меню аккаунта в шапке: аккаунты этого браузера, добавить, выйти ── */
+  const initialsOf = name => (name || 'У').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  function closeAcctMenu() {
+    const m = $('#acctmenu'); if (m) m.remove();
+    const b = $('#acctbtn'); if (b) b.setAttribute('aria-expanded', 'false');
+  }
+  async function openAcctMenu() {
+    const b = $('#acctbtn');
+    b.insertAdjacentHTML('afterend', `<div class="acct-menu" id="acctmenu" role="menu" aria-label="Аккаунт">
+      <a class="am-item" role="menuitem" href="#me">Личный кабинет</a>
+      <div class="am-accs" id="amaccs"><div class="am-acc on"><span class="ava sm" aria-hidden="true">${esc(initialsOf(acct.name))}</span><span><b>${esc(acct.name)}</b><small>${esc(acct.email)}</small></span></div></div>
+      <button type="button" class="am-item" role="menuitem" data-act="add-account"><span class="am-plus" aria-hidden="true">+</span>Добавить аккаунт</button>
+      <button type="button" class="am-item" role="menuitem" data-act="logout">Выйти</button></div>`);
+    b.setAttribute('aria-expanded', 'true');
+    try {
+      const accs = (await api('/auth/accounts')).accounts, box = $('#amaccs');
+      if (!box) return;
+      box.innerHTML = accs.map(a => a.active
+        ? `<div class="am-acc on" aria-current="true"><span class="ava sm" aria-hidden="true">${esc(initialsOf(a.name))}</span><span><b>${esc(a.name)}</b><small>${esc(a.email)}</small></span><span class="am-check" aria-label="текущий">✓</span></div>`
+        : `<button type="button" class="am-acc" role="menuitem" data-switch="${a.id}" title="Переключиться"><span class="ava sm" aria-hidden="true">${esc(initialsOf(a.name))}</span><span><b>${esc(a.name)}</b><small>${esc(a.email)}</small></span></button>`).join('');
+    } catch (e) { }
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('#acctbtn');
+    if (b && acct.cloud) { e.preventDefault(); return $('#acctmenu') ? closeAcctMenu() : openAcctMenu(); }
+    const s = e.target.closest('[data-switch]');
+    if (s) { s.disabled = true; return switchAccount(+s.dataset.switch); }
+    if ($('#acctmenu') && (!e.target.closest('#acctmenu') || e.target.closest('a, [data-act]'))) closeAcctMenu();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#acctmenu')) { closeAcctMenu(); $('#acctbtn').focus(); } });
+  window.addEventListener('hashchange', closeAcctMenu);
   // ссылка из письма: #reset-<токен>
   function catchReset() {
     const m = location.hash.match(/^#reset-([\w-]{20,})$/);
@@ -3053,7 +3112,8 @@ function stacklyApp() {
     }
     b.innerHTML = acct.cloud ? `${avatarHTML('sm')}<span class="lbl">Кабинет</span>` : `<span class="lbl">Попробовать бесплатно</span>`;
     b.setAttribute('href', acct.cloud ? '#me' : '#signup');
-    b.setAttribute('aria-label', acct.cloud ? 'Личный кабинет' : 'Попробовать бесплатно');
+    b.setAttribute('aria-label', acct.cloud ? 'Меню аккаунта' : 'Попробовать бесплатно');
+    if (acct.cloud) { b.setAttribute('aria-haspopup', 'menu'); b.setAttribute('aria-expanded', 'false'); } else { b.removeAttribute('aria-haspopup'); b.removeAttribute('aria-expanded'); }
     b.classList.toggle('on', acct.cloud);
     const logo = $('.top .logo');
     if (logo) logo.setAttribute('href', acct.cloud ? startPage() : '#home');
@@ -3105,8 +3165,13 @@ function stacklyApp() {
   ];
   const NEXT = 'stackly_next';
   const guestLink = `<a class="btn ghost wide" href="#python">Учебник Python — без входа</a>`;
+  const addingAccount = () => location.hash === '#add-account';
   function pageLogin(gate) {
-    const head = gate
+    const head = addingAccount()
+      ? `<span class="eyebrow">stackly · ещё один аккаунт</span>
+        <h1>Добавить аккаунт</h1>
+        <p class="lead">Войдите в другой аккаунт или создайте новый. ${acct.name ? `Аккаунт «${esc(acct.name)}» останется в меню — переключаться можно без пароля.` : ''}</p>`
+      : gate
       ? `<span class="eyebrow">stackly · ${gate[1]}</span>
         <h1>Войдите, чтобы открыть ${gate[2]}</h1>
         <p class="lead">Разборы всех 27 заданий, шпаргалка и банк задач с проверкой ответов доступны после входа. Нет аккаунта — зарегистрируйтесь, это минута.</p>`
@@ -3144,10 +3209,12 @@ function stacklyApp() {
     if (kind === 'register' && !role) { msg.textContent = 'Выберите: вы преподаватель или ученик'; return; }
     if (kind === 'register' && !v('au-name').trim()) { msg.textContent = 'Укажите имя'; return; }
     btn.disabled = true;
+    const add = addingAccount() && acct.cloud;
     try {
       let r;
-      if (kind === 'login') r = await api('/auth/login', 'POST', { email, password: pass });
-      else if (kind === 'register') { r = await api('/auth/register', 'POST', { email, password: pass, name: v('au-name').trim(), role }); if (role === 'teacher') { try { sessionStorage.setItem(NEXT, 'materials'); } catch (e) { } } }
+      if (kind === 'login') r = await api('/auth/login', 'POST', { email, password: pass, add });
+      else if (kind === 'register') { r = await api('/auth/register', 'POST', { email, password: pass, name: v('au-name').trim(), role, add }); if (role === 'teacher' && !add) { try { sessionStorage.setItem(NEXT, 'materials'); } catch (e) { } } }
+      if (add) { forgetLocal(); return reopen(); }      // прогресс прежнего аккаунта в новый не сливаем
       else if (kind === 'reset') r = await api('/auth/reset', 'POST', { token: acct.resetToken, password: pass });
       else if (kind === 'forgot') { await api('/auth/forgot', 'POST', { email }); setMode('sent'); return; }
       setUser(r.user); acct.resetToken = ''; acct.mode = 'login';
@@ -4297,6 +4364,11 @@ function stacklyApp() {
       if (h === 'signup') acct.mode = 'register';
       html = pageLogin(); nav = 'login';
     }
+    else if (h === 'add-account') {
+      // вход во второй аккаунт: текущий останется в меню аккаунта
+      if (acct.checked && !acct.cloud) { location.replace('#login'); return; }
+      html = pageLogin(); nav = 'login';
+    }
     else if (h === 'course') { html = pageCourse(); nav = 'course'; }
     else if (h === 'materials') { html = pageMaterials(); nav = 'materials'; }
     else if (h === 'me') {
@@ -4450,6 +4522,7 @@ function stacklyApp() {
       const a = b.dataset.act;
       if (a === 'login') { b.disabled = true; connect(false).then(ok => { if (ok) { location.hash = 'me'; if (LOCKED) location.reload(); } else b.disabled = false; }); }
       else if (a === 'logout') logout();
+      else if (a === 'add-account') { acct.mode = 'login'; location.hash = 'add-account'; }
       else if (a === 'reload') location.reload();
       else if (a === 'reset-ask') $('#resetbox').innerHTML = `<span class="muted">Точно сбросить?</span><button type="button" class="btn small danger-btn" data-act="reset-yes">Да, сбросить</button><button type="button" class="btn ghost small" data-act="reset-no">Отмена</button>`;
       else if (a === 'reset-no') $('#resetbox').innerHTML = `<button type="button" class="btn ghost small" data-act="reset-ask">Сбросить</button>`;

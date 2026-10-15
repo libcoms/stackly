@@ -28,6 +28,9 @@ COOKIE_SECURE = os.environ.get('STACKLY_COOKIE_SECURE', '1') == '1'
 CARD_FIELDS = ('title', 'short', 'lead', 'tool', 'level', 'time')   # поля карточки задания, которые видит гость
 CONTENT_DIR = os.environ.get('STACKLY_CONTENT') or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'content')
 COOKIE = 'stackly_session'
+ACCOUNTS_COOKIE = 'stackly_accounts'      # другие аккаунты этого браузера — между ними переключаются без пароля
+MAX_ACCOUNTS = 5
+TOKEN_RE = re.compile(r'^[A-Za-z0-9_-]{20,64}$')
 SESSION_DAYS = 30
 RESET_MINUTES = 60
 MAX_BODY = 256 * 1024
@@ -391,7 +394,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def session_cookie(self, token, max_age):
-        parts = [f'{COOKIE}={token}', 'Path=/', 'HttpOnly', 'SameSite=Lax', f'Max-Age={max_age}']
+        return self.make_cookie(COOKIE, token, max_age)
+
+    @staticmethod
+    def make_cookie(name, value, max_age):
+        parts = [f'{name}={value}', 'Path=/', 'HttpOnly', 'SameSite=Lax', f'Max-Age={max_age}']
         if COOKIE_SECURE:
             parts.append('Secure')
         return '; '.join(parts)
@@ -425,19 +432,77 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get('Sec-Fetch-Site') == 'cross-site':
             raise ApiError(403, 'bad_origin', 'Запрос с чужого сайта')
 
-    def token(self):
+    def cookie(self, name):
         c = SimpleCookie(self.headers.get('Cookie') or '')
-        return c[COOKIE].value if COOKIE in c else None
+        return c[name].value if name in c else None
+
+    def token(self):
+        return self.cookie(COOKIE)
+
+    @staticmethod
+    def session_user(tok):
+        if not tok:
+            return None
+        return db().execute('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id '
+                            'WHERE s.token_hash = ? AND s.expires > ?', (sha(tok), int(time.time()))).fetchone()
 
     def current_user(self, required=True):
-        tok = self.token()
-        row = None
-        if tok:
-            row = db().execute('SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id '
-                               'WHERE s.token_hash = ? AND s.expires > ?', (sha(tok), int(time.time()))).fetchone()
+        row = self.session_user(self.token())
         if row is None and required:
             raise ApiError(401, 'unauthorized', 'Нужно войти')
         return row
+
+    # --- несколько аккаунтов в одном браузере
+    def saved_accounts(self):
+        """Сохранённые аккаунты: [(токен, пользователь)] — без текущего, без повторов и истёкших сессий."""
+        cur = self.current_user(required=False)
+        seen, out = {cur['id']} if cur else set(), []
+        for tok in (self.cookie(ACCOUNTS_COOKIE) or '').split('.'):
+            u = self.session_user(tok) if TOKEN_RE.match(tok) else None
+            if u and u['id'] not in seen:
+                seen.add(u['id'])
+                out.append((tok, u))
+        return out[:MAX_ACCOUNTS]
+
+    def accounts_cookie(self, toks):
+        toks = toks[:MAX_ACCOUNTS]
+        return self.make_cookie(ACCOUNTS_COOKIE, '.'.join(toks), SESSION_DAYS * 86400 if toks else 0)
+
+    def keep_current(self, d, new_uid):
+        """Вход «ещё одним аккаунтом»: прежний остаётся в списке для переключения."""
+        if not d.get('add'):
+            return []
+        cur = self.current_user(required=False)
+        keep = [t for t, u in self.saved_accounts() if u['id'] != new_uid]
+        if cur and cur['id'] != new_uid:
+            keep.insert(0, self.token())
+        elif cur:
+            db().execute('DELETE FROM sessions WHERE token_hash = ?', (sha(self.token()),))   # вошли в тот же аккаунт заново
+        return [self.accounts_cookie(keep)]
+
+    def next_account_cookies(self):
+        """Текущий аккаунт вышел или удалён: активным становится первый сохранённый."""
+        saved = self.saved_accounts()
+        if not saved:
+            return None, [self.session_cookie('', 0), self.accounts_cookie([])]
+        return saved[0][1], [self.session_cookie(saved[0][0], SESSION_DAYS * 86400), self.accounts_cookie([t for t, _ in saved[1:]])]
+
+    def accounts(self):
+        cur = self.current_user()
+        acc = lambda u, active: {'id': u['id'], 'name': u['name'], 'email': u['email'], 'role': u['role'], 'active': active}
+        self.send_json(200, {'accounts': [acc(cur, True)] + [acc(u, False) for _, u in self.saved_accounts()]})
+
+    def switch_account(self):
+        uid = self.int_arg(self.body(), 'user_id')
+        saved = self.saved_accounts()
+        tok = next((t for t, u in saved if u['id'] == uid), None)
+        if not tok:
+            raise ApiError(404, 'not_found', 'Этот аккаунт больше не сохранён — войдите в него заново')
+        rest = [t for t, _ in saved if t != tok]
+        if self.current_user(required=False):
+            rest.insert(0, self.token())
+        self.send_json(200, {'user': self.user_json(self.session_user(tok))},
+                       [self.session_cookie(tok, SESSION_DAYS * 86400), self.accounts_cookie(rest)])
 
     def start_session(self, user_id):
         tok = secrets.token_urlsafe(32)
@@ -461,6 +526,8 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/auth/register'): self.register,
             ('POST', '/api/auth/login'): self.login,
             ('POST', '/api/auth/logout'): self.logout,
+            ('GET', '/api/auth/accounts'): self.accounts,
+            ('POST', '/api/auth/switch'): self.switch_account,
             ('POST', '/api/auth/forgot'): self.forgot,
             ('POST', '/api/auth/reset'): self.reset,
             ('POST', '/api/auth/password'): self.change_password,
@@ -566,7 +633,7 @@ class Handler(BaseHTTPRequestHandler):
         except sqlite3.IntegrityError:
             raise ApiError(409, 'email_taken', 'На эту почту уже есть аккаунт — войдите или восстановите пароль')
         u = db().execute('SELECT * FROM users WHERE id = ?', (cur.lastrowid,)).fetchone()
-        self.send_json(201, {'user': self.user_json(u)}, [self.start_session(u['id'])])
+        self.send_json(201, {'user': self.user_json(u)}, [self.start_session(u['id'])] + self.keep_current(d, u['id']))
 
     def login(self):
         d = self.body()
@@ -580,13 +647,14 @@ class Handler(BaseHTTPRequestHandler):
         if not (u and ok):
             hit('ip:' + ip); hit('em:' + email)
             raise ApiError(401, 'bad_credentials', 'Неверная почта или пароль')
-        self.send_json(200, {'user': self.user_json(u)}, [self.start_session(u['id'])])
+        self.send_json(200, {'user': self.user_json(u)}, [self.start_session(u['id'])] + self.keep_current(d, u['id']))
 
     def logout(self):
         tok = self.token()
         if tok:
             db().execute('DELETE FROM sessions WHERE token_hash = ?', (sha(tok),))
-        self.send_json(200, {'ok': True}, [self.session_cookie('', 0)])
+        nxt, cookies = self.next_account_cookies()
+        self.send_json(200, {'ok': True, 'user': self.user_json(nxt) if nxt else None}, cookies)
 
     def forgot(self):
         d = self.body()
@@ -637,7 +705,8 @@ class Handler(BaseHTTPRequestHandler):
         d = self.body()
         self.check_own_password(u, str(d.get('password', '')), 'Пароль указан неверно')
         db().execute('DELETE FROM users WHERE id = ?', (u['id'],))
-        self.send_json(200, {'ok': True}, [self.session_cookie('', 0)])
+        nxt, cookies = self.next_account_cookies()
+        self.send_json(200, {'ok': True, 'user': self.user_json(nxt) if nxt else None}, cookies)
 
     def check_own_password(self, u, pw, message):
         key = f'pw:{u["id"]}'
