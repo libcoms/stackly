@@ -144,6 +144,25 @@ class ApiTest(ServerCase):
         c.call('POST', '/auth/login', {'email': e2, 'password': 'Strong-pass-1'})
         self.assertEqual(len(c.call('GET', '/auth/accounts')[1]['accounts']), 1)
 
+    def test_cli_set_password(self):
+        c, email = self.register()
+        set_pw = lambda who, typed: subprocess.run([sys.executable, os.path.join(ROOT, 'app', 'stackly_api.py'), 'set-password', who],
+                                                   env=dict(os.environ, STACKLY_DB=self.db), input=typed, capture_output=True, text=True)
+        # неизвестная почта, несовпадающий повтор и слабый пароль ничего не меняют
+        self.assertNotEqual(set_pw('nobody@example.com', 'New-pass-77\nNew-pass-77\n').returncode, 0)
+        self.assertNotEqual(set_pw(email, 'New-pass-77\nOther-pass-77\n').returncode, 0)
+        r = set_pw(email, 'aaaaaaaa\naaaaaaaa\n')
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('простой', r.stderr)
+        self.assertEqual(c.call('GET', '/auth/me')[0], 200)
+        # новый пароль работает, старый — нет, открытые сессии закрыты
+        r = set_pw(email.upper(), 'New-pass-77\nNew-pass-77\n')
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(c.call('GET', '/auth/me')[0], 401)
+        fresh = Client(self.base)
+        self.assertEqual(fresh.call('POST', '/auth/login', {'email': email, 'password': 'Strong-pass-1'})[0], 401)
+        self.assertEqual(fresh.call('POST', '/auth/login', {'email': email, 'password': 'New-pass-77'})[0], 200)
+
     def test_weak_password_rejected(self):
         c = Client(self.base)
         st, body = c.call('POST', '/auth/register', {'email': 'weak@example.com', 'name': 'x', 'password': 'aaaaaaaa'})

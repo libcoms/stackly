@@ -1381,9 +1381,34 @@ def cli_set_role(email, role):
     print(f'{email}: роль {role}')
 
 
+def cli_set_password(email):
+    # пароль вводится с клавиатуры без эха, а не аргументом — иначе он остался бы в истории оболочки и в списке процессов
+    import getpass
+    migrate()
+    email = email.strip().lower()
+    u = db().execute('SELECT id FROM users WHERE email = ?', (email,)).fetchone()
+    if not u:
+        sys.exit(f'Пользователь {email} не найден')
+    # без терминала (скрипт, тест) пароль читается из stdin: getpass в Windows читает только консоль
+    ask = getpass.getpass if sys.stdin.isatty() else (lambda _: sys.stdin.readline().rstrip('\r\n'))
+    pw = ask('Новый пароль: ')
+    if pw != ask('Ещё раз: '):
+        sys.exit('Пароли не совпадают')
+    try:
+        check_new_password(pw, email)
+    except ApiError as e:
+        sys.exit(e.message)
+    db().execute('UPDATE users SET pw_hash = ? WHERE id = ?', (hash_password(pw), u['id']))
+    db().execute('UPDATE resets SET used = 1 WHERE user_id = ?', (u['id'],))   # старые ссылки из писем больше не действуют
+    db().execute('DELETE FROM sessions WHERE user_id = ?', (u['id'],))         # как при сбросе по ссылке: выход на всех устройствах
+    print(f'{email}: пароль изменён, все сессии закрыты')
+
+
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == 'set-role':
         return cli_set_role(sys.argv[2], sys.argv[3])
+    if len(sys.argv) == 3 and sys.argv[1] == 'set-password':
+        return cli_set_password(sys.argv[2])
     migrate()
     srv = ThreadingHTTPServer((HOST, PORT), Handler)
     srv.daemon_threads = True
