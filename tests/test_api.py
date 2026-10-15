@@ -468,6 +468,18 @@ class ContentTest(ServerCase):
         self.assertEqual(t.call('POST', '/content/problem', dict(math, id=pid, subject='Математика', vis='private'))[0], 200)
         self.assertIn(pid, ids(stranger)); self.assertIn(pid, ids(other))
 
+    def test_subject_task_numbers(self):
+        t = self.user('teacher')
+        math = {'task': 0, 'subject': 'Математика', 'level': 'Б', 'title': 'Уравнение', 'body': 'x + 1 = 3', 'answer': '2'}
+        get = lambda pid: next(x for x in self.content(t)['problems'] if x['id'] == pid)
+        pid = t.call('POST', '/content/problem', dict(math, snum=3))[1]['id']
+        self.assertEqual(get(pid)['snum'], 3)
+        self.assertEqual(t.call('POST', '/content/problem', dict(math, snum=100))[1]['error'], 'bad_snum')
+        self.assertEqual(t.call('POST', '/content/problem', dict(math, snum='abc'))[1]['error'], 'bad_snum')
+        self.assertEqual(get(t.call('POST', '/content/problem', dict(math))[1]['id'])['snum'], 0)       # без номера
+        # у задачи ЕГЭ по информатике номер — task, свой номер не сохраняется
+        self.assertEqual(get(t.call('POST', '/content/problem', dict(self.P, snum=7))[1]['id'])['snum'], 0)
+
     def test_teaching_subjects_and_materials(self):
         t, s = self.user('teacher'), self.user('student')
         self.assertEqual(s.call('POST', '/me/teaching', {'subjects': ['Физика']})[0], 403)

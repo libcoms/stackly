@@ -190,6 +190,9 @@ def migrate():
         # задачи, созданные до разделения банков, были видны всем — так и оставляем
         db().execute("UPDATE problems SET vis = CASE WHEN author_id IN (SELECT id FROM users WHERE role = 'admin') "
                      "THEN 'platform' ELSE 'public' END WHERE builtin = 0")
+    # snum — номер задания внутри предмета (1, 2, …) у задач не из ЕГЭ по информатике; 0 — без номера
+    if 'snum' not in cols:
+        db().execute("ALTER TABLE problems ADD COLUMN snum INTEGER NOT NULL DEFAULT 0")
     # тариф преподавателя: free — бесплатный, trial — пробный Про, pro — Про. plan_until — до какого момента
     # действует trial/pro (у pro NULL — бессрочно). Учителям, которые были до тарифов, — пробный период с этого дня,
     # чтобы лимиты бесплатного тарифа не сработали у них внезапно
@@ -1312,7 +1315,7 @@ class Handler(BaseHTTPRequestHandler):
         rows = db().execute('SELECT p.*, u.name AS author FROM problems p LEFT JOIN users u ON u.id = p.author_id '
                             f'WHERE {where} ORDER BY p.task, p.num', args).fetchall()
         problems = [{k: r[k] for k in ('id', 'num', 'task', 'level', 'title', 'body', 'answer', 'solution', 'note', 'data',
-                                       'dname', 'author', 'author_id', 'updated', 'subject', 'topic', 'vis')}
+                                       'dname', 'author', 'author_id', 'updated', 'subject', 'topic', 'snum', 'vis')}
                     | {'keep_extra': bool(r['keep_extra']), 'builtin': bool(r['builtin']), 'hidden': bool(r['hidden'])} for r in rows]
         lessons = {'ege': {}, 'py': {}}
         for r in db().execute('SELECT kind, key, data, updated FROM lessons'):
@@ -1340,13 +1343,19 @@ class Handler(BaseHTTPRequestHandler):
         # task = 0 — задача не из ЕГЭ по информатике: тогда нужен предмет
         subject = '' if task else re.sub(r'\s+', ' ', self.text_field(d, 'subject', 1, 60, 'Предмет'))
         topic = '' if task else re.sub(r'\s+', ' ', self.text_field(d, 'topic', 0, 80, 'Тема'))
+        try:
+            snum = 0 if task else int(d.get('snum') or 0)
+        except (TypeError, ValueError):
+            snum = -1
+        if not 0 <= snum <= 99:
+            raise ApiError(400, 'bad_snum', 'Номер задания — от 1 до 99')
         vis = str(d.get('vis') or ('platform' if u['role'] == 'admin' else 'private'))
         if vis not in (('platform', 'public', 'private') if u['role'] == 'admin' else ('public', 'private')):
             raise ApiError(400, 'bad_vis', 'Некорректная видимость задачи')
         level = str(d.get('level', ''))
         if level not in ('Б', 'П', 'В'):
             raise ApiError(400, 'bad_level', 'Укажите сложность')
-        f = {'task': task, 'subject': subject, 'topic': topic, 'vis': vis, 'level': level,
+        f = {'task': task, 'subject': subject, 'topic': topic, 'snum': snum, 'vis': vis, 'level': level,
              'title': re.sub(r'\s+', ' ', self.text_field(d, 'title', 1, 120, 'Название')),
              'body': self.text_field(d, 'body', 1, 20000, 'Условие'),
              'answer': self.text_field(d, 'answer', 1, 2000, 'Ответ'),

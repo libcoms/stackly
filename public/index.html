@@ -1536,6 +1536,10 @@ a.bk-tile:hover { text-decoration: none; transform: translateY(-2px); box-shadow
 a.bk-tile.done:hover { box-shadow: inset 0 0 0 2px var(--blue), var(--shadow-lift); }
 .bk-tile.empty { background: transparent; color: var(--mute); }
 .bk-tile.empty b, .bk-tile.empty small { color: var(--mute); }
+.bk-tile.add { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-2); border: 0; }
+.bk-tile.add b { color: var(--blue-ink); }
+a.bk-tile.empty:hover, a.bk-tile.add:hover { box-shadow: inset 0 0 0 1.5px var(--blue); }
+.bk-sec + .bk-sec { margin-top: 28px; }
 
 /* список: белая карточка с волосяными разделителями, вся строка — ссылка */
 .bk-list { list-style: none; margin: 0; padding: 0; border-radius: var(--r); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
@@ -3615,7 +3619,9 @@ function stacklyApp() {
   // задача из ЕГЭ по информатике — с номером задания; любая другая (task = 0) — с предметом и темой от преподавателя
   const EGE_SUBJ = 'ЕГЭ · информатика';
   const psubj = p => p.task ? EGE_SUBJ : (p.src && p.src.subject) || 'Без предмета';
-  const ptag = p => p.task ? '№' + p.task : (p.src && (p.src.topic || p.src.subject)) || 'задача';
+  // у задач других предметов свой номер задания (snum): 1, 2, … — как номера ЕГЭ; 0 — без номера
+  const psnum = p => p.task ? 0 : +(p.src && p.src.snum) || 0;
+  const ptag = p => p.task ? '№' + p.task : psnum(p) ? '№' + psnum(p) + (p.src.topic ? ' · ' + p.src.topic : '') : (p.src && (p.src.topic || p.src.subject)) || 'задача';
   // platform — общий банк (встроенные и задачи администратора), mine — свои, teachers — других преподавателей
   const psrc = p => !p.src || p.src.builtin || p.src.vis === 'platform' ? 'platform' : p.src.author_id === acct.uid ? 'mine' : 'teachers';
   const subjList = list => {
@@ -3661,8 +3667,31 @@ function stacklyApp() {
   let bankCur = null;                                   // открытый список: { task } или { subj }; null — главная банка
   const bankPool = () => BANK.filter(p => !bankF.src || psrc(p) === bankF.src);
   const doneOf = list => list.filter(p => solved.has(p.id)).length;
-  const inGroup = (p, g) => g.task ? p.task === g.task : !p.task && psubj(p) === g.subj;
-  const bankGroupHref = p => p.task ? '#bank-' + p.task : '#bank-s-' + encodeURIComponent(psubj(p));
+  const inGroup = (p, g) => g.task ? p.task === g.task : !p.task && psubj(p) === g.subj && (g.n === undefined || psnum(p) === g.n);
+  const subjHref = (sj, n) => '#bank-s-' + encodeURIComponent(sj) + (n === undefined ? '' : '/' + n);
+  const bankGroupHref = p => p.task ? '#bank-' + p.task : subjHref(psubj(p), psnum(p));
+  const newTaskHref = (sj, n) => '#edit-p-new-s-' + encodeURIComponent(sj) + (n ? '/' + n : '');
+  // название номера в предмете — самая частая тема его задач
+  function numTitle(ps) {
+    const c = new Map(); ps.forEach(p => { const t = p.src && p.src.topic; if (t) c.set(t, (c.get(t) || 0) + 1); });
+    return [...c].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+  }
+  // сетка номеров предмета: как у ЕГЭ по информатике; учителю — пустые номера и «+» для следующего
+  function subjSecHTML(sj, ps, teacher) {
+    const by = new Map(); ps.forEach(p => { const n = psnum(p); by.set(n, [...(by.get(n) || []), p]); });
+    const max = Math.max(0, ...by.keys()), tiles = [];
+    const tile = (n, list, label) => {
+      const d = doneOf(list);
+      return `<li><a class="bk-tile ${d === list.length ? 'done' : ''}" href="${subjHref(sj, n)}" aria-label="${esc(sj)}, ${n ? 'задание ' + n : 'без номера'}: решено ${d} из ${list.length}"><b>${label}</b><small>${esc(numTitle(list) || (n ? 'Задание ' + n : 'Без номера'))}</small><span>${d} из ${list.length}</span>${bankBar(d, list.length)}</a></li>`;
+    };
+    for (let n = 1; n <= max; n++) {
+      if (by.has(n)) tiles.push(tile(n, by.get(n), n));
+      else if (teacher) tiles.push(`<li><a class="bk-tile empty" href="${newTaskHref(sj, n)}" aria-label="Добавить задачу в задание ${n}"><b>${n}</b><small>Задание ${n}</small><span>пока нет · добавить</span></a></li>`);
+    }
+    if (by.has(0)) tiles.push(tile(0, by.get(0), '•'));
+    if (teacher) tiles.push(`<li><a class="bk-tile add" href="${newTaskHref(sj, max + 1)}"><b>+</b><small>${max ? `Задание ${max + 1}` : 'Задание 1'}</small><span>добавить задачу</span></a></li>`);
+    return `<section class="bk-sec"><div class="bk-sec-h"><h2>${esc(sj)}</h2><span>${ps.length ? `${doneOf(ps)} из ${ps.length}` : 'задач пока нет'}</span></div><ol class="bk-grid">${tiles.join('')}</ol></section>`;
+  }
   function groupList(g, filtered = true) {
     return bankPool().filter(p => inGroup(p, g) && (!filtered
       || ((!bankF.level || p.level === bankF.level) && (!bankF.status || (bankF.status === 'done') === solved.has(p.id)))));
@@ -3706,7 +3735,9 @@ function stacklyApp() {
         ${srcSeg()}</header>`;
     if (!BANK.length) return `<div class="page wrap bk">${head.replace(/<div class="bk-tools">[\s\S]*?<\/form>/, '<div class="bk-tools">')}
       <div class="t-empty"><b>Задач пока нет</b>${teacher ? ((acct.subjects || []).length || acct.role === 'admin' ? 'По вашим предметам в банке пока нет задач. Добавьте свою — она сразу появится здесь.' : 'Отметьте предметы в <a href="#materials">«Материалах»</a> или добавьте свою задачу.') : 'Здесь появятся задачи, которые выдаст преподаватель. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.'}</div></div>`;
-    const ege = pool.filter(p => p.task), others = subjList(pool.filter(p => !p.task));
+    const ege = pool.filter(p => p.task), others = subjList(pool.filter(p => !p.task)).map(([n]) => n);
+    // учителю — и отмеченные предметы без задач: в них можно сразу добавить задание 1
+    if (teacher && !bankF.src) (acct.subjects || []).forEach(sj => { if (sj !== 'Информатика' && !others.includes(sj)) others.push(sj); });
     const tile = t => {
       const ps = ege.filter(p => p.task === t.n), d = doneOf(ps);
       if (!ps.length) return teacher ? `<li><span class="bk-tile empty" aria-disabled="true"><b>${t.n}</b><small>${esc(t.title)}</small><span>пока нет</span></span></li>` : '';
@@ -3717,10 +3748,7 @@ function stacklyApp() {
       <div id="bkmain" ${bankF.q.trim() ? 'hidden' : ''}>
         ${pool.length ? bankSum(pool) : '<div class="t-empty"><b>Здесь пусто</b>В этом разделе банка пока нет задач.</div>'}
         ${ege.length ? `<section class="bk-sec"><div class="bk-sec-h"><h2>ЕГЭ · информатика</h2><span>${doneOf(ege)} из ${ege.length}</span></div><ol class="bk-grid">${EGE.map(tile).join('')}</ol></section>` : ''}
-        ${others.length ? `<section class="bk-sec"><div class="bk-sec-h"><h2>${ege.length ? 'Другие предметы' : 'Предметы'}</h2></div><ul class="bk-list">${others.map(([n, c]) => {
-          const d = doneOf(pool.filter(p => !p.task && psubj(p) === n));
-          return `<li><a class="bk-row" href="#bank-s-${encodeURIComponent(n)}"><span class="bk-t"><b class="bk-caps">${esc(n)}</b><span class="bk-meta"><span>решено ${d} из ${c}</span></span></span><span class="bk-chev">${I.chev}</span></a></li>`;
-        }).join('')}</ul></section>` : ''}
+        ${others.map(sj => subjSecHTML(sj, pool.filter(p => !p.task && psubj(p) === sj), teacher)).join('')}
       </div></div>`;
   }
   function searchHTML() {
@@ -3736,29 +3764,32 @@ function stacklyApp() {
 
   function pageBankList(g) {
     bankCur = g;
-    const t = g.task ? egeBy[g.task] : null, all = groupList(g, false);
+    const t = g.task ? egeBy[g.task] : null, all = groupList(g, false), sn = !g.task && g.n !== undefined;
     // соседние номера — только те, где есть задачи
-    const nums = g.task ? EGE.map(x => x.n).filter(n => n === g.task || bankPool().some(p => p.task === n)) : [];
-    const i = nums.indexOf(g.task), prev = nums[i - 1], next = nums[i + 1];
+    const nums = g.task ? EGE.map(x => x.n).filter(n => n === g.task || bankPool().some(p => p.task === n))
+      : sn ? [...new Set(bankPool().filter(p => !p.task && psubj(p) === g.subj).map(psnum).filter(Boolean).concat(g.n || []))].sort((a, b) => a - b) : [];
+    const cur = g.task || g.n, i = nums.indexOf(cur), prev = nums[i - 1], next = nums[i + 1];
+    const href = n => g.task ? '#bank-' + n : subjHref(g.subj, n);
     return `<div class="page wrap bk bk-narrow">
       <a class="bk-back" href="#bank">${I.chevL}Банк задач</a>
-      <header class="bk-head"><h1>${t ? `Задание ${t.n}` : `<span class="bk-caps">${esc(g.subj)}</span>`}</h1>
-        ${t ? `<p class="bk-lead">${esc(t.title)}</p>` : ''}
+      <header class="bk-head"><h1>${t ? `Задание ${t.n}` : sn && g.n ? `Задание ${g.n}` : `<span class="bk-caps">${esc(g.subj)}</span>`}</h1>
+        ${t ? `<p class="bk-lead">${esc(t.title)}</p>` : sn ? `<p class="bk-lead">${esc(g.subj)}${g.n ? (numTitle(all) ? ' · ' + esc(numTitle(all)) : '') : ' · задачи без номера'}</p>` : ''}
+        ${sn && isTeacher() ? `<a class="bk-link" href="${newTaskHref(g.subj, g.n)}">Добавить задачу${g.n ? ' в задание ' + g.n : ''} ${I.chev}</a>` : ''}
         ${bankSum(all)}
         ${t && (isTeacher() || canSee('inf-ege')) ? `<a class="bk-link" href="#ege-${t.n}">Теория к заданию ${t.n} ${I.chev}</a>` : ''}
         <div class="bk-filters">${srcSeg()}${segHTML('level', 'Сложность', [['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']])}${segHTML('status', 'Статус', [['', 'Все'], ['todo', 'Не решённые'], ['done', 'Решённые']])}</div>
       </header>
       <div id="bklist">${listHTML(groupList(g))}</div>
-      ${g.task && (prev || next) ? `<nav class="bk-pager" aria-label="Соседние номера">${prev ? `<a class="btn ghost" href="#bank-${prev}">${I.chevL}Задание ${prev}</a>` : '<span></span>'}${next ? `<a class="btn ghost" href="#bank-${next}">Задание ${next}${I.chev}</a>` : ''}</nav>` : ''}
+      ${(g.task || (sn && g.n)) && (prev || next) ? `<nav class="bk-pager" aria-label="Соседние номера">${prev ? `<a class="btn ghost" href="${href(prev)}">${I.chevL}Задание ${prev}</a>` : '<span></span>'}${next ? `<a class="btn ghost" href="${href(next)}">Задание ${next}${I.chev}</a>` : ''}</nav>` : ''}
     </div>`;
   }
 
   function pageTask(p) {
     // соседи — по всему номеру (или предмету), без фильтров: «Следующая» не должна пропадать
-    const list = BANK.filter(x => inGroup(x, p.task ? { task: p.task } : { subj: psubj(p) })), i = list.findIndex(x => x.id === p.id);
+    const list = BANK.filter(x => inGroup(x, p.task ? { task: p.task } : { subj: psubj(p), n: psnum(p) })), i = list.findIndex(x => x.id === p.id);
     const prev = list[i - 1], next = list[i + 1];
     return `<div class="page wrap bk bk-narrow">
-      <a class="bk-back" href="${bankGroupHref(p)}">${I.chevL}${p.task ? `Задание ${p.task}` : esc(psubj(p))}</a>
+      <a class="bk-back" href="${bankGroupHref(p)}">${I.chevL}${p.task ? `Задание ${p.task}` : esc(psubj(p)) + (psnum(p) ? ` · задание ${psnum(p)}` : '')}</a>
       <div class="plist bk-one">${probHTML(p, 0)}</div>
       <nav class="bk-pager" aria-label="Соседние задачи">${prev ? `<a class="btn ghost" href="#p-${prev.id}">${I.chevL}Предыдущая</a>` : '<span></span>'}
         <span class="bk-pos">${i + 1} из ${list.length}</span>
@@ -4947,7 +4978,7 @@ function stacklyApp() {
     $('#selsum').innerHTML = sel.length ? sel.map(([k, v, tag, text]) => `<span class="hwi"><b>${tag}</b><span>${esc(text || '')}</span><button type="button" data-tact="unpick" data-k="${k}" data-v="${esc(v)}" aria-label="Убрать">×</button></span>`).join('')
       : '<span class="muted" style="font-size:14px">Пока ничего не выбрано — отметьте задачи и темы ниже</span>';
     $$('[data-ptab]').forEach(b => { b.classList.toggle('on', b.dataset.ptab === D.tab); $('i', b).textContent = D[b.dataset.ptab].size || ''; });
-    $$('[data-pnum]').forEach(b => b.classList.toggle('has', BANK.some(p => p.task === +b.dataset.pnum && D.bank.has(p.id))));
+    $$('[data-pnum]').forEach(b => b.classList.toggle('has', BANK.some(p => (D.subj && D.subj !== EGE_SUBJ ? psubj(p) === D.subj && psnum(p) : p.task) === +b.dataset.pnum && D.bank.has(p.id))));
     if (!body) return;
     const row = (k, v, text, note) => `<label class="pick"><input type="checkbox" data-pick="${k}" value="${esc(v)}" ${D[k].has(k === 'bank' ? v : +v) ? 'checked' : ''}><span>${esc(text)}</span><small>${esc(note)}</small></label>`;
     let html = '';
@@ -4957,6 +4988,7 @@ function stacklyApp() {
       html = `<div class="pk-bar"><input id="pkq" type="search" value="${esc(D.q)}" placeholder="Номер задачи: 17, 5-9, 3, 12 — или слова из условия" aria-label="Поиск задач по номеру или тексту" autocomplete="off">
           <div class="seg">${[['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']].map(([v, n]) => `<button type="button" class="${D.lvl === v ? 'on' : ''}" data-plvl="${v}">${n}</button>`).join('')}</div></div>
         ${pkSubjs.length > 1 ? `<div class="pick-nums" role="group" aria-label="Предмет"><button type="button" class="chip ${!D.subj ? 'on' : ''}" data-psubj="">Все предметы</button>${pkSubjs.map(([n, c]) => `<button type="button" class="chip ${D.subj === n ? 'on' : ''}" data-psubj="${esc(n)}">${esc(n)} · ${c}</button>`).join('')}</div>` : ''}
+        ${D.subj && D.subj !== EGE_SUBJ && (sn => sn.length ? `<div class="pick-nums" role="group" aria-label="Номер задания"><button type="button" class="chip ${!D.num ? 'on' : ''}" data-pnum="0">Все</button>${sn.map(n => `<button type="button" class="chip ${D.num === n ? 'on' : ''}" data-pnum="${n}">${n}</button>`).join('')}</div>` : '')([...new Set(BANK.filter(p => !p.task && psubj(p) === D.subj).map(psnum).filter(Boolean))].sort((a, b) => a - b)) || ''}
         <div class="pick-nums" role="group" aria-label="Номер задания ЕГЭ" ${pkNums ? '' : 'hidden'}><button type="button" class="chip ${!D.num ? 'on' : ''}" data-pnum="0">Все</button>${EGE.map(t => `<button type="button" class="chip ${D.num === t.n ? 'on' : ''} ${BANK.some(p => p.task === t.n && D.bank.has(p.id)) ? 'has' : ''}" data-pnum="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>
         <div id="pklist"></div>`;
     } else if (D.tab === 'py') {
@@ -4980,7 +5012,7 @@ function stacklyApp() {
   const pkFound = () => {
     const D = hwDraft, nums = parseNums(D.q), q = D.q.trim().toLowerCase();
     if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
-    return BANK.filter(p => (!D.subj || psubj(p) === D.subj) && (!D.num || p.task === D.num) && (!D.lvl || p.level === D.lvl) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
+    return BANK.filter(p => (!D.subj || psubj(p) === D.subj) && (!D.num || (p.task || psnum(p)) === D.num) && (!D.lvl || p.level === D.lvl) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
   };
   const pkPreview = p => `${gameSet(p) && p.task !== 19 ? `<div class="pgame"><div style="padding-top:12px">${gameText(gameSet(p).set[0])}</div></div>` : ''}${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}${p.data ? `<p class="muted" style="font-size:13px">К задаче прилагается файл ${esc(p.dname)} — ученик скопирует его со страницы задания.</p>` : ''}<p class="muted" style="font-size:13px;margin:8px 0 0">Ответ: <b>${esc(p.answer)}</b></p>`;
   // список найденных задач; при поиске по номеру условие раскрыто сразу
@@ -5248,7 +5280,7 @@ function stacklyApp() {
       + (offN ? `<button type="button" class="btn small" data-abbulk="1">Опубликовать найденные (${offN})</button>` : '');
     const shown = list.slice(0, 300);
     box.innerHTML = list.length ? `<ul class="adm-list ab-list ab-tasks">${shown.map(p => { const on = !abank.off.has(p.id); return `<li class="${on ? '' : 'ab-off'}"><span><a href="#p-${p.id}"><b>#${pnum[p.id]} ${esc(p.title)}</b></a>
-        <small>${p.task ? 'задание ' + p.task : esc((p.src && p.src.topic) || 'без темы')} · ${lvWord[p.level]} · ${!p.src || p.src.builtin ? 'встроенная' : `${p.src.vis === 'platform' ? 'для платформы' : 'для всех'}, ${esc(p.src.author || 'учитель')}`}</small></span>
+        <small>${p.task ? 'задание ' + p.task : (psnum(p) ? 'задание ' + psnum(p) + ' · ' : '') + esc((p.src && p.src.topic) || 'без темы')} · ${lvWord[p.level]} · ${!p.src || p.src.builtin ? 'встроенная' : `${p.src.vis === 'platform' ? 'для платформы' : 'для всех'}, ${esc(p.src.author || 'учитель')}`}</small></span>
         ${abSw(`data-abid="${esc(p.id)}"`, on, on ? 'Опубликована' : 'Снята')}<span></span></li>`; }).join('')}</ul>${list.length > shown.length ? `<p class="muted">Показаны первые ${shown.length}. Уточните поиск, чтобы увидеть остальные; кнопки выше действуют на все найденные.</p>` : ''}`
       : '<div class="t-empty"><b>Задач не найдено</b>Сбросьте фильтры или поищите по-другому.</div>';
   }
@@ -5408,7 +5440,7 @@ function stacklyApp() {
     const nums = parseNums(eF.q), q = eF.q.trim().toLowerCase();
     const list = BANK.filter(p => nums ? nums.has(pnum[p.id]) : (!eF.task || (eF.task < 0 ? !p.task : p.task === eF.task)) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q))
       && (eF.scope === 'all' || (eF.scope === 'mine' ? isOwnProblem(p) : eF.scope === 'custom' ? p.src && !p.src.builtin : !p.src || p.src.builtin)));
-    return list.length ? list.map(p => `<div class="ed-row"><span class="pnum">#${pnum[p.id]}</span><span class="ed-t"><b>${esc(p.title)}</b><small>${esc(p.task ? '№' + p.task : psubj(p) + (p.src.topic ? ' · ' + p.src.topic : ''))} · ${lvWord[p.level]} ${problemBadge(p)}</small></span>
+    return list.length ? list.map(p => `<div class="ed-row"><span class="pnum">#${pnum[p.id]}</span><span class="ed-t"><b>${esc(p.title)}</b><small>${esc(p.task ? '№' + p.task : psubj(p) + (psnum(p) ? ' · №' + psnum(p) : '') + (p.src.topic ? ' · ' + p.src.topic : ''))} · ${lvWord[p.level]} ${problemBadge(p)}</small></span>
         <span class="ed-acts"><a class="btn small ghost" href="#p-${p.id}">Открыть</a>${canEditProblem(p) ? `<a class="btn small" href="#edit-p-${p.id}">Изменить</a>` : ''}<a class="btn small ghost" href="#edit-p-copy-${p.id}" title="Новая задача на основе этой">Копия</a></span></div>`).join('')
       : '<div class="t-empty"><b>Ничего не найдено</b>Проверьте номер или сбросьте фильтры.</div>';
   }
@@ -5440,12 +5472,13 @@ function stacklyApp() {
   const field2 = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><input name="${name}" value="${esc(val)}" ${extra}></label>`;
   const area = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><textarea name="${name}" ${extra}>${esc(val)}</textarea></label>`;
 
-  function eProblemHTML(p, mode) {
+  function eProblemHTML(p, mode, pre) {
     const src = p && p.src, orig = p && ORIG.bank.find(x => x.id === p.id);
     const body = !p ? '' : src ? src.body : htmlToMd(orig ? orig.text : p.text);
     const v = p ? { task: p.task, level: p.level, title: mode === 'copy' ? p.title + ' (копия)' : p.title, answer: p.answer, sol: p.code || '', note: p.note || '', data: p.data || '', dname: p.dname || '',
-        subject: (src && src.subject) || '', topic: (src && src.topic) || '', vis: mode === 'edit' && src && src.vis || '' }
-      : { task: Math.max(eF.task, 0), level: 'Б', title: '', answer: '', sol: '', note: '', data: '', dname: '', subject: '', topic: '', vis: '' };
+        subject: (src && src.subject) || '', topic: (src && src.topic) || '', snum: psnum(p) || '', vis: mode === 'edit' && src && src.vis || '' }
+      : { task: pre ? 0 : Math.max(eF.task, 0), level: 'Б', title: '', answer: '', sol: '', note: '', data: '', dname: '', subject: pre ? pre.subject : '', snum: pre && pre.snum || '', vis: '',
+          topic: pre && pre.snum ? numTitle(BANK.filter(x => !x.task && psubj(x) === pre.subject && psnum(x) === pre.snum)) : '' };
     const subjects = [...new Set(BANK.map(x => x.src && x.src.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
     const visOpts = [...(acct.role === 'admin' ? [['platform', 'Общий банк платформы']] : []), ['private', 'Я и ученики моих групп'], ['public', 'Все пользователи']];
     const vis = v.vis || (acct.role === 'admin' ? 'platform' : 'private');
@@ -5458,7 +5491,7 @@ function stacklyApp() {
         <div class="ed-three"><label class="fld"><span>Раздел</span><select name="task"><option value="0" ${!v.task ? 'selected' : ''}>Свой предмет и тема</option>
             <optgroup label="ЕГЭ по информатике">${EGE.map(t => `<option value="${t.n}" ${v.task === t.n ? 'selected' : ''}>${t.n}. ${esc(t.title)}</option>`).join('')}</optgroup></select></label>
           <label class="fld"><span>Сложность</span><select name="level">${[['Б', 'базовая'], ['П', 'средняя'], ['В', 'сложная']].map(([k, n]) => `<option value="${k}" ${v.level === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
-        <div class="ed-three ed-subj" ${v.task ? 'hidden' : ''}>${field2('subject', 'Предмет', v.subject, 'maxlength="60" list="e-subjects" placeholder="Например: Математика"')}${field2('topic', 'Тема (необязательно)', v.topic, 'maxlength="80" placeholder="Например: Квадратные уравнения"')}
+        <div class="ed-three ed-subj" ${v.task ? 'hidden' : ''}>${field2('subject', 'Предмет', v.subject, 'maxlength="60" list="e-subjects" placeholder="Например: Математика"')}${field2('snum', 'Номер задания (необязательно)', v.snum, 'type="number" min="1" max="99" inputmode="numeric" placeholder="Например: 1"')}${field2('topic', 'Тема (необязательно)', v.topic, 'maxlength="80" placeholder="Например: Квадратные уравнения"')}
           <datalist id="e-subjects">${[...new Set([...subjects, 'Математика', 'Физика', 'Информатика', 'Русский язык', 'Английский язык', 'Химия', 'Биология', 'История', 'Обществознание'])].map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
         ${builtin ? '' : `<label class="fld ed-vis"><span>Кто видит задачу</span><select name="vis">${visOpts.map(([k, n]) => `<option value="${k}" ${vis === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`}
         ${field2('title', 'Название', v.title, 'maxlength="120" placeholder="Например: Длина дороги ГЕ"')}
@@ -5537,6 +5570,7 @@ function stacklyApp() {
     let m;
     if (h === 'edit') return eListHTML();
     if (h === 'edit-p-new') return eProblemHTML(null, 'new');
+    if ((m = h.match(/^edit-p-new-s-([^/]+)(?:\/(\d+))?$/))) { let subject = ''; try { subject = decodeURIComponent(m[1]); } catch (e) { } return eProblemHTML(null, 'new', { subject, snum: +m[2] || 0 }); }
     if ((m = h.match(/^edit-p-copy-([\w.-]+)$/))) { const p = BANK.find(x => x.id === m[1]); return p ? eProblemHTML(p, 'copy') : tMsg('Задача не найдена', '', '#edit', 'К банку'); }
     if ((m = h.match(/^edit-p-([\w.-]+)$/))) {
       const p = BANK.find(x => x.id === m[1]);
@@ -5846,7 +5880,7 @@ function stacklyApp() {
     const nums = s => String(s).split(/[\s,;]+/).map(Number).filter(x => x > 0);
     try {
       if (kind === 'problem') {
-        const r = await api('/content/problem', 'POST', { id: f.dataset.id || undefined, task: +E.task.value, subject: E.subject.value, topic: E.topic.value, vis: E.vis ? E.vis.value : undefined,
+        const r = await api('/content/problem', 'POST', { id: f.dataset.id || undefined, task: +E.task.value, subject: E.subject.value, topic: E.topic.value, snum: +E.snum.value || 0, vis: E.vis ? E.vis.value : undefined,
           level: E.level.value, title: E.title.value, body: E.body.value,
           answer: E.answer.value, note: E.note.value, solution: E.solution.value, data: E.data.value, dname: E.dname.value.trim(), keep_extra: !!(E.keep_extra && E.keep_extra.checked) });
         await loadContent(true); toast(f.dataset.id ? 'Задача сохранена' : `Задача #${pnum[r.id] || ''} создана`); location.hash = 'p-' + r.id;
@@ -6117,9 +6151,9 @@ function stacklyApp() {
     else if ((m = h.match(/^ege(?:-(\d+))?$/))) { html = pageEge(m[1] ? +m[1] : 1); nav = 'ege'; }
     else if ((m = h.match(/^py-(\d+)$/)) || h === 'python') { html = pagePython(); nav = 'python'; scrollTo = m ? +m[1] : null; }
     else if ((m = h.match(/^bank(?:-(\d+))?$/))) { html = m[1] ? pageBankList({ task: +m[1] }) : pageBankHome(); nav = 'bank'; }
-    else if ((m = h.match(/^bank-s-(.+)$/))) {
+    else if ((m = h.match(/^bank-s-([^/]+)(?:\/(\d+))?$/))) {
       let subj = ''; try { subj = decodeURIComponent(m[1]); } catch (e) { }
-      html = pageBankList({ subj }); nav = 'bank';
+      html = pageBankList(m[2] === undefined ? { subj } : { subj, n: +m[2] }); nav = 'bank';
     }
     else if ((m = h.match(/^set-([\w.-]+)$/)) && BANK.some(p => p.id === '19-' + m[1]) && gameSet(BANK.find(p => p.id === '19-' + m[1]))) {
       // комплект 19–21 одной игры: все три задачи на одной странице
