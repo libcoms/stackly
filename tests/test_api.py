@@ -561,6 +561,50 @@ class ContentTest(ServerCase):
         self.assertEqual(t.call('POST', '/media', {'type': 'image/png', 'data': svg})[0], 400)
 
 
+class MaterialsTest(ServerCase):
+    """Свои материалы учителей: видимость, права, выдача в ДЗ и отметка «изучено»."""
+    user = ContentTest.user
+    set_role = ClassroomTest.set_role
+
+    def ids(self, c):
+        st, r = c.call('GET', '/materials')
+        self.assertEqual(st, 200, r)
+        return [m['id'] for m in r['materials']]
+
+    def test_materials_visibility_and_homework(self):
+        t, other, s, stranger = self.user('teacher'), self.user('teacher'), self.user('student'), self.user('student')
+        self.assertEqual(s.call('POST', '/materials', {'title': 'Конспект'})[0], 403)          # ученик не создаёт
+        self.assertEqual(t.call('POST', '/materials', {'title': '  '})[1]['error'], 'bad_title')
+        st, r = t.call('POST', '/materials', {'title': 'Квадратные уравнения', 'subject': 'Математика', 'body': 'Текст ![](media:abcdefgh12)'})
+        self.assertEqual(st, 200, r)
+        mid = r['id']
+        self.assertEqual(self.ids(t), [mid]); self.assertEqual(self.ids(other), [])
+        g = t.call('POST', '/teach/groups', {'name': '9А'})[1]['group']
+        s.call('POST', '/me/groups/join', {'code': g['code']})
+        # закрытый материал ученик группы не видит, открытый (shared) — видит, чужой ученик — нет
+        self.assertEqual(self.ids(s), [])
+        self.assertEqual(t.call('POST', '/materials', {'id': mid, 'title': 'Квадратные уравнения', 'shared': True})[0], 200)
+        self.assertEqual(self.ids(s), [mid]); self.assertEqual(self.ids(stranger), [])
+        # чужой учитель не правит, не удаляет и не выдаёт в ДЗ
+        self.assertEqual(other.call('POST', '/materials', {'id': mid, 'title': 'Взлом'})[0], 403)
+        self.assertEqual(other.call('POST', '/materials/delete', {'id': mid})[0], 403)
+        g2 = other.call('POST', '/teach/groups', {'name': '10Б'})[1]['group']
+        self.assertEqual(other.call('POST', '/teach/homework', {'group_id': g2['id'], 'title': 'x', 'items': {'mat': [mid]}})[1]['error'], 'bad_material')
+        # выданный в ДЗ материал виден ученику и без shared; «изучено» закрывает пункт ДЗ
+        t.call('POST', '/materials', {'id': mid, 'title': 'Квадратные уравнения', 'shared': False})
+        st, r = t.call('POST', '/teach/homework', {'group_id': g['id'], 'title': 'Прочитать', 'items': {'mat': [mid]}})
+        self.assertEqual(st, 201, r)
+        hid = r['homework']['id']
+        self.assertEqual(self.ids(s), [mid])
+        self.assertEqual(s.call('PUT', '/progress', {'data': {'mats': [mid]}})[0], 200)
+        stats = t.call('GET', f'/teach/homework?id={hid}')[1]['students'][0]
+        self.assertEqual((stats['done'], stats['total'], stats['mat']), (1, 1, [mid]))
+        self.assertTrue(stats['done_at'])
+        # удалённый материал пропадает у всех
+        self.assertEqual(t.call('POST', '/materials/delete', {'id': mid})[0], 200)
+        self.assertEqual(self.ids(t), []); self.assertEqual(self.ids(s), [])
+
+
 class ContentAccessTest(ServerCase):
     """Методичка, шпаргалка и банк задач — только после входа."""
     def fetch(self, c, headers=None):

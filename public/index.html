@@ -1560,6 +1560,57 @@ a.bk-tile.done:hover { box-shadow: inset 0 0 0 2px var(--blue), var(--shadow-lif
   .bk-pos { display: none; }
   .bk-filters .seg { width: 100%; }
 }
+
+/* ── свои материалы учителей ── */
+.mat-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 14px; }
+.mat-h .sec-h { margin: 0; }
+.mat-page .t-head .btn { flex: none; }
+.mat-body { max-width: 74ch; }
+.mat-body .mfig .mimg { max-height: 640px; }
+.hw-mat .mat-body { margin-top: 4px; }
+
+/* ── рисунок: кнопка в панели разметки и картинка в превью ── */
+.md-tools .md-draw { display: inline-flex; align-items: center; gap: 5px; color: var(--blue-fg); }
+.md-tools .md-draw svg { width: 14px; height: 14px; }
+.ed-prev .mimg { cursor: pointer; transition: box-shadow .15s; }
+.ed-prev .mimg:hover { box-shadow: 0 0 0 2px var(--blue); }
+
+/* ── окно рисования: панель сверху, лист вписан в оставшееся место ── */
+.draw-scrim { position: fixed; inset: 0; z-index: 85; display: flex; padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px)); background: rgb(17 17 20 / .45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: fade .2s var(--ease) both; }
+.draw-scrim.out { animation: fade .16s reverse both; }
+.draw { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: var(--r); background: var(--paper); box-shadow: var(--shadow-pop); animation: pageIn .28s var(--ease) both; }
+.draw-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.draw-grp { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 999px; background: var(--sunken); }
+.draw-end { display: flex; gap: 8px; margin-left: auto; }
+.draw-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); transition: background-color .15s, color .15s, transform .15s; }
+.draw-btn:hover { color: var(--ink); background: color-mix(in srgb, var(--paper) 60%, transparent); }
+.draw-btn:active { transform: scale(.92); }
+.draw-btn.on { background: var(--paper); color: var(--ink); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.draw-btn:disabled { opacity: .35; pointer-events: none; }
+.draw-btn svg { width: 19px; height: 19px; }
+.draw-btn i { width: 18px; height: var(--w); border-radius: 999px; background: currentColor; }
+.draw-sw { width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; }
+.draw-sw::before { content: ""; width: 20px; height: 20px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12); transition: transform .15s var(--ease); }
+.draw-sw:hover::before { transform: scale(1.12); }
+.draw-sw.on { background: var(--paper); box-shadow: var(--shadow-card), inset 0 0 0 1px var(--line); }
+.draw-sw.on::before { transform: scale(1.1); box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--c); }
+.draw-stage { flex: 1; min-height: 0; display: grid; place-items: center; border-radius: var(--r-s); background: var(--sunken); overflow: hidden; }
+.draw-paper { position: relative; background: #fff; border-radius: 6px; box-shadow: 0 1px 3px rgb(17 17 20 / .12); }
+.draw-paper canvas { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
+.draw-paper .d-ink { touch-action: none; cursor: crosshair; }
+.draw-paper[data-tool="text"] .d-ink { cursor: text; }
+.draw-paper[data-tool="eraser"] .d-ink { cursor: none; }
+.draw-paper .d-over { pointer-events: none; }
+.draw-text { position: absolute; z-index: 2; min-width: 40px; margin: 0; padding: 0; border: 0; outline: 1.5px dashed var(--blue); outline-offset: 3px; background: transparent; resize: none; overflow: hidden; white-space: pre; font-family: Onest, "Segoe UI", system-ui, sans-serif; font-weight: 600; line-height: 1.25; }
+.draw-hint { margin: 0; font-size: 12.5px; color: var(--mute); }
+@media (max-width: 700px) {
+  .draw-scrim { padding: 0; }
+  .draw { border-radius: 0; padding: 10px; }
+  .draw-end { margin-left: 0; width: 100%; }
+  .draw-end .btn { flex: 1; }
+  .draw-hint { display: none; }
+  .draw-btn, .draw-sw { width: 34px; height: 34px; }
+}
 </style>
 <header class="top"><div class="wrap">
   <a class="logo" href="#home" aria-label="stackly — на главную"><span class="ball" aria-hidden="true"></span>stackly<small>ЕГЭ · Информатика</small></a>
@@ -2309,6 +2360,7 @@ function stacklyApp() {
   const solved = new Set(store.get('solved', []));
   const studied = new Set(store.get('studied', []));
   const egeRead = new Set(store.get('egeRead', []));          // разобранные задания методички
+  const matsDone = new Set(store.get('mats', []));            // изученные свои материалы учителей (id)
 
   /* ── иконки (тонкая линия) ── */
   const svg = (d, w = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -2429,12 +2481,15 @@ function stacklyApp() {
       const mods = MODULES.filter(m => canSee(m.id));
       return `<div class="page wrap t-page"><header class="t-head"><div><span class="eyebrow">Материалы</span><h1>Учебные материалы</h1>
           <p>Здесь собраны материалы, которые открыли ваши преподаватели. Задачи для решения ждут в банке и в домашних заданиях.</p></div></header>
-        <section class="t-sec">${mods.length ? `<div class="mods">${mods.map(m => modCard(m, false)).join('')}</div>`
-          : `<div class="t-empty"><b>Пока пусто</b>Когда преподаватель добавит материалы, они появятся здесь. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.</div>`}</section></div>`;
+        ${MATS.length ? `<section class="t-sec"><h2 class="sec-h">От преподавателей</h2>${matRows(MATS)}</section>` : ''}
+        ${mods.length ? `<section class="t-sec">${MATS.length ? '<h2 class="sec-h">Курс ЕГЭ по информатике</h2>' : ''}<div class="mods">${mods.map(m => modCard(m, false)).join('')}</div></section>` : ''}
+        ${mods.length || MATS.length ? '' : `<section class="t-sec"><div class="t-empty"><b>Пока пусто</b>Когда преподаватель добавит материалы, они появятся здесь. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.</div></section>`}</div>`;
     }
     const mine = acct.subjects || [];
     return `<div class="page wrap t-page"><header class="t-head"><div><span class="eyebrow">Материалы</span><h1>Мои предметы и материалы</h1>
-        <p>Отметьте предметы, которые ведёте. Включите готовые материалы, которыми хотите пользоваться: ученики ваших групп увидят их здесь и в домашних заданиях.</p></div></header>
+        <p>Собирайте свои материалы — конспекты, разборы, схемы и рисунки от руки. Отметьте предметы, которые ведёте, и включите готовые модули: ученики ваших групп увидят их здесь и в домашних заданиях.</p></div></header>
+      <section class="t-sec"><div class="mat-h"><h2 class="sec-h">${acct.role === 'admin' ? 'Материалы учителей' : 'Мои материалы'}</h2><a class="btn" href="#mat-new">Новый материал</a></div>
+        ${MATS.length ? matRows(MATS) : '<div class="t-empty"><b>Своих материалов пока нет</b>Соберите первый: текст с формулами и таблицами, картинки и рисунки от руки. Его можно показать ученикам групп или выдать в домашнем задании.</div>'}</section>
       <section class="t-sec"><h2 class="sec-h">Предметы</h2><div class="subj-pick" role="group" aria-label="Мои предметы">${SUBJECTS.map(x => `<button type="button" class="chip ${mine.includes(x) ? 'on' : ''}" data-msubj="${esc(x)}" aria-pressed="${mine.includes(x)}">${mine.includes(x) ? I.check : ''}${esc(x)}</button>`).join('')}</div></section>
       ${mine.length ? SUBJECTS.filter(x => mine.includes(x)).map(sj => {
         const mods = MODULES.filter(m => m.subj === sj), n = subjBank(sj);
@@ -2446,6 +2501,83 @@ function stacklyApp() {
       }).join('') : `<section class="t-sec"><div class="t-empty"><b>Выберите хотя бы один предмет</b>После этого здесь появятся готовые материалы и банк задач по нему.</div></section>`}
     </div>`;
   }
+  /* ── свои материалы учителей: текст в разметке сайта с картинками и рисунками ──
+     Сервер отдаёт каждому только его материалы: учителю — свои, ученику — открытые его учителями и выданные в ДЗ */
+  let MATS = [], matsReq = null;
+  const matBy = id => MATS.find(m => m.id === +id);
+  const canEditMat = m => acct.role === 'admin' || m.author_id === acct.uid;
+  function loadMats(force) {
+    if (!acct.cloud) { MATS = []; return Promise.resolve(); }
+    if (matsReq && !force) return matsReq;
+    return (matsReq = api('/materials').then(r => { MATS = r.materials || []; }).catch(() => { }));
+  }
+  const matMeta = m => [m.subject, isTeacher() ? (m.shared ? 'видят ученики групп' : 'только по ДЗ') : m.author, `изменён ${fmtAgo(m.updated)}`].filter(Boolean);
+  const matRows = list => `<ul class="bk-list">${list.map(m => `<li><a class="bk-row" href="#mat-${m.id}"><span class="bk-t"><b>${esc(m.title)}</b>
+      <span class="bk-meta">${matMeta(m).map(x => `<span>${esc(x)}</span>`).join('')}</span></span>${!isTeacher() && matsDone.has(m.id) ? `<span class="bk-mark ok" title="Изучен">${I.check}</span>` : ''}<span class="bk-chev">${I.chev}</span></a></li>`).join('')}</ul>`;
+  const matReadBtn = m => { const on = matsDone.has(m.id); return `<button type="button" class="btn small ghost study-btn ${on ? 'on' : ''}" data-matread="${m.id}">${on ? 'Изучено ✓' : 'Отметить изученным'}</button>`; };
+  // материал внутри ДЗ: текст целиком, отметка «изучено» рядом с заголовком
+  const matInline = m => `<article class="hw-ege hw-mat" id="hwm-${m.id}"><div class="hw-ege-h"><span class="lvl lvl-П">М</span><div><span class="eyebrow">Материал${m.subject ? ' · ' + esc(m.subject) : ''}</span><h3>${esc(m.title)}</h3></div>${matReadBtn(m)}</div>
+      <div class="prose mat-body">${md(m.body) || '<p class="muted">Материал пока пустой.</p>'}</div></article>`;
+  const matPage = inner => `<div class="page wrap t-page mat-page">${inner}</div>`;
+
+  function pageMat(m) {
+    return matPage(`<a class="t-back" href="#materials">← Материалы</a>
+      <header class="t-head"><div><span class="eyebrow">${esc([m.subject, m.author].filter(Boolean).join(' · ') || 'Материал')}</span><h1>${esc(m.title)}</h1></div>
+        ${canEditMat(m) ? `<a class="btn ghost" href="#mat-edit-${m.id}">Изменить</a>` : matReadBtn(m)}</header>
+      <article class="prose mat-body t-sec">${md(m.body) || '<p class="muted">Материал пока пустой.</p>'}</article>`);
+  }
+  function pageMatEdit(m) {
+    const subjects = [...new Set([...(acct.subjects || []), ...SUBJECTS])];
+    return matPage(`<a class="t-back" href="${m ? '#mat-' + m.id : '#materials'}">← ${m ? esc(m.title) : 'Материалы'}</a>
+      <header class="t-head"><div><span class="eyebrow">Материалы</span><h1>${m ? 'Изменить материал' : 'Новый материал'}</h1>
+        <p>Текст с формулами, таблицами и картинками. Кнопка «рисунок» открывает холст: нарисуйте схему, график или чертёж — он встанет в текст картинкой. Чтобы дорисовать готовый рисунок, нажмите на него справа.</p></div></header>
+      <form class="ed-form t-sec" data-mform data-id="${m ? m.id : ''}" novalidate>
+        <div class="ed-three">${field2('title', 'Название', m ? m.title : '', 'maxlength="120" required placeholder="Например: Квадратные уравнения — конспект"')}
+          ${field2('subject', 'Предмет (необязательно)', m ? m.subject : (acct.subjects || [])[0] || '', 'maxlength="60" list="m-subjects"')}
+          <datalist id="m-subjects">${subjects.map(x => `<option value="${esc(x)}">`).join('')}</datalist></div>
+        <label class="ed-check"><input type="checkbox" name="shared" ${m && m.shared ? 'checked' : ''}> Показывать ученикам моих групп в «Материалах». Без отметки ученик увидит материал, только когда вы выдадите его в домашнем задании</label>
+        <div class="ed-split"><div class="fld"><span>Текст</span>${mdTools('e-body')}<textarea id="e-body" name="body" class="ed-body" placeholder="Объяснение, примеры, формулы. Пустая строка — новый абзац">${esc(m ? m.body : '')}</textarea></div>
+          <div class="fld"><span>Как увидит ученик</span><div class="ed-prev prose" id="e-prev"></div></div></div>
+        <div class="form-msg" role="alert"></div>
+        <div class="form-acts"><button class="btn" type="submit">${m ? 'Сохранить' : 'Создать материал'}</button><a class="btn ghost" href="${m ? '#mat-' + m.id : '#materials'}">Отмена</a>
+          ${m ? `<button type="button" class="btn small danger-btn" data-matdel="${m.id}">Удалить материал</button>` : ''}</div>
+      </form>`);
+  }
+  // #mat-new, #mat-edit-5, #mat-5
+  function pageMatRoute(m) {
+    if (!acct.cloud) return acct.checked ? pageLogin(GATES.find(g => g[0].test('materials'))) : `<div class="page wrap"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
+    const miss = text => matPage(`<a class="t-back" href="#materials">← Материалы</a><div class="t-empty" style="margin-top:24px"><b>Материал недоступен</b>${text}</div>`);
+    if (m[1] === 'new') return isTeacher() ? pageMatEdit(null) : miss('Материалы создают преподаватели.');
+    const mat = matBy(m[2] || m[3]);
+    if (!mat) return miss(isTeacher() ? 'Возможно, его удалили.' : 'Ученику видны материалы, которые открыл или выдал в домашнем задании преподаватель.');
+    return m[2] && canEditMat(mat) ? pageMatEdit(mat) : pageMat(mat);
+  }
+  document.addEventListener('submit', async e => {
+    const f = e.target.closest('[data-mform]'); if (!f) return;
+    e.preventDefault();
+    const msg = f.querySelector('.form-msg'), btn = f.querySelector('[type=submit]'), E = f.elements;
+    msg.textContent = ''; msg.className = 'form-msg'; btn.disabled = true;
+    try {
+      const r = await api('/materials', 'POST', { id: +f.dataset.id || undefined, title: E.title.value, subject: E.subject.value, body: E.body.value, shared: E.shared.checked });
+      await loadMats(true); toast(f.dataset.id ? 'Материал сохранён' : 'Материал создан'); location.hash = 'mat-' + r.id;
+    } catch (err) { msg.textContent = err.message || 'Ошибка'; msg.className = 'form-msg bad'; btn.disabled = false; }
+  });
+  document.addEventListener('click', async e => {
+    const del = e.target.closest('[data-matdel]');
+    if (del) {
+      if (!confirm('Удалить материал? В уже выданных заданиях он пропадёт.')) return;
+      del.disabled = true;
+      try { await api('/materials/delete', 'POST', { id: +del.dataset.matdel }); await loadMats(true); toast('Материал удалён'); location.hash = 'materials'; }
+      catch (err) { toast(err.message || 'Ошибка'); del.disabled = false; }
+      return;
+    }
+    const rd = e.target.closest('[data-matread]');
+    if (rd) {
+      const id = +rd.dataset.matread; matsDone.has(id) ? matsDone.delete(id) : matsDone.add(id); track('m', id, matsDone.has(id));
+      const on = matsDone.has(id); $$(`[data-matread="${id}"]`).forEach(b => { b.classList.toggle('on', on); b.textContent = on ? 'Изучено ✓' : 'Отметить изученным'; });
+    }
+  });
+
   async function saveTeaching(subjects, materials) {
     try { const r = await api('/me/teaching', 'POST', { subjects, materials }); setUser(r.user); }
     catch (e) { toast(e.message || 'Не получилось сохранить'); }
@@ -3334,7 +3466,7 @@ function stacklyApp() {
     return { att: s.att && typeof s.att === 'object' ? s.att : {}, days: s.days && typeof s.days === 'object' ? s.days : {}, events: Array.isArray(s.events) ? s.events.slice(-120) : [], since: +s.since || Date.now() };
   }
   let stats = normStats(store.get('stats', null));
-  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
+  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], mats: [...matsDone], att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
   function bumpDay() { const d = DAY(Date.now()); stats.days[d] = (stats.days[d] || 0) + 1; }
   function track(kind, id, ok) {
     const now = Date.now();
@@ -3348,7 +3480,7 @@ function stacklyApp() {
     persist();
   }
   function persist() {
-    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]);
+    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]);
     updHWBadge(); updHWPage();
     if (!acct.cloud || acct.readOnly) return;
     clearTimeout(acct.saveT);
@@ -3381,6 +3513,7 @@ function stacklyApp() {
     (remote.solved || []).forEach(x => solved.add(String(x)));
     (remote.studied || []).forEach(x => studied.add(+x));
     (remote.ege || []).forEach(x => egeRead.add(+x));
+    (remote.mats || []).forEach(x => matsDone.add(+x));
     const r = normStats(remote);
     for (const [k, a] of Object.entries(r.att)) {
       const l = stats.att[k];
@@ -3398,7 +3531,8 @@ function stacklyApp() {
       if (r.data) mergeIn(r.data);
       if (acct.created) stats.since = Math.min(stats.since, acct.created);
       acct.cloud = true;
-      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]);
+      await loadMats(true);                                  // свои материалы учителей: нужны страницам материалов и ДЗ
+      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]);
       await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok';
       renderAcctBtn(); refreshHW();
       if (!silent) toast(`Вы вошли как ${acct.name}`);
@@ -3411,13 +3545,13 @@ function stacklyApp() {
     acct.checked = true; renderAcctBtn();
     $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
-    if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
+    if (/^#(login|me|teach|admin|hw|edit|mat)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
   }
   // прогресс и материалы прежнего аккаунта не должны попасть в другой
   function forgetLocal() {
     acct.cloud = false; acct.uid = null; acct.role = ''; myHW = [];
-    solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null);
-    store.set('solved', []); store.set('studied', []); store.set('egeRead', []); store.set('stats', stats); store.set('content', null);
+    solved.clear(); studied.clear(); egeRead.clear(); matsDone.clear(); stats = normStats(null);
+    store.set('solved', []); store.set('studied', []); store.set('egeRead', []); store.set('mats', []); store.set('stats', stats); store.set('content', null);
   }
   // открыть сайт заново уже под другим аккаунтом — со стартовой страницы его роли
   const reopen = () => location.replace(location.pathname);
@@ -3535,7 +3669,7 @@ function stacklyApp() {
   // закрытые разделы: гость видит вход, а после входа возвращается туда, куда шёл
   const GATES = [
     [/^ege/, 'Методичка', 'методичку'], [/^(bank|p-)/, 'Банк задач', 'банк задач'], [/^cheat$/, 'Шпаргалка', 'шпаргалку'],
-    [/^hw/, 'Домашние задания', 'домашние задания'], [/^(teach|admin|edit)/, 'Учителю', 'раздел учителя'], [/^materials$/, 'Материалы', 'материалы'],
+    [/^hw/, 'Домашние задания', 'домашние задания'], [/^(teach|admin|edit)/, 'Учителю', 'раздел учителя'], [/^(materials$|mat-)/, 'Материалы', 'материалы'],
   ];
   const NEXT = 'stackly_next';
   const guestLink = `<a class="btn ghost wide" href="#python">Учебник Python — без входа</a>`;
@@ -3686,6 +3820,7 @@ function stacklyApp() {
       if (e.k === 'a') { const p = BANK.find(b => b.id === e.id); return p ? [e.ok ? `Решена задача «${p.title}»` : `Ошибка в задаче «${p.title}»`, `#p-${p.id}`, ptag(p), e.ok ? 'ok' : 'bad'] : null; }
       if (e.k === 'r') { const t = egeBy[+e.id]; return t ? [`${e.ok ? 'Разобрано' : 'Снята отметка'}: задание ${t.n} «${t.title}»`, `#ege-${t.n}`, '№' + t.n, e.ok ? 'ok' : ''] : null; }
       if (e.k === 's') { const t = pyBy[+e.id]; return t ? [`${e.ok ? 'Изучена' : 'Снята отметка'}: тема «${t.title}»`, `#py-${t.id}`, 'Py', e.ok ? 'ok' : ''] : null; }
+      if (e.k === 'm') { const t = matBy(e.id); return t ? [`${e.ok ? 'Изучен' : 'Снята отметка'}: материал «${t.title}»`, `#mat-${t.id}`, 'М', e.ok ? 'ok' : ''] : null; }
       return null;
     };
     const bar = (done, total, cls = '') => `<span class="pbar ${cls}"><i style="width:${total ? done / total * 100 : 0}%"></i></span>`;
@@ -3753,31 +3888,33 @@ function stacklyApp() {
     </div>`;
   }
   function resetAll() {
-    solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist();
+    solved.clear(); studied.clear(); egeRead.clear(); matsDone.clear(); stats = normStats(null); persist();
     toast('Прогресс сброшен'); route();
   }
 
 
   /* ═════════════ ДОМАШНИЕ ЗАДАНИЯ: общее ═════════════ */
   const isTeacher = () => acct.cloud && (acct.role === 'teacher' || acct.role === 'admin');
-  const localSets = () => ({ bank: solved, py: studied, ege: egeRead });
-  const setsOf = P => ({ bank: new Set((P.solved || []).map(String)), py: new Set((P.studied || []).map(Number)), ege: new Set((P.ege || []).map(Number)) });
+  const localSets = () => ({ bank: solved, py: studied, ege: egeRead, mat: matsDone });
+  const setsOf = P => ({ bank: new Set((P.solved || []).map(String)), py: new Set((P.studied || []).map(Number)), ege: new Set((P.ege || []).map(Number)), mat: new Set((P.mats || []).map(Number)) });
   const barHTML = (done, total, cls = '') => `<span class="pbar ${cls}"><i style="width:${total ? Math.min(done / total, 1) * 100 : 0}%"></i></span>`;
-  const itemsCount = it => (it.bank || []).length + (it.py || []).length + (it.ege || []).length;
-  // «3 задачи · 1 тема Python · 2 разбора»
-  const itemsText = it => [[(it.bank || []).length, 'задача', 'задачи', 'задач'], [(it.py || []).length, 'тема Python', 'темы Python', 'тем Python'], [(it.ege || []).length, 'разбор', 'разбора', 'разборов']]
+  const itemsCount = it => (it.bank || []).length + (it.py || []).length + (it.ege || []).length + (it.mat || []).length;
+  // «3 задачи · 1 тема Python · 2 разбора · 1 материал»
+  const itemsText = it => [[(it.bank || []).length, 'задача', 'задачи', 'задач'], [(it.py || []).length, 'тема Python', 'темы Python', 'тем Python'], [(it.ege || []).length, 'разбор', 'разбора', 'разборов'], [(it.mat || []).length, 'материал', 'материала', 'материалов']]
     .filter(x => x[0]).map(([n, a, b, c]) => `${n} ${plural(n, a, b, c)}`).join(' · ');
   function hwProg(it, S) {
     let d = 0, t = 0;
     for (const x of it.bank || []) { t++; d += S.bank.has(String(x)); }
     for (const x of it.py || []) { t++; d += S.py.has(+x); }
     for (const x of it.ege || []) { t++; d += S.ege.has(+x); }
+    for (const x of it.mat || []) { t++; d += S.mat.has(+x); }
     return [d, t];
   }
   // пункты задания: ссылки на задачи банка, темы Python и разборы методички; S — чей прогресс подсвечивать
   function hwItemsHTML(it, S) {
     const chip = (ok, href, tag, text) => `<a class="hwi ${ok ? 'ok' : ''}" href="${href}">${ok ? I.check : ''}<b>${tag}</b><span>${esc(text)}</span></a>`;
-    return (it.ege || []).map(n => egeBy[n] ? chip(S && S.ege.has(+n), `#ege-${n}`, 'разбор ' + n, egeBy[n].title) : '').join('')
+    return (it.mat || []).map(id => matBy(id) ? chip(S && S.mat.has(+id), `#mat-${id}`, 'материал', matBy(id).title) : '').join('')
+      + (it.ege || []).map(n => egeBy[n] ? chip(S && S.ege.has(+n), `#ege-${n}`, 'разбор ' + n, egeBy[n].title) : '').join('')
       + (it.py || []).map(id => pyBy[id] ? chip(S && S.py.has(+id), `#py-${id}`, 'Python ' + id, pyBy[id].title) : '').join('')
       + (it.bank || []).map(id => { const p = BANK.find(x => x.id === id); return p ? chip(S && S.bank.has(id), `#p-${id}`, `#${pnum[id]} · ${ptag(p)}`, p.title) : ''; }).join('');
   }
@@ -3870,6 +4007,8 @@ function stacklyApp() {
     try { myHW = (await api('/me/homework')).homework; updHWBadge(); }
     catch (e) { return put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#me', 'В кабинет')); }
     if (bankStale()) return;
+    // материал выдали после загрузки страницы — подтягиваем список заново
+    if (myHW.some(x => (x.items.mat || []).some(id => !matBy(id)))) await loadMats(true);
     const m = h.match(/^hw-(\d+)$/);
     if (!m) { curHW = 0; return put(hwListHTML()); }
     const hw = myHW.find(x => x.id === +m[1]);
@@ -3916,10 +4055,11 @@ function stacklyApp() {
         <p style="margin:12px 0 0"><a href="#ege-${t.n}">Открыть полный разбор задания ${t.n} →</a></p></details>
     </article>`;
   }
-  const jumpOk = (k, v, S) => k === 'p' ? S.bank.has(v) : k === 't' ? S.py.has(+v) : S.ege.has(+v);
+  const jumpOk = (k, v, S) => k === 'p' ? S.bank.has(v) : k === 't' ? S.py.has(+v) : k === 'm' ? S.mat.has(+v) : S.ege.has(+v);
   function hwProgHTML(hw) {
     const S = localSets(), [d, t] = hwProg(hw.items, S), it = hw.items;
-    const chips = [...(it.ege || []).filter(n => egeBy[n]).map(n => ['e', n, 'Разбор ' + n]), ...(it.py || []).filter(id => pyBy[id]).map(id => ['t', id, 'Python ' + id]),
+    const chips = [...(it.mat || []).filter(id => matBy(id)).map((id, i) => ['m', id, 'Материал' + ((it.mat || []).length > 1 ? ' ' + (i + 1) : '')]),
+      ...(it.ege || []).filter(n => egeBy[n]).map(n => ['e', n, 'Разбор ' + n]), ...(it.py || []).filter(id => pyBy[id]).map(id => ['t', id, 'Python ' + id]),
       ...(it.bank || []).filter(id => pnum[id]).map(id => ['p', id, '#' + pnum[id]])];
     return `<div class="hw-prog big">${barHTML(d, t)}<span>${d} / ${t}</span></div>
       <div class="hw-jump">${chips.map(([k, v, l]) => `<button type="button" class="hwi ${jumpOk(k, String(v), S) ? 'ok' : ''}" data-hwjump="${k}:${esc(v)}">${jumpOk(k, String(v), S) ? I.check : ''}<span>${esc(l)}</span></button>`).join('')}</div>`;
@@ -3927,11 +4067,13 @@ function stacklyApp() {
   function hwPageHTML(hw) {
     const it = hw.items, S = localSets(), done = hwProg(it, S)[0] >= itemsCount(it);
     const ege = (it.ege || []).filter(n => egeBy[n]), py = (it.py || []).filter(id => pyBy[id]), bank = (it.bank || []).map(id => BANK.find(p => p.id === id)).filter(Boolean);
+    const mats = (it.mat || []).map(matBy).filter(Boolean);
     return `<a class="t-back" href="#hw">← Все задания</a>
       <header class="hw-head"><span class="eyebrow">${esc(hw.group)} · ${esc(hw.teacher)}</span><h1>${esc(hw.title)}</h1>
         <div class="hw-head-meta">${dueHTML(hw.due, hw.done_at, done)}<span class="hw-meta">${itemsText(it)}</span></div>
         ${hw.comment ? `<div class="hw-comment">${esc(hw.comment)}</div>` : ''}
         <div class="hw-sticky" id="hwprog">${hwProgHTML(hw)}</div></header>
+      ${mats.length ? `<section class="t-sec"><h2>${plural(mats.length, 'Материал', 'Материалы', 'Материалы')}</h2><div class="hw-list">${mats.map(matInline).join('')}</div></section>` : ''}
       ${ege.length ? `<section class="t-sec"><h2>${plural(ege.length, 'Разбор', 'Разборы', 'Разборы')} методички</h2><div class="hw-list">${ege.map(n => egeInline(egeBy[n])).join('')}</div></section>` : ''}
       ${py.length ? `<section class="t-sec"><h2>Python</h2>${py.map(id => topicHTML(pyBy[id])).join('')}</section>` : ''}
       ${bank.length ? `<section class="t-sec"><h2>Задачи</h2><div class="plist">${bank.map(probHTML).join('')}</div></section>` : ''}
@@ -3967,7 +4109,7 @@ function stacklyApp() {
         const hw = m[2] === 'new' ? null : tGroup.homework.find(x => x.id === +m[2]);
         if (m[2] !== 'new' && !hw) throw { message: 'Задание не найдено — возможно, его удалили' };
         const it = hw ? hw.items : {};
-        hwDraft = { bank: new Set(it.bank || []), py: new Set(it.py || []), ege: new Set(it.ege || []), tab: 'bank', num: 0, lvl: '', q: '' };
+        hwDraft = { bank: new Set(it.bank || []), py: new Set(it.py || []), ege: new Set(it.ege || []), mat: new Set(it.mat || []), tab: 'bank', num: 0, lvl: '', q: '' };
         if (put(tHwEditHTML(tGroup, hw))) renderPicker(true);
       }
       else if ((m = h.match(/^teach-s-(\d+)$/))) put(tStudentHTML(await api('/teach/student?id=' + m[1])));
@@ -4046,7 +4188,7 @@ function stacklyApp() {
     const due = hw ? (hw.due ? toLocalInput(hw.due * 1000) : '') : toLocalInput((() => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(20, 0, 0, 0); return d; })());
     return `<a class="t-back" href="#teach-g-${g.id}">← ${esc(g.name)}</a>
       <header class="t-head"><div><span class="eyebrow">Группа ${esc(g.name)}</span><h1>${hw ? 'Изменить задание' : 'Новое задание'}</h1>
-        <p>Отметьте задачи банка, темы Python и разборы методички. Задачи ученик решает на сайте — ответ проверяется сразу, а вы видите, кто что сделал.</p></div></header>
+        <p>Отметьте задачи банка, свои материалы, темы Python и разборы методички. Задачи ученик решает на сайте — ответ проверяется сразу, а вы видите, кто что сделал.</p></div></header>
       <form class="hw-form t-sec" data-tform="hw" data-gid="${g.id}" data-hid="${hw ? hw.id : ''}" novalidate>
         <div class="two"><label class="fld"><span>Название</span><input name="title" maxlength="120" value="${esc(hw ? hw.title : '')}" placeholder="Например: Графы и задание 1"></label>
           <label class="fld"><span>Срок сдачи</span><input name="due" type="datetime-local" value="${due}"></label></div>
@@ -4054,7 +4196,7 @@ function stacklyApp() {
         <div class="fld"><span>Кому</span><div class="stud-picks"><label><input type="radio" name="to" value="all" ${toAll ? 'checked' : ''}>Всей группе</label><label><input type="radio" name="to" value="some" ${toAll ? '' : 'checked'}>Выбранным ученикам</label></div>
           <div class="stud-picks" id="studlist" style="margin-top:6px" ${toAll ? 'hidden' : ''}>${ms.map(m => `<label><input type="checkbox" name="st" value="${m.id}" ${picked.has(m.id) ? 'checked' : ''}>${esc(m.name)}</label>`).join('') || '<span class="muted">В группе пока нет учеников</span>'}</div></div>
         <div class="fld"><span>Состав задания</span><div class="picker"><div class="sel-sum" id="selsum"></div>
-          <div class="seg" role="tablist"><button type="button" data-ptab="bank">Банк задач<i></i></button>${canSee('inf-py') ? '<button type="button" data-ptab="py">Python<i></i></button>' : ''}${canSee('inf-ege') ? '<button type="button" data-ptab="ege">Разборы ЕГЭ<i></i></button>' : ''}</div>
+          <div class="seg" role="tablist"><button type="button" data-ptab="bank">Банк задач<i></i></button>${canSee('inf-py') ? '<button type="button" data-ptab="py">Python<i></i></button>' : ''}${canSee('inf-ege') ? '<button type="button" data-ptab="ege">Разборы ЕГЭ<i></i></button>' : ''}${MATS.length ? '<button type="button" data-ptab="mat">Материалы<i></i></button>' : ''}</div>
           <div id="pickbody"></div></div></div>
         <div class="form-msg" role="alert"></div>
         <div class="form-acts"><button class="btn blue" type="submit">${hw ? 'Сохранить' : 'Выдать задание'}</button><a class="btn ghost" href="#teach-g-${g.id}">Отмена</a></div>
@@ -4063,7 +4205,8 @@ function stacklyApp() {
   // выбор пунктов: тело перерисовывается только при смене вкладки или номера, отметки обновляют сводку
   function renderPicker(body) {
     const D = hwDraft; if (!D || !$('#pickbody')) return;
-    const sel = [...[...D.ege].sort((a, b) => a - b).map(n => ['ege', n, 'разбор ' + n, (egeBy[n] || {}).title]),
+    const sel = [...[...D.mat].map(id => ['mat', id, 'материал', (matBy(id) || { title: 'материал удалён' }).title]),
+      ...[...D.ege].sort((a, b) => a - b).map(n => ['ege', n, 'разбор ' + n, (egeBy[n] || {}).title]),
       ...[...D.py].sort((a, b) => a - b).map(id => ['py', id, 'Python ' + id, (pyBy[id] || {}).title]),
       ...[...D.bank].sort((a, b) => (pnum[a] || 0) - (pnum[b] || 0)).map(id => { const p = BANK.find(x => x.id === id); return ['bank', id, p ? `#${pnum[id]} · ${ptag(p)}` : '?', p ? p.title : 'задача удалена']; })];
     $('#selsum').innerHTML = sel.length ? sel.map(([k, v, tag, text]) => `<span class="hwi"><b>${tag}</b><span>${esc(text || '')}</span><button type="button" data-tact="unpick" data-k="${k}" data-v="${esc(v)}" aria-label="Убрать">×</button></span>`).join('')
@@ -4083,6 +4226,9 @@ function stacklyApp() {
         <div id="pklist"></div>`;
     } else if (D.tab === 'py') {
       html = `<div class="pick-list">${BLOCKS.map(b => `<div class="pick-h">${b.id}. ${esc(b.title)}</div>` + PY.filter(t => t.id >= b.from && t.id <= b.to).map(t => row('py', t.id, `${t.id}. ${t.title}`, t.ege.length ? '№ ' + t.ege.join(', ') : 'основа')).join('')).join('')}</div>`;
+    } else if (D.tab === 'mat') {
+      html = `<div class="pick-list">${MATS.map(m => row('mat', m.id, m.title, m.subject || (m.shared ? 'в «Материалах»' : 'только по ДЗ'))).join('')}</div>
+        <p class="muted" style="font-size:13.5px;margin:10px 4px 0">Новый материал можно собрать в разделе <a href="#mat-new">«Материалы»</a>.</p>`;
     } else {
       html = `<div class="pick-list">${EGE.map(t => row('ege', t.n, `${t.n}. ${t.title}`, lvName[t.level])).join('')}</div>`;
     }
@@ -4147,10 +4293,11 @@ function stacklyApp() {
 
   function tHwStatsHTML(r) {
     const h = r.homework, it = h.items, st = r.students, N = st.length;
-    const cols = [...(it.ege || []).filter(n => egeBy[n]).map(n => ({ k: 'e', v: n, lbl: 'Р' + n, title: `Разбор ${n}: ${egeBy[n].title}`, href: `#ege-${n}` })),
+    const cols = [...(it.mat || []).filter(id => matBy(id)).map((id, i) => ({ k: 'm', v: id, lbl: 'М' + (i + 1), title: `Материал: ${matBy(id).title}`, href: `#mat-${id}` })),
+      ...(it.ege || []).filter(n => egeBy[n]).map(n => ({ k: 'e', v: n, lbl: 'Р' + n, title: `Разбор ${n}: ${egeBy[n].title}`, href: `#ege-${n}` })),
       ...(it.py || []).filter(id => pyBy[id]).map(id => ({ k: 't', v: id, lbl: 'Py' + id, title: `Python ${id}: ${pyBy[id].title}`, href: `#py-${id}` })),
       ...(it.bank || []).filter(id => pnum[id]).map(id => { const p = BANK.find(x => x.id === id); return { k: 'p', v: id, lbl: '#' + pnum[id], title: `#${pnum[id]} · ${ptag(p)} · ${p.title}`, href: `#p-${id}`, p }; })];
-    const has = (s, c) => c.k === 'p' ? !!(s.bank[c.v] || [])[0] : c.k === 't' ? s.py.includes(c.v) : s.ege.includes(c.v);
+    const has = (s, c) => c.k === 'p' ? !!(s.bank[c.v] || [])[0] : c.k === 't' ? s.py.includes(c.v) : c.k === 'm' ? (s.mat || []).includes(c.v) : s.ege.includes(c.v);
     const isDone = s => !!s.done_at || (s.total > 0 && s.done >= s.total);
     const done = st.filter(isDone), late = done.filter(s => h.due && s.done_at && s.done_at > h.due).length;
     const avg = N ? Math.round(st.reduce((a, s) => a + (s.total ? s.done / s.total : 0), 0) / N * 100) : 0;
@@ -4326,9 +4473,11 @@ function stacklyApp() {
       <button type="button" data-md="ul" title="Список">• список</button><button type="button" data-md="ol" title="Нумерованный список">1. список</button>
       <button type="button" data-md="table" title="Таблица">таблица</button><button type="button" data-md="pre" title="Блок текста моноширинным шрифтом">алгоритм</button>
       <label class="md-img" title="Картинка: схема, граф, рисунок">картинка<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-mdimg="${id}" hidden></label>
+      <button type="button" class="md-draw" data-mddraw="${id}" title="Нарисовать схему, график или чертёж от руки">${svg('<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/>', 1.8)}рисунок</button>
       <details class="md-help"><summary>?</summary><div><code>**жирный**</code> <code>*курсив*</code> <code>\`код\`</code> <code>2^10^</code> <code>log~2~</code><br>
         Строки с <code>- </code> или <code>1. </code> — списки, с <code>|</code> — таблица (вторая строка <code>|---|---|</code> делает первую заголовком).<br>
-        Пустая строка — новый абзац. <code>\`\`\`</code> до и после — блок моноширинного текста.</div></details></div>`;
+        Пустая строка — новый абзац. <code>\`\`\`</code> до и после — блок моноширинного текста.<br>
+        «рисунок» — холст для схем и графиков от руки. Нажмите на картинку в превью, чтобы дорисовать её.</div></details></div>`;
   const field2 = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><input name="${name}" value="${esc(val)}" ${extra}></label>`;
   const area = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><textarea name="${name}" ${extra}>${esc(val)}</textarea></label>`;
 
@@ -4471,6 +4620,267 @@ function stacklyApp() {
     }
     ta.setRangeText(ins, a, z, 'end'); ta.setSelectionRange(cur[0], cur[1]); ta.focus(); ePreview();
   }
+  /* ═════════════ РИСУНОК: холст для схем, графиков и чертежей от руки ═════════════
+     Открывается кнопкой «рисунок» в панели разметки любого редактора. Готовый рисунок сохраняется картинкой PNG
+     (POST /api/media) и встаёт в текст как ![](media:ID). Картинку из превью можно открыть снова и дорисовать:
+     она становится нижней частью рисунка, её можно стирать ластиком.
+     Три слоя: bg — белый лист или клетка, ink — всё нарисованное, over — предпросмотр фигуры под пальцем. */
+  const DRAW_COLORS = [['#111114', 'Чёрный'], ['#5B3DF5', 'Индиго'], ['#D92D20', 'Красный'], ['#0F7A55', 'Зелёный'], ['#E8590C', 'Оранжевый'], ['#1C7ED6', 'Синий']];
+  const DRAW_SIZES = [['s', 'Тонко', 3, 22], ['m', 'Средне', 6, 32], ['l', 'Толсто', 12, 48]];      // ширина линии и кегль текста
+  const DRAW_TOOLS = [
+    ['pen', 'Карандаш', '<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/>'],
+    ['line', 'Линия', '<path d="M5 19 19 5"/>'],
+    ['arrow', 'Стрелка', '<path d="M5 19 19 5"/><path d="M10 5h9v9"/>'],
+    ['rect', 'Прямоугольник', '<rect x="4" y="6" width="16" height="12" rx="1.5"/>'],
+    ['ellipse', 'Эллипс', '<ellipse cx="12" cy="12" rx="8.5" ry="6.5"/>'],
+    ['text', 'Текст', '<path d="M5 6V4.5h14V6"/><path d="M12 4.5V20"/><path d="M9 20h6"/>'],
+    ['eraser', 'Ластик', '<path d="m8.5 19.5-4-4a1.5 1.5 0 0 1 0-2.1l8.4-8.4a1.5 1.5 0 0 1 2.1 0l4.6 4.6a1.5 1.5 0 0 1 0 2.1l-6.9 6.9"/><path d="M8.5 19.5H20"/><path d="m9.5 8.5 6 6"/>'],
+  ];
+  const DRAW_KEYS = { p: 'pen', l: 'line', a: 'arrow', r: 'rect', o: 'ellipse', t: 'text', e: 'eraser' };
+  const drawPrefs = { tool: 'pen', color: DRAW_COLORS[0][0], size: 'm', grid: false };     // запоминаются до перезагрузки страницы
+
+  function openDraw({ src = '', onSave }) {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const S = { ...drawPrefs, W: 1200, H: 750, undo: [], redo: [], dirty: false, busy: false, act: null, text: null };
+    const root = document.createElement('div');
+    root.className = 'draw-scrim';
+    root.innerHTML = `<div class="draw" role="dialog" aria-modal="true" aria-label="Рисунок">
+      <div class="draw-bar">
+        <div class="draw-grp" role="group" aria-label="Инструмент">${DRAW_TOOLS.map(([k, n, d]) => `<button type="button" class="draw-btn" data-dtool="${k}" title="${n} (${Object.keys(DRAW_KEYS).find(x => DRAW_KEYS[x] === k).toUpperCase()})" aria-label="${n}">${svg(d, 1.8)}</button>`).join('')}</div>
+        <div class="draw-grp" role="group" aria-label="Цвет">${DRAW_COLORS.map(([c, n]) => `<button type="button" class="draw-sw" data-dcolor="${c}" title="${n}" aria-label="${n}" style="--c:${c}"></button>`).join('')}</div>
+        <div class="draw-grp" role="group" aria-label="Толщина">${DRAW_SIZES.map(([k, n, w]) => `<button type="button" class="draw-btn" data-dsize="${k}" title="${n}" aria-label="${n}"><i style="--w:${Math.min(w, 10)}px"></i></button>`).join('')}</div>
+        <div class="draw-grp">
+          <button type="button" class="draw-btn" data-dact="undo" title="Отменить (Ctrl+Z)" aria-label="Отменить">${svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>', 1.8)}</button>
+          <button type="button" class="draw-btn" data-dact="redo" title="Повторить (Ctrl+Shift+Z)" aria-label="Повторить">${svg('<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>', 1.8)}</button>
+          <button type="button" class="draw-btn" data-dact="grid" title="Лист в клетку" aria-label="Лист в клетку">${svg('<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/>', 1.5)}</button>
+          <button type="button" class="draw-btn" data-dact="clear" title="Очистить всё" aria-label="Очистить всё">${svg('<path d="M5 7h14"/><path d="M10 11v6M14 11v6"/><path d="M6.5 7l1 12.5h9l1-12.5"/><path d="M9.5 7V4.5h5V7"/>', 1.8)}</button>
+        </div>
+        <div class="draw-end"><button type="button" class="btn small ghost" data-dact="cancel">Отмена</button><button type="button" class="btn small" data-dact="save">${src ? 'Сохранить рисунок' : 'Вставить рисунок'}</button></div>
+      </div>
+      <div class="draw-stage"><div class="draw-paper"><canvas class="d-bg"></canvas><canvas class="d-ink"></canvas><canvas class="d-over"></canvas></div></div>
+      <p class="draw-hint">Shift — ровная линия, квадрат или круг. Клавиши: P карандаш, L линия, A стрелка, R прямоугольник, O эллипс, T текст, E ластик.</p>
+    </div>`;
+    document.body.appendChild(root);
+    const prevOverflow = document.documentElement.style.overflow;
+    document.documentElement.style.overflow = 'hidden';
+    const back = document.activeElement;
+    const [bg, ink, over] = ['.d-bg', '.d-ink', '.d-over'].map(s => $(s, root));
+    const gi = ink.getContext('2d'), go = over.getContext('2d'), gb = bg.getContext('2d');
+    const paper = $('.draw-paper', root), stage = $('.draw-stage', root);
+    const sz = () => DRAW_SIZES.find(x => x[0] === S.size);
+
+    function setSize(w, h) {
+      S.W = w; S.H = h;
+      for (const c of [bg, ink, over]) { c.width = w; c.height = h; }
+      fit(); paintBg();
+    }
+    // лист вписывается в свободное место окна с сохранением пропорций
+    function fit() {
+      const k = Math.min(stage.clientWidth / S.W, stage.clientHeight / S.H);
+      paper.style.width = Math.floor(S.W * k) + 'px'; paper.style.height = Math.floor(S.H * k) + 'px';
+    }
+    function paintBg() {
+      gb.fillStyle = '#fff'; gb.fillRect(0, 0, S.W, S.H);
+      if (!S.grid) return;
+      const step = 30; gb.lineWidth = 1;
+      for (let x = step, i = 1; x < S.W; x += step, i++) { gb.strokeStyle = i % 5 ? '#E4E4EC' : '#CBCBD8'; gb.beginPath(); gb.moveTo(x + .5, 0); gb.lineTo(x + .5, S.H); gb.stroke(); }
+      for (let y = step, i = 1; y < S.H; y += step, i++) { gb.strokeStyle = i % 5 ? '#E4E4EC' : '#CBCBD8'; gb.beginPath(); gb.moveTo(0, y + .5); gb.lineTo(S.W, y + .5); gb.stroke(); }
+    }
+    function syncBar() {
+      $$('[data-dtool]', root).forEach(b => { const on = b.dataset.dtool === S.tool; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+      $$('[data-dcolor]', root).forEach(b => { const on = b.dataset.dcolor === S.color; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+      $$('[data-dsize]', root).forEach(b => { const on = b.dataset.dsize === S.size; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+      const g = $('[data-dact="grid"]', root); g.classList.toggle('on', S.grid); g.setAttribute('aria-pressed', S.grid);
+      $('[data-dact="undo"]', root).disabled = !S.undo.length; $('[data-dact="redo"]', root).disabled = !S.redo.length;
+      paper.dataset.tool = S.tool;
+      Object.assign(drawPrefs, { tool: S.tool, color: S.color, size: S.size, grid: S.grid });
+    }
+    // история: снимок слоя ink перед каждым изменением
+    function remember() {
+      S.undo.push(gi.getImageData(0, 0, S.W, S.H)); if (S.undo.length > 40) S.undo.shift();
+      S.redo = []; S.dirty = true; syncBar();
+    }
+    function step(from, to) {
+      if (!from.length) return;
+      to.push(gi.getImageData(0, 0, S.W, S.H)); gi.putImageData(from.pop(), 0, 0); S.dirty = true; syncBar();
+    }
+    const pt = e => { const r = ink.getBoundingClientRect(); return { x: (e.clientX - r.left) * S.W / r.width, y: (e.clientY - r.top) * S.H / r.height, p: e.pointerType === 'pen' && e.pressure ? e.pressure : .5 }; };
+    function stroke(g, w) { g.lineCap = 'round'; g.lineJoin = 'round'; g.lineWidth = w; g.strokeStyle = S.color; g.fillStyle = S.color; g.globalCompositeOperation = 'source-over'; }
+    // фигура от a до b; с Shift — ровно: линия по 45°, квадрат, круг
+    function shape(g, a, b, shift) {
+      let { x, y } = b;
+      if (shift && (S.tool === 'line' || S.tool === 'arrow')) {
+        const ang = Math.round(Math.atan2(y - a.y, x - a.x) / (Math.PI / 4)) * (Math.PI / 4), len = Math.hypot(x - a.x, y - a.y);
+        x = a.x + Math.cos(ang) * len; y = a.y + Math.sin(ang) * len;
+      } else if (shift) { const d = Math.max(Math.abs(x - a.x), Math.abs(y - a.y)); x = a.x + Math.sign(x - a.x || 1) * d; y = a.y + Math.sign(y - a.y || 1) * d; }
+      const w = sz()[2]; stroke(g, w); g.beginPath();
+      if (S.tool === 'rect') g.rect(a.x, a.y, x - a.x, y - a.y);
+      else if (S.tool === 'ellipse') g.ellipse((a.x + x) / 2, (a.y + y) / 2, Math.abs(x - a.x) / 2, Math.abs(y - a.y) / 2, 0, 0, Math.PI * 2);
+      else { g.moveTo(a.x, a.y); g.lineTo(x, y); }
+      g.stroke();
+      if (S.tool === 'arrow' && Math.hypot(x - a.x, y - a.y) > 4) {
+        const ang = Math.atan2(y - a.y, x - a.x), hl = Math.max(14, w * 3.2);
+        g.beginPath(); g.moveTo(x, y);
+        g.lineTo(x - hl * Math.cos(ang - .45), y - hl * Math.sin(ang - .45));
+        g.lineTo(x - hl * Math.cos(ang + .45), y - hl * Math.sin(ang + .45));
+        g.closePath(); g.fill();
+      }
+    }
+
+    // ── текст: поле поверх листа, по Enter вне поля или клику — впечатывается в рисунок
+    function startText(p) {
+      commitText();
+      const r = ink.getBoundingClientRect(), k = r.width / S.W, fs = sz()[3];
+      const ta = document.createElement('textarea');
+      ta.className = 'draw-text'; ta.rows = 1; ta.setAttribute('aria-label', 'Текст на рисунке');
+      Object.assign(ta.style, { left: p.x * k + 'px', top: p.y * k + 'px', fontSize: fs * k + 'px', color: S.color });
+      paper.appendChild(ta);
+      S.text = { ta, x: p.x, y: p.y, fs, color: S.color };
+      const grow = () => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; ta.style.width = 'auto'; ta.style.width = Math.max(40, ta.scrollWidth + 4) + 'px'; };
+      ta.addEventListener('input', grow); grow();
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { e.stopPropagation(); ta.value = ''; commitText(); }
+        else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commitText(); }
+      });
+      requestAnimationFrame(() => ta.focus());
+    }
+    function commitText() {
+      const t = S.text; if (!t) return;
+      S.text = null;
+      const lines = t.ta.value.replace(/\s+$/, '').split('\n');
+      t.ta.remove();
+      if (!lines.join('').trim()) return;
+      remember();
+      gi.globalCompositeOperation = 'source-over'; gi.fillStyle = t.color; gi.textBaseline = 'top';
+      gi.font = `600 ${t.fs}px Onest, "Segoe UI", system-ui, sans-serif`;
+      lines.forEach((l, i) => gi.fillText(l, t.x, t.y + i * t.fs * 1.25 + t.fs * .08));
+    }
+
+    // ── рисование указателем: мышь, палец, стилус (с нажимом)
+    ink.addEventListener('pointerdown', e => {
+      if (e.button > 0 || S.busy) return;
+      e.preventDefault();
+      const p = pt(e);
+      if (S.tool === 'text') { startText(p); return; }
+      commitText();
+      try { ink.setPointerCapture(e.pointerId); } catch (err) { }    // линия не обрывается, когда палец уходит за край листа
+      remember();
+      S.act = { id: e.pointerId, a: p, last: p, mid: p };
+      if (S.tool === 'pen' || S.tool === 'eraser') {
+        // точка от простого касания
+        const w = S.tool === 'eraser' ? sz()[2] * 4 : sz()[2] * (.6 + p.p * .8);
+        stroke(gi, w); if (S.tool === 'eraser') gi.globalCompositeOperation = 'destination-out';
+        gi.beginPath(); gi.arc(p.x, p.y, w / 2, 0, Math.PI * 2); gi.fill();
+      }
+    });
+    ink.addEventListener('pointermove', e => {
+      const A = S.act;
+      if (!A || A.id !== e.pointerId) { if (S.tool === 'eraser' && e.pointerType === 'mouse') showEraser(pt(e)); return; }
+      if (S.tool === 'pen' || S.tool === 'eraser') {
+        for (const ev of (e.getCoalescedEvents ? e.getCoalescedEvents() : [e])) {
+          const p = pt(ev), mid = { x: (A.last.x + p.x) / 2, y: (A.last.y + p.y) / 2 };
+          const w = S.tool === 'eraser' ? sz()[2] * 4 : sz()[2] * (.6 + p.p * .8);
+          stroke(gi, w); if (S.tool === 'eraser') gi.globalCompositeOperation = 'destination-out';
+          // сглаживание: кривая от середины прошлого отрезка к середине нового
+          gi.beginPath(); gi.moveTo(A.mid.x, A.mid.y); gi.quadraticCurveTo(A.last.x, A.last.y, mid.x, mid.y); gi.stroke();
+          A.last = p; A.mid = mid;
+        }
+        if (S.tool === 'eraser') showEraser(A.last);
+      } else {
+        go.clearRect(0, 0, S.W, S.H); shape(go, A.a, pt(e), e.shiftKey); A.b = pt(e); A.shift = e.shiftKey;
+      }
+    });
+    const finish = e => {
+      const A = S.act; if (!A || A.id !== e.pointerId) return;
+      S.act = null;
+      if (S.tool === 'pen' || S.tool === 'eraser') { stroke(gi, 1); gi.globalCompositeOperation = 'source-over'; }
+      else { go.clearRect(0, 0, S.W, S.H); if (A.b) shape(gi, A.a, A.b, A.shift); else S.undo.pop(); syncBar(); }
+    };
+    ink.addEventListener('pointerup', finish); ink.addEventListener('pointercancel', finish);
+    ink.addEventListener('pointerleave', () => { if (!S.act) go.clearRect(0, 0, S.W, S.H); });
+    function showEraser(p) { go.clearRect(0, 0, S.W, S.H); go.lineWidth = 1.5; go.strokeStyle = '#6B6C7B'; go.beginPath(); go.arc(p.x, p.y, sz()[2] * 2, 0, Math.PI * 2); go.stroke(); }
+
+    // ── панель
+    root.addEventListener('click', async e => {
+      const b = e.target.closest('button'); if (!b || !root.contains(b)) return;
+      if (b.dataset.dtool) { commitText(); S.tool = b.dataset.dtool; go.clearRect(0, 0, S.W, S.H); }
+      else if (b.dataset.dcolor) { S.color = b.dataset.dcolor; if (S.text) { S.text.color = S.color; S.text.ta.style.color = S.color; S.text.ta.focus(); } }
+      else if (b.dataset.dsize) S.size = b.dataset.dsize;
+      else if (b.dataset.dact === 'undo') { commitText(); step(S.undo, S.redo); }
+      else if (b.dataset.dact === 'redo') { commitText(); step(S.redo, S.undo); }
+      else if (b.dataset.dact === 'grid') { S.grid = !S.grid; paintBg(); S.dirty = true; }
+      else if (b.dataset.dact === 'clear') { commitText(); remember(); gi.clearRect(0, 0, S.W, S.H); }
+      else if (b.dataset.dact === 'cancel') return close(false);
+      else if (b.dataset.dact === 'save') return save(b);
+      syncBar();
+    });
+    function onKey(e) {
+      if (e.target.classList && e.target.classList.contains('draw-text')) return;
+      const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(false); }
+      else if (mod && k === 'z') { e.preventDefault(); step(e.shiftKey ? S.redo : S.undo, e.shiftKey ? S.undo : S.redo); }
+      else if (mod && k === 'y') { e.preventDefault(); step(S.redo, S.undo); }
+      else if (!mod && !e.altKey && DRAW_KEYS[k]) { e.preventDefault(); S.tool = DRAW_KEYS[k]; go.clearRect(0, 0, S.W, S.H); syncBar(); }
+      e.stopPropagation();          // пока открыт холст, горячие клавиши сайта (поиск по / и Ctrl+K) молчат
+    }
+    document.addEventListener('keydown', onKey, true);
+    const onResize = () => { commitText(); fit(); };
+    addEventListener('resize', onResize);
+
+    function close(saved) {
+      if (!saved && S.dirty && !confirm('Закрыть без сохранения? Рисунок пропадёт.')) return;
+      document.removeEventListener('keydown', onKey, true);
+      removeEventListener('resize', onResize);
+      document.documentElement.style.overflow = prevOverflow;
+      root.classList.add('out');
+      setTimeout(() => root.remove(), reduce ? 0 : 160);
+      if (back && back.focus) back.focus();
+    }
+    async function save(btn) {
+      commitText();
+      if (!S.dirty && !src) return close(true);
+      S.busy = true; btn.disabled = true; btn.textContent = 'Сохраняю…';
+      try {
+        const out = document.createElement('canvas'); out.width = S.W; out.height = S.H;
+        const g = out.getContext('2d'); g.drawImage(bg, 0, 0); g.drawImage(ink, 0, 0);
+        let type = 'image/png', blob = await new Promise(ok => out.toBlob(ok, type));
+        if (blob.size > 1400 * 1024) { type = 'image/webp'; blob = await new Promise(ok => out.toBlob(ok, type, .92)); }
+        const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(blob); });
+        const id = (await api('/media', 'POST', { type, data: data.slice(data.indexOf(',') + 1) })).id;
+        close(true); onSave(id); toast(src ? 'Рисунок обновлён' : 'Рисунок вставлен');
+      } catch (err) { toast(err.message || 'Не получилось сохранить рисунок'); S.busy = false; btn.disabled = false; btn.textContent = src ? 'Сохранить рисунок' : 'Вставить рисунок'; }
+    }
+
+    // ── старт: пустой лист или открытая картинка нижним слоем
+    syncBar();
+    if (src) {
+      S.busy = true;
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+        setSize(Math.round(img.naturalWidth * k), Math.round(img.naturalHeight * k));
+        gi.drawImage(img, 0, 0, S.W, S.H); S.busy = false;
+      };
+      img.onerror = () => { setSize(S.W, S.H); S.busy = false; toast('Не получилось открыть картинку — начните новый рисунок'); };
+      img.src = src;
+    } else setSize(S.W, S.H);
+    requestAnimationFrame(() => { fit(); const t = $('[data-dtool].on', root); if (t) t.focus(); });
+  }
+  // кнопка «рисунок» в панели разметки и клик по картинке в превью редактора
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-mddraw]');
+    if (b) {
+      const ta = $('#' + b.dataset.mddraw), a = ta.selectionStart, z = ta.selectionEnd;
+      openDraw({ onSave: id => { const lead = a && ta.value[a - 1] !== '\n' ? '\n\n' : ''; ta.setRangeText(`${lead}![](media:${id})\n`, a, z, 'end'); ePreview(); } });
+      return;
+    }
+    const img = e.target.closest('.ed-prev img.mimg');
+    if (img) {
+      const old = (img.getAttribute('src').match(/\/api\/media\/([\w-]+)/) || [])[1], ta = $('#e-body');
+      if (!old || !ta) return;
+      openDraw({ src: img.getAttribute('src'), onSave: id => { ta.value = ta.value.split(`media:${old}`).join(`media:${id}`); ePreview(); } });
+    }
+  });
   async function submitEditor(f) {
     const kind = f.dataset.eform, msg = f.querySelector('.form-msg'), btn = f.querySelector('[type=submit]'), E = f.elements;
     msg.textContent = ''; msg.className = 'form-msg'; btn.disabled = true;
@@ -4544,10 +4954,10 @@ function stacklyApp() {
       const D = hwDraft, title = f.elements.title.value.trim(), to = f.querySelector('[name=to]:checked').value;
       const students = to === 'some' ? $$('[name=st]:checked', f).map(x => +x.value) : [];
       if (!title) return say('Укажите название задания');
-      if (!D.bank.size && !D.py.size && !D.ege.size) return say('Добавьте хотя бы одну задачу, тему или разбор');
+      if (!D.bank.size && !D.py.size && !D.ege.size && !D.mat.size) return say('Добавьте хотя бы одну задачу, материал, тему или разбор');
       if (to === 'some' && !students.length) return say('Отметьте учеников или выберите «Всей группе»');
       body = { group_id: +f.dataset.gid, title, comment: f.elements.comment.value, due: f.elements.due.value ? Math.floor(new Date(f.elements.due.value).getTime() / 1000) : null, students,
-        items: { bank: [...D.bank], py: [...D.py], ege: [...D.ege] } };
+        items: { bank: [...D.bank], py: [...D.py], ege: [...D.ege], mat: [...D.mat] } };
       if (f.dataset.hid) body.id = +f.dataset.hid;
     }
     btn.disabled = true;
@@ -4563,7 +4973,7 @@ function stacklyApp() {
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-tact],[data-ptab],[data-pnum],[data-plvl],[data-pkx],[data-hwjump]'); if (!b) return;
     if (b.dataset.hwjump) {
-      const [k, v] = b.dataset.hwjump.split(':'), el = k === 'p' ? $(`[data-pid="${v}"]`) : k === 't' ? $('#topic-' + v) : $('#hwe-' + v);
+      const [k, v] = b.dataset.hwjump.split(':'), el = k === 'p' ? $(`[data-pid="${v}"]`) : k === 't' ? $('#topic-' + v) : k === 'm' ? $('#hwm-' + v) : $('#hwe-' + v);
       if (el) { el.classList.remove('sr'); window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - ($('#hwprog') || { offsetHeight: 0 }).offsetHeight - 14, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); }
       return;
     }
@@ -4778,6 +5188,7 @@ function stacklyApp() {
     }
     else if (h === 'course') { html = pageCourse(); nav = 'course'; }
     else if (h === 'materials') { html = pageMaterials(); nav = 'materials'; }
+    else if ((m = h.match(/^mat-(?:(new)|edit-(\d+)|(\d+))$/))) { html = pageMatRoute(m); nav = 'materials'; if (m[1] || m[2]) setTimeout(ePreview); }
     else if (h === 'me') {
       // кабинет считает прогресс по банку задач — гостю без него нечего показать
       if (LOCKED && !acct.cloud) { location.replace('#login'); return; }

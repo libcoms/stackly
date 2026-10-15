@@ -104,7 +104,7 @@ def migrate():
       CREATE INDEX IF NOT EXISTS members_user ON group_members(user_id);
 
       -- домашнее задание группе; students — JSON-список id, пустой = вся группа
-      -- items — JSON {"bank": [id задач], "py": [темы Python], "ege": [номера заданий методички]}
+      -- items — JSON {"bank": [id задач], "py": [темы Python], "ege": [номера заданий методички], "mat": [id своих материалов]}
       CREATE TABLE IF NOT EXISTS homework (
         id INTEGER PRIMARY KEY, group_id INTEGER NOT NULL REFERENCES study_groups(id) ON DELETE CASCADE,
         title TEXT NOT NULL, comment TEXT NOT NULL DEFAULT '', items TEXT NOT NULL,
@@ -122,6 +122,14 @@ def migrate():
       CREATE TABLE IF NOT EXISTS lessons (
         kind TEXT NOT NULL, key INTEGER NOT NULL, data TEXT NOT NULL,
         author_id INTEGER REFERENCES users(id) ON DELETE SET NULL, updated INTEGER NOT NULL, PRIMARY KEY (kind, key));
+      -- свои материалы учителя: текст в разметке сайта с картинками и рисунками.
+      -- shared = 1 — видят ученики групп автора в «Материалах»; иначе ученик видит материал, только если его выдали в ДЗ.
+      -- hidden = 1 — удалён (не стираем: на материал могут ссылаться выданные ДЗ)
+      CREATE TABLE IF NOT EXISTS materials (
+        id INTEGER PRIMARY KEY, author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        subject TEXT NOT NULL DEFAULT '', title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '',
+        shared INTEGER NOT NULL DEFAULT 0, hidden INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL, updated INTEGER NOT NULL);
+      CREATE INDEX IF NOT EXISTS materials_author ON materials(author_id);
       CREATE TABLE IF NOT EXISTS media (
         id TEXT PRIMARY KEY, owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         type TEXT NOT NULL, data BLOB NOT NULL, created INTEGER NOT NULL);
@@ -303,12 +311,12 @@ def _ints(xs):
 
 def progress_sets(data):
     solved = {str(x) for x in data.get('solved', []) if isinstance(x, (str, int))} if isinstance(data.get('solved'), list) else set()
-    return {'bank': solved, 'py': _ints(data.get('studied')), 'ege': _ints(data.get('ege'))}
+    return {'bank': solved, 'py': _ints(data.get('studied')), 'ege': _ints(data.get('ege')), 'mat': _ints(data.get('mats'))}
 
 def hw_progress(items, sets):
     """(сделано пунктов, всего пунктов) по одному ДЗ."""
     total = done = 0
-    for k in ('bank', 'py', 'ege'):
+    for k in ('bank', 'py', 'ege', 'mat'):
         for x in items.get(k, []):
             total += 1
             done += (str(x) if k == 'bank' else x) in sets[k]
@@ -590,6 +598,10 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/content/lesson'): self.c_lesson_save,
             ('POST', '/api/content/lesson/reset'): self.c_lesson_reset,
             ('POST', '/api/media'): self.c_media_upload,
+            # свои материалы учителей
+            ('GET', '/api/materials'): self.materials,
+            ('POST', '/api/materials'): self.material_save,
+            ('POST', '/api/materials/delete'): self.material_delete,
         }
         fn = handlers.get((method, path))
         if fn is None and method == 'GET' and MEDIA_RE.match(path):
@@ -988,8 +1000,17 @@ class Handler(BaseHTTPRequestHandler):
         bank = list(dict.fromkeys(str(x) for x in raw.get('bank', []) if BANK_ID_RE.match(str(x))))[:200] if isinstance(raw.get('bank'), list) else []
         py = sorted(x for x in _ints(raw.get('py')) if 1 <= x <= 500)
         ege = sorted(x for x in _ints(raw.get('ege')) if 1 <= x <= 27)
-        if not (bank or py or ege):
+        mat = sorted(x for x in _ints(raw.get('mat')) if x > 0)[:100]
+        if not (bank or py or ege or mat):
             raise ApiError(400, 'empty', 'Добавьте в задание хотя бы одну задачу или тему')
+        if mat:
+            # выдать можно свой материал (администратор — любой); уже выданный остаётся, даже если его потом удалили
+            had = set(json.loads(h['items']).get('mat', [])) if h else set()
+            own = {r['id'] for r in db().execute('SELECT id FROM materials WHERE hidden = 0 AND id IN (SELECT value FROM json_each(?))'
+                                                 + ('' if u['role'] == 'admin' else ' AND author_id = ?'),
+                                                 (json.dumps(mat),) + (() if u['role'] == 'admin' else (u['id'],)))}
+            if [x for x in mat if x not in own and x not in had]:
+                raise ApiError(400, 'bad_material', 'Можно выдать только свои материалы')
         custom = [x for x in bank if x.startswith('u')]
         if custom:
             # номера задач идут подряд — без проверки можно было бы выдать чужую закрытую задачу, угадав её id
@@ -1007,7 +1028,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ApiError(400, 'bad_due', 'Некорректный срок сдачи')
         member_ids = {r['user_id'] for r in db().execute('SELECT user_id FROM group_members WHERE group_id = ?', (g['id'],))}
         students = sorted(x for x in _ints(d.get('students')) if x in member_ids)
-        items = json.dumps({'bank': bank, 'py': py, 'ege': ege})
+        items = json.dumps({'bank': bank, 'py': py, 'ege': ege, **({'mat': mat} if mat else {})})
         now = int(time.time())
         if h:
             db().execute('UPDATE homework SET title=?, comment=?, items=?, students=?, due=?, updated=? WHERE id=?',
@@ -1052,7 +1073,8 @@ class Handler(BaseHTTPRequestHandler):
             d, t = hw_progress(items, sets)
             students.append({'id': r['id'], 'name': r['name'], 'done_at': done.get(r['id']), 'updated': updated, 'done': d, 'total': t,
                              'bank': bank, 'py': [x for x in items.get('py', []) if x in sets['py']],
-                             'ege': [x for x in items.get('ege', []) if x in sets['ege']]})
+                             'ege': [x for x in items.get('ege', []) if x in sets['ege']],
+                             'mat': [x for x in items.get('mat', []) if x in sets['mat']]})
         self.send_json(200, {'homework': hw_json(h), 'group': {'id': g['id'], 'name': g['name']}, 'students': students})
 
     def t_hw_delete(self):
@@ -1236,6 +1258,59 @@ class Handler(BaseHTTPRequestHandler):
         mid = secrets.token_urlsafe(12)
         db().execute('INSERT INTO media VALUES (?,?,?,?,?)', (mid, u['id'], kind, raw, int(time.time())))
         self.send_json(201, {'id': mid})
+
+    # --- свои материалы учителей
+    def materials(self):
+        """Материалы, которые видит пользователь: учитель — свои, администратор — все,
+        ученик — открытые его учителями (shared) и выданные ему в ДЗ."""
+        u = self.current_user()
+        if u['role'] == 'admin':
+            where, args = 'm.hidden = 0', ()
+        elif u['role'] == 'teacher':
+            where, args = 'm.hidden = 0 AND m.author_id = ?', (u['id'],)
+        else:
+            assigned = set()
+            for h in assigned_homework(u['id']):
+                assigned.update(json.loads(h['items']).get('mat', []))
+            where = ('m.hidden = 0 AND ((m.shared = 1 AND m.author_id IN (SELECT g.teacher_id FROM group_members gm '
+                     'JOIN study_groups g ON g.id = gm.group_id WHERE gm.user_id = ?)) OR m.id IN (SELECT value FROM json_each(?)))')
+            args = (u['id'], json.dumps(sorted(assigned)))
+        rows = db().execute('SELECT m.id, m.subject, m.title, m.body, m.shared, m.author_id, m.updated, a.name AS author '
+                            f'FROM materials m LEFT JOIN users a ON a.id = m.author_id WHERE {where} ORDER BY m.updated DESC', args)
+        self.send_json(200, {'materials': [dict(r, shared=bool(r['shared'])) for r in rows]})
+
+    def own_material(self, u, mid):
+        m = db().execute('SELECT * FROM materials WHERE id = ? AND hidden = 0', (mid,)).fetchone()
+        if not m:
+            raise ApiError(404, 'not_found', 'Материал не найден')
+        if m['author_id'] != u['id'] and u['role'] != 'admin':
+            raise ApiError(403, 'forbidden', 'Это материал другого учителя')
+        return m
+
+    def material_save(self):
+        u = self.teacher()
+        d = self.body(MAX_CONTENT_BODY)
+        f = {'title': re.sub(r'\s+', ' ', self.text_field(d, 'title', 1, 120, 'Название')),
+             'subject': re.sub(r'\s+', ' ', self.text_field(d, 'subject', 0, 60, 'Предмет')),
+             'body': self.text_field(d, 'body', 0, 60000, 'Текст', strip=False).strip(),
+             'shared': 1 if d.get('shared') else 0}
+        now = int(time.time())
+        if d.get('id'):
+            mid = self.own_material(u, self.int_arg(d, 'id'))['id']
+            db().execute('UPDATE materials SET title = ?, subject = ?, body = ?, shared = ?, updated = ? WHERE id = ?', (*f.values(), now, mid))
+        else:
+            if db().execute('SELECT COUNT(*) FROM materials WHERE author_id = ? AND created > ?', (u['id'], now - 86400)).fetchone()[0] >= 200:
+                raise ApiError(429, 'rate_limited', 'Слишком много новых материалов за сутки')
+            mid = db().execute('INSERT INTO materials (author_id, title, subject, body, shared, created, updated) VALUES (?,?,?,?,?,?,?)',
+                               (u['id'], *f.values(), now, now)).lastrowid
+        self.send_json(200, {'id': mid})
+
+    def material_delete(self):
+        u = self.teacher()
+        m = self.own_material(u, self.int_arg(self.body(), 'id'))
+        # не стираем: на материал могут ссылаться выданные ДЗ
+        db().execute('UPDATE materials SET hidden = 1, updated = ? WHERE id = ?', (int(time.time()), m['id']))
+        self.send_json(200, {'ok': True})
 
     def media(self, mid):
         r = db().execute('SELECT type, data FROM media WHERE id = ?', (mid,)).fetchone()
