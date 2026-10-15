@@ -1673,6 +1673,24 @@ td.name .plan-chip { margin-top: 6px; }
 /* ── оплата Про ── */
 .pay-box { display: grid; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
 .pay-box .form-acts { gap: 8px; }
+
+/* ── тарифы, контакты, подвал с реквизитами ── */
+.guest-link { display: none; }
+.guest .guest-link { display: inline-flex; align-items: center; height: 40px; padding: 0 14px; border-radius: 999px; color: var(--ink-2); font: 600 15px/1 var(--f-body); }
+.guest .guest-link:hover { color: var(--ink); background: var(--sunken); text-decoration: none; }
+.plan-more { margin: 18px 0 0; font-weight: 600; }
+.pricing .plans { margin-top: 0; }
+.pay-steps { max-width: 72ch; }
+.pay-steps li b { display: block; color: var(--ink); }
+.pay-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.pay-facts .panel h2 { font-size: 17px; }
+.contacts { max-width: 720px; }
+footer.foot .wrap > span { max-width: 100%; }
+.foot-links a, footer.foot a { color: var(--ink-2); }
+footer.foot a:hover { color: var(--ink); }
+@media (max-width: 900px) { .pay-facts { grid-template-columns: minmax(0, 1fr); } }
+/* на узком экране ссылке не хватает места рядом с кнопкой регистрации — тарифы остаются в подвале и на главной */
+@media (max-width: 480px) { .guest .guest-link { display: none; } }
 </style>
 <header class="top"><div class="wrap">
   <a class="logo" href="#home" aria-label="stackly — на главную"><span class="ball" aria-hidden="true"></span>stackly<small>ЕГЭ · Информатика</small></a>
@@ -1683,6 +1701,7 @@ td.name .plan-chip { margin-top: 6px; }
     <a href="#teach" data-nav="teach" hidden>Учителю</a>
   </nav>
   <div class="tools">
+    <a class="guest-link" href="#pricing">Тарифы</a>
     <button class="icon-btn" id="searchbtn" type="button" aria-label="Поиск (Ctrl+K)"></button>
     <button class="icon-btn" id="themebtn" type="button" aria-label="Сменить тему"></button>
     <a class="acct-btn" id="acctbtn" href="#login" aria-label="Войти"></a>
@@ -1693,7 +1712,8 @@ td.name .plan-chip { margin-top: 6px; }
 <nav class="tabbar" id="tabbar" aria-label="Разделы сайта"></nav>
 <footer class="foot"><div class="wrap">
   <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
-  <span><a href="#offer">Публичная оферта</a> · <a href="#privacy">Политика обработки персональных данных</a> · Глумов Д. А., самозанятый, ИНН 762202636745</span>
+  <span class="foot-links"><a href="#pricing">Тарифы и оплата</a> · <a href="#contacts">Контакты и реквизиты</a> · <a href="#offer">Публичная оферта</a> · <a href="#privacy">Политика обработки персональных данных</a></span>
+  <span>Глумов Димитрий Андреевич, самозанятый, ИНН 762202636745 · <a href="tel:+79108277712">+7 910 827-77-12</a> · <a href="mailto:dglumov4@gmail.com">dglumov4@gmail.com</a> · Ярославская обл., Переславский р-н, с. Купанское, ул. Советская, д. 28</span>
   <span>Курс ЕГЭ по информатике: структура заданий по плану изменений КИМ ЕГЭ 2027 (ФИПИ), ответы банка проверены запуском решений.</span>
 </div></footer>
 <script>
@@ -2859,6 +2879,63 @@ function stacklyApp() {
     </div>`;
   }
 
+  /* ── тарифы и контакты: отдельные страницы, их видно без входа (их проверяет ЮKassa при подключении платежей) ── */
+  function plansHTML() {
+    return `<div class="plans">
+        <div class="plan plan-free">
+          <div class="plan-h"><span class="plan-name">Бесплатный</span><b>0 ₽</b><span class="muted">для небольших групп</span></div>
+          <ul>
+            <li>${I.check}<span>До 5 групп и 5 учеников</span></li>
+            <li>${I.check}<span>2 ГБ под задачи, материалы и картинки</span></li>
+            <li>${I.check}<span>Домашние задания со сроками и автопроверкой</span></li>
+            <li>${I.check}<span>Банк задач, свои задачи и материалы с рисунками</span></li>
+            <li>${I.check}<span>Статистика по каждому ученику</span></li>
+          </ul>
+          ${homeCta()}
+        </div>
+        <div class="plan">
+          <div class="plan-h"><span class="plan-name">Про</span><b>${PRO_PRICE.month} ₽<small> / мес</small></b><span class="muted">или ${PRO_PRICE.year.toLocaleString('ru-RU')} ₽ за 12 месяцев · первые 14 дней бесплатно</span></div>
+          <ul>
+            <li>${I.check}<span>Сколько угодно групп, учеников и места</span></li>
+            <li>${I.check}<span>Материалы платформы: разборы ЕГЭ, учебник Python, шпаргалка</span></li>
+            <li>${I.check}<span>Приоритетная поддержка</span></li>
+            <li>${I.check}<span>Интерактивные модули</span></li>
+            <li>${I.check}<span>Telegram-бот</span></li>
+          </ul>
+          <p class="muted plan-legal">Оплата через ЮKassa. Условия — в <a href="#offer">публичной оферте</a>.</p>
+        </div>
+      </div>`;
+  }
+  function pagePricing() {
+    const steps = [
+      ['Зарегистрируйтесь как преподаватель', 'Нужна только почта. Новому преподавателю сразу включается пробный Про на 14 дней — бесплатно, без карты.'],
+      ['Выберите срок', `В разделе «Учителю» → «Мои группы» в карточке «Тариф» нажмите «${PRO_PRICE.month} ₽ за месяц» или «${PRO_PRICE.year.toLocaleString('ru-RU')} ₽ за год».`],
+      ['Оплатите на странице ЮKassa', 'Банковской картой, через СБП или другим способом, который предложит ЮKassa. Данные карты вводятся на стороне ЮKassa, сайт их не получает.'],
+      ['Пользуйтесь', 'После оплаты вы возвращаетесь на сайт, и тариф Про включается в вашем аккаунте автоматически — обычно сразу, не позднее одного рабочего дня. Оплаченный срок прибавляется к текущему. Чек из приложения «Мой налог» приходит на почту, указанную при оплате.'],
+    ];
+    return `<div class="page wrap t-page pricing">
+      <header class="t-head"><div><span class="eyebrow">stackly</span><h1>Тарифы и оплата</h1>
+        <p>stackly — онлайн-платформа для репетиторов и преподавателей: группы учеников, домашние задания с автоматической проверкой ответов, банк задач, свои материалы и статистика по каждому ученику. Услуга — доступ к платформе на сайте stackly.su на выбранный срок. Ничего не нужно устанавливать или получать: всё работает в браузере на компьютере и телефоне.</p></div></header>
+      <section class="t-sec">${plansHTML()}</section>
+      <section class="t-sec"><h2 class="sec-h">Как оплатить и получить доступ</h2><ol class="steps pay-steps">${steps.map(([b, t]) => `<li><b>${b}</b><span>${t}</span></li>`).join('')}</ol></section>
+      <section class="t-sec pay-facts">
+        <div class="panel"><div class="panel-h"><h2>Что входит в услугу</h2></div><p class="plan-note">Доступ к функциям тарифа Про на 1 или 12 месяцев: без ограничений по группам, ученикам и месту, с материалами платформы. Ученикам платить не нужно — для них stackly бесплатен.</p></div>
+        <div class="panel"><div class="panel-h"><h2>Продление и отказ</h2></div><p class="plan-note">Тариф не продлевается автоматически — деньги не спишутся без вашего действия. Отказаться можно в любой момент: стоимость неиспользованных дней вернём в течение 10 дней. Подробно — в разделах 4–6 <a href="#offer">оферты</a>.</p></div>
+        <div class="panel"><div class="panel-h"><h2>Вопросы</h2></div><p class="plan-note">Напишите на <a href="mailto:${EXECUTOR.email}">${EXECUTOR.email}</a> или позвоните ${EXECUTOR.phone}. Все реквизиты — на странице <a href="#contacts">«Контакты»</a>.</p></div>
+      </section>
+    </div>`;
+  }
+  function pageContacts() {
+    const rows = [['Исполнитель', EXECUTOR.name], ['Статус', EXECUTOR.status], ['ИНН', EXECUTOR.inn], ['Адрес', EXECUTOR.address],
+      ['Телефон', `<a href="tel:${EXECUTOR.phone.replace(/[^\d+]/g, '')}">${EXECUTOR.phone}</a>`], ['Электронная почта', `<a href="mailto:${EXECUTOR.email}">${EXECUTOR.email}</a>`], ['Сайт', EXECUTOR.site]];
+    return `<div class="page wrap t-page">
+      <header class="t-head"><div><span class="eyebrow">stackly</span><h1>Контакты и реквизиты</h1>
+        <p>По вопросам работы платформы, оплаты и возврата пишите на почту или звоните — ответим в течение одного рабочего дня.</p></div></header>
+      <section class="t-sec"><div class="panel contacts"><dl class="offer-req">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${k === 'Телефон' || k === 'Электронная почта' ? v : esc(v)}</dd>`).join('')}</dl></div></section>
+      <section class="t-sec"><p class="plan-note">Документы: <a href="#offer">публичная оферта</a> · <a href="#privacy">политика обработки персональных данных</a> · <a href="#pricing">тарифы и оплата</a>.</p></section>
+    </div>`;
+  }
+
   function pageHome() {
     const done = HOME_MX.filter(([, r]) => r.every(v => v > 0)).length;
     const subj = ['Математика', 'Физика', 'Информатика', 'Русский язык', 'Английский', 'Химия', 'Биология', 'История'];
@@ -3005,30 +3082,8 @@ function stacklyApp() {
     <section class="section h-price"><div class="wrap">
       <h2 class="h-title">Тарифы</h2>
       <p class="lead">Новым преподавателям — 14 дней Про бесплатно. Потом можно остаться на бесплатном тарифе: его хватит, чтобы заниматься с несколькими учениками. Нужна только почта, карта не нужна.</p>
-      <div class="plans">
-        <div class="plan plan-free">
-          <div class="plan-h"><span class="plan-name">Бесплатный</span><b>0 ₽</b><span class="muted">для небольших групп</span></div>
-          <ul>
-            <li>${I.check}<span>До 5 групп и 5 учеников</span></li>
-            <li>${I.check}<span>2 ГБ под задачи, материалы и картинки</span></li>
-            <li>${I.check}<span>Домашние задания со сроками и автопроверкой</span></li>
-            <li>${I.check}<span>Банк задач, свои задачи и материалы с рисунками</span></li>
-            <li>${I.check}<span>Статистика по каждому ученику</span></li>
-          </ul>
-          ${homeCta()}
-        </div>
-        <div class="plan">
-          <div class="plan-h"><span class="plan-name">Про</span><b>${PRO_PRICE.month} ₽<small> / мес</small></b><span class="muted">или ${PRO_PRICE.year.toLocaleString('ru-RU')} ₽ в год · первые 14 дней бесплатно</span></div>
-          <ul>
-            <li>${I.check}<span>Сколько угодно групп, учеников и места</span></li>
-            <li>${I.check}<span>Материалы платформы: разборы ЕГЭ, учебник Python, шпаргалка</span></li>
-            <li>${I.check}<span>Приоритетная поддержка</span></li>
-            <li>${I.check}<span>Интерактивные модули</span></li>
-            <li>${I.check}<span>Telegram-бот</span></li>
-          </ul>
-          <p class="muted plan-legal">Оплата через ЮKassa. Условия — в <a href="#offer">публичной оферте</a>.</p>
-        </div>
-      </div>
+      ${plansHTML()}
+      <p class="plan-more"><a href="#pricing">Подробнее о тарифах, оплате и получении доступа →</a></p>
     </div></section>
 
     <section class="section h-faq"><div class="wrap h-faq-grid">
@@ -5632,6 +5687,8 @@ function stacklyApp() {
     else if (h === 'course') { html = pageCourse(); nav = 'course'; }
     else if (h === 'offer') { html = pageOffer(); nav = 'offer'; }
     else if (h === 'privacy') { html = pagePrivacy(); nav = 'offer'; }
+    else if (h === 'pricing') { html = pagePricing(); nav = 'pricing'; }
+    else if (h === 'contacts') { html = pageContacts(); nav = 'contacts'; }
     else if (h === 'pay-return') { html = pagePayReturn(); nav = 'pay'; setTimeout(checkPay, 300); }
     else if (h === 'materials') { html = pageMaterials(); nav = 'materials'; }
     else if ((m = h.match(/^mat-(?:(new)|edit-(\d+)|(\d+))$/))) { html = pageMatRoute(m); nav = 'materials'; if (m[1] || m[2]) setTimeout(ePreview); }
@@ -5700,7 +5757,7 @@ function stacklyApp() {
     if (nav === 'teach') loadTeach(h);
     if (nav === 'hw') loadHW(h); else curHW = 0;
     if (nav === 'me') { loadMyClass(); loadTg(); }
-    document.title = { home: 'stackly · платформа для репетиторов', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
+    document.title = { home: 'stackly · платформа для репетиторов', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', contacts: 'Контакты и реквизиты · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', nav === 'me' || nav === 'login');
   }
 
