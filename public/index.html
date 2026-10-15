@@ -1682,9 +1682,31 @@ td.name .plan-chip { margin-top: 6px; }
   .page { animation: none !important; }
 }
 
-/* ── оплата Про ── */
-.pay-box { display: grid; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
-.pay-box .form-acts { gap: 8px; }
+/* ── оплата Про: строка в кабинете и страница тарифа ── */
+.plan-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 14px; padding: 10px 10px 10px 14px; border-radius: 16px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 13.5px; }
+.plan-strip .ps-info { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 2px 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.plan-strip .warn { color: var(--bad); font-weight: 600; }
+.plan-strip .btn { flex: none; }
+@media (max-width: 560px) {
+  .plan-strip .btn { margin-left: auto; }
+  .plan-strip .ps-info { order: 3; flex-basis: 100%; }
+}
+.pro-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.pro-perks ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.pro-perks li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; font-size: 14.5px; color: var(--ink-2); }
+.pro-perks li svg { width: 20px; height: 20px; color: var(--blue); margin-top: 1px; }
+.pro-perks li b { display: block; color: var(--ink); font-weight: 650; }
+.pro-pay { display: grid; gap: 12px; }
+.pro-pay .panel-h { margin-bottom: 0; }
+.pro-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pro-opt { display: grid; gap: 6px; align-content: start; padding: 16px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--line); }
+.pro-opt.main { box-shadow: inset 0 0 0 2px var(--blue); background: var(--blue-soft); }
+.pro-opt-t { font: 600 14px/1.2 var(--f-display); color: var(--ink-2); }
+.pro-opt b { font: 650 30px/1.1 var(--f-display); letter-spacing: -.02em; }
+.pro-opt .muted { font-size: 12.5px; min-height: 2.6em; }
+.pro-opt .btn { margin-top: 4px; justify-content: center; }
+@media (max-width: 860px) { .pro-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 420px) { .pro-opts { grid-template-columns: minmax(0, 1fr); } .pro-opt .muted { min-height: 0; } }
 
 /* ── тарифы, контакты, подвал с реквизитами ── */
 .guest-link { display: none; }
@@ -3041,7 +3063,7 @@ function stacklyApp() {
   function pagePricing() {
     const steps = [
       ['Зарегистрируйтесь как преподаватель', 'Нужна только почта. Новому преподавателю сразу включается пробный Про на 14 дней — бесплатно, без карты.'],
-      ['Выберите срок', `В разделе «Учителю» → «Мои группы» в карточке «Тариф» нажмите «${PRO_PRICE.month} ₽ за месяц» или «${PRO_PRICE.year.toLocaleString('ru-RU')} ₽ за год».`],
+      ['Выберите срок', `В разделе «Учителю» откройте вкладку «Тариф» и нажмите «Оплатить» у варианта «1 месяц» (${PRO_PRICE.month} ₽) или «12 месяцев» (${PRO_PRICE.year.toLocaleString('ru-RU')} ₽).`],
       ['Оплатите на странице ЮKassa', 'Банковской картой, через СБП или другим способом, который предложит ЮKassa. Данные карты вводятся на стороне ЮKassa, сайт их не получает.'],
       ['Пользуйтесь', 'После оплаты вы возвращаетесь на сайт, и тариф Про включается в вашем аккаунте автоматически — обычно сразу, не позднее одного рабочего дня. Оплаченный срок прибавляется к текущему. Чек из приложения «Мой налог» приходит на почту, указанную при оплате.'],
     ];
@@ -4783,7 +4805,7 @@ function stacklyApp() {
   let tSeq = 0, tGroup = null, hwDraft = null;
   const teachShell = () => `<div class="page wrap t-page" id="tpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
   const tMsg = (title, text, href, label) => `<div class="t-empty" style="margin-top:30px"><b>${esc(title)}</b>${esc(text)}${href ? `<div class="cta-row"><a class="btn small" href="${href}">${label}</a></div>` : ''}</div>`;
-  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя">${acct.role === 'admin' ? `<a class="chip ${cur === 'home' ? 'on' : ''}" href="#admin-home">Обзор</a>` : ''}<a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip ${cur === 'edit' ? 'on' : ''}" href="#edit">Редактор задач</a><a class="chip" href="#materials">Материалы</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a><a class="chip ${cur === 'bank' ? 'on' : ''}" href="#admin-bank">Общий банк</a><a class="chip ${cur === 'stats' ? 'on' : ''}" href="#admin-stats">Посещаемость</a>` : ''}</nav>`;
+  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя">${acct.role === 'admin' ? `<a class="chip ${cur === 'home' ? 'on' : ''}" href="#admin-home">Обзор</a>` : ''}<a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip ${cur === 'edit' ? 'on' : ''}" href="#edit">Редактор задач</a><a class="chip" href="#materials">Материалы</a>${acct.role === 'admin' ? '' : `<a class="chip ${cur === 'pro' ? 'on' : ''}" href="#teach-pro">Тариф</a>`}${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a><a class="chip ${cur === 'bank' ? 'on' : ''}" href="#admin-bank">Общий банк</a><a class="chip ${cur === 'stats' ? 'on' : ''}" href="#admin-stats">Посещаемость</a>` : ''}</nav>`;
   async function loadTeach(h) {
     const seq = ++tSeq;
     const put = html => { const box = $('#tpage'); if (seq !== tSeq || !box) return false; box.innerHTML = html; swapIn(box); reveal(box); return true; };
@@ -4794,10 +4816,15 @@ function stacklyApp() {
     try {
       if (h === 'teach' || h === 'teach-all') {
         const all = h === 'teach-all' && acct.role === 'admin';
-        // заодно освежаем тариф и занятые лимиты — их показывает карточка тарифа
+        // заодно освежаем тариф и занятые лимиты — их показывает строка тарифа
         const [gr, me] = await Promise.all([api('/teach/groups' + (all ? '?all=1' : '')), api('/auth/me').catch(() => null)]);
         if (me) setUser(me.user);
         put(tGroupsHTML(gr.groups, all));
+      }
+      else if (h === 'teach-pro') {
+        if (acct.role === 'admin') return put(tMsg('У администратора ограничений нет', 'Оплачивать тариф не нужно.', '#teach', 'К группам'));
+        const me = await api('/auth/me').catch(() => null); if (me) setUser(me.user);
+        put(tProHTML());
       }
       else if ((m = h.match(/^admin-u-(\d+)$/))) {
         if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
@@ -5097,7 +5124,6 @@ function stacklyApp() {
   // Бесплатный — до 5 групп, 5 учеников и 2 ГБ; Про и пробный Про — без ограничений и с материалами платформы.
   // Лимиты проверяет сервер (plan_limit в stackly_api.py), здесь — только показ.
   const PLAN_NAME = { free: 'Бесплатный', trial: 'Пробный Про', pro: 'Про' };
-  const PRO_EXTRAS = ['материалы платформы: разборы ЕГЭ, учебник Python, шпаргалка', 'интерактивные модули', 'приоритетная поддержка', 'Telegram-бот'];
   const fmtDay = s => new Date(s * 1000).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }).replace(' г.', '');
   const fmtSize = b => b >= 1073741824 ? (b / 1073741824).toFixed(1).replace('.', ',') + ' ГБ' : fmtBytes(b);
   const planActive = () => acct.role === 'admin' || !!(acct.plan && acct.plan.active);
@@ -5114,22 +5140,43 @@ function stacklyApp() {
     const row = (lbl, used, lim, fmt = x => x) => `<div class="use-row"><span>${lbl}</span>${active ? '<span class="muted">без ограничений</span>' : barHTML(used, lim, used >= lim ? 'full' : '')}<b>${fmt(used)}${active ? '' : ' / ' + fmt(lim)}</b></div>`;
     return row('Ученики', u.students, L.students) + row('Группы', u.groups, L.groups) + row('Хранилище', u.storage, L.storage, fmtSize);
   }
-  // тариф в кабинете учителя
+  // тариф в кабинете учителя — одна строка: тариф, занятое место на бесплатном и ссылка на страницу Про
   function planCard() {
     const p = acct.plan, u = acct.usage, L = acct.limits;
     if (acct.role === 'admin' || !p || !u || !L) return '';
-    const note = p.active
-      ? (p.plan === 'trial' ? `<p class="plan-note">Пробный период — всё как в Про. После ${fmtDay(p.until)} останется бесплатный тариф: до ${L.groups} групп, ${L.students} учеников и 2 ГБ, без материалов платформы.</p>` : '')
-      : `<p class="plan-note">В Про нет ограничений по ученикам, группам и месту, а ещё: ${PRO_EXTRAS.join(', ')}. Чтобы подключить Про, напишите администратору платформы.</p>`;
-    return `<section class="t-sec"><div class="panel plan-card"><div class="panel-h"><h2>Тариф</h2>${planChip(p)}</div>${usageRows(u, L, p.active)}${note.replace('Чтобы подключить Про, напишите администратору платформы.', acct.pay ? '' : 'Чтобы подключить Про, напишите администратору платформы.')}${payHTML()}</div></section>`;
+    const days = p.until ? Math.max(0, Math.ceil((p.until * 1000 - Date.now()) / 864e5)) : 0;
+    const use = (lbl, used, lim, fmt = x => x) => `<span class="${used >= lim ? 'warn' : ''}">${lbl} ${fmt(used)}/${fmt(lim)}</span>`;
+    const info = !p.active ? use('ученики', u.students, L.students) + use('группы', u.groups, L.groups) + use('место', u.storage, L.storage, fmtSize)
+      : p.plan === 'trial' ? `<span class="${days <= 3 ? 'warn' : ''}">до ${fmtDay(p.until)}, осталось ${days} ${plural(days, 'день', 'дня', 'дней')}</span>`
+      : `<span>${p.until ? 'до ' + fmtDay(p.until) + ', ' : ''}без ограничений</span>`;
+    const cta = p.active && p.plan === 'pro' ? 'Продлить' : 'Подключить Про';
+    return `<section class="plan-strip"><span class="plan-chip ${p.active ? 'on' : ''}">${p.active ? PLAN_NAME[p.plan] : 'Бесплатный тариф'}</span><span class="ps-info">${info}</span><a class="btn small ${p.active && p.plan === 'pro' ? 'ghost' : ''}" href="#teach-pro">${cta} <span class="arr">${I.arrow}</span></a></section>`;
   }
-  // оплата Про через ЮKassa: кнопки ведут на страницу оплаты, после неё — #pay-return
-  function payHTML() {
-    if (!acct.pay || !acct.prices) return '';
-    const p = acct.plan, P = acct.prices;
-    return `<div class="pay-box"><b>${p.active && p.plan === 'pro' ? 'Продлить Про' : 'Подключить Про'}</b>
-      <div class="form-acts"><button type="button" class="btn small" data-pay="month">${P.month} ₽ за месяц</button><button type="button" class="btn small ghost" data-pay="year">${P.year.toLocaleString('ru-RU')} ₽ за год</button></div>
-      <p class="plan-note">${p.active ? 'Оплаченный срок прибавится к текущему. ' : ''}Оплата через ЮKassa. Нажимая кнопку оплаты, вы принимаете условия <a href="#offer" target="_blank" rel="noopener">публичной оферты</a>. Тариф не продлевается автоматически.</p></div>`;
+  // страница «Тариф Про»: что даёт, сколько стоит, кнопки оплаты через ЮKassa (после оплаты — #pay-return)
+  const PRO_PERKS = [
+    ['Без ограничений', 'Сколько угодно групп, учеников и места. На бесплатном тарифе — до 5 групп, 5 учеников и 2 ГБ.'],
+    ['Материалы платформы', 'Разборы заданий ЕГЭ, учебник Python и шпаргалка — для вас и учеников ваших групп.'],
+    ['Интерактивные модули', 'Графики с ползунками и карточки для запоминания прямо в материалах и задачах.'],
+    ['Telegram-бот', 'Сообщает, кто сдал задание, кто вступил в группу и у кого горит срок.'],
+    ['Приоритетная поддержка', 'Отвечаем на вопросы преподавателей с Про в первую очередь.'],
+  ];
+  function tProHTML() {
+    const p = acct.plan, u = acct.usage, L = acct.limits, P = acct.prices || { month: PRO_PRICE.month, year: PRO_PRICE.year };
+    const pro = p && p.active && p.plan === 'pro', save = P.month * 12 - P.year;
+    const opt = (period, title, price, sub, main) => `<div class="pro-opt ${main ? 'main' : ''}"><span class="pro-opt-t">${title}</span><b>${price.toLocaleString('ru-RU')} ₽</b><span class="muted">${sub}</span>
+        ${acct.pay ? `<button type="button" class="btn ${main ? 'blue' : ''}" data-pay="${period}">Оплатить</button>` : ''}</div>`;
+    return `<header class="t-head"><div><span class="eyebrow">Кабинет учителя</span><h1>Тариф Про</h1>
+        <p>Всё, что есть в stackly, без ограничений. Ученикам платить не нужно — для них stackly бесплатен.</p></div>${tTabs('pro')}</header>
+      <section class="t-sec pro-grid">
+        <div class="panel pro-perks"><div class="panel-h"><h2>Что даёт Про</h2></div>
+          <ul>${PRO_PERKS.map(([t, d]) => `<li>${I.check}<span><b>${t}</b>${d}</span></li>`).join('')}</ul></div>
+        <div class="panel pro-pay"><div class="panel-h"><h2>${pro ? 'Продлить Про' : 'Подключить Про'}</h2>${planChip(p)}</div>
+          <div class="pro-opts">${opt('month', '1 месяц', P.month, 'оплата за месяц', false)}${opt('year', '12 месяцев', P.year, save > 0 ? `≈ ${Math.round(P.year / 12)} ₽ в месяц, выгода ${save.toLocaleString('ru-RU')} ₽` : 'оплата за год', true)}</div>
+          ${acct.pay ? `<p class="plan-note">${p && p.active ? 'Оплаченный срок прибавится к текущему. ' : ''}Оплата картой или через СБП на странице ЮKassa. Тариф не продлевается автоматически. Нажимая «Оплатить», вы принимаете условия <a href="#offer" target="_blank" rel="noopener">публичной оферты</a>.</p>`
+            : '<p class="plan-note">Оплата на сайте пока не подключена. Чтобы подключить Про, напишите администратору платформы.</p>'}</div>
+      </section>
+      ${p && u && L ? `<section class="t-sec"><div class="panel plan-card"><div class="panel-h"><h2>Сейчас у вас</h2><span class="muted">${esc(planLabel(p))}</span></div>${usageRows(u, L, p.active)}
+        ${p.active && p.plan === 'trial' ? `<p class="plan-note">Пробный период — всё как в Про. После ${fmtDay(p.until)} останется бесплатный тариф: до ${L.groups} групп, ${L.students} учеников и 2 ГБ, без материалов платформы.</p>` : ''}</div></section>` : ''}`;
   }
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-pay]'); if (!b) return;
@@ -5150,7 +5197,7 @@ function stacklyApp() {
     box.innerHTML = paid ? `<b>Оплата прошла — тариф Про подключён</b>${esc(planLabel(r.plan))}. Чек придёт на почту, указанную при оплате.<div class="cta-row"><a class="btn small" href="#teach">К группам</a></div>`
       : !r.payments.length ? `<b>Новых платежей нет</b>Сейчас у вас: ${esc(planLabel(r.plan))}.<div class="cta-row"><a class="btn small" href="#teach">К группам</a></div>`
       : pending ? '<b>Платёж ещё обрабатывается</b>Как только ЮKassa его подтвердит, тариф включится сам. Обновите страницу через минуту.<div class="cta-row"><button type="button" class="btn small" data-act="reload">Обновить</button></div>'
-      : '<b>Оплата не прошла</b>Деньги не списаны. Попробуйте ещё раз на странице «Мои группы».<div class="cta-row"><a class="btn small" href="#teach">К группам</a></div>';
+      : '<b>Оплата не прошла</b>Деньги не списаны. Попробуйте ещё раз.<div class="cta-row"><a class="btn small" href="#teach-pro">К тарифу Про</a></div>';
   }
 
   /* Общий банк для администратора: встроенные задачи и открытые задачи (для платформы и для всех) по предметам.

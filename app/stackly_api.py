@@ -472,8 +472,7 @@ def record_homework_done(user_id, data):
 YK_SHOP = os.environ.get('STACKLY_YK_SHOP', '')
 YK_KEY = os.environ.get('STACKLY_YK_KEY', '')
 YK_API = os.environ.get('STACKLY_YK_API', 'https://api.yookassa.ru/v3').rstrip('/')
-# ВРЕМЕННО 10 ₽ за любой срок — проверка оплаты на боевом магазине. Обычные цены: 35000 и 370000
-PRO_PRICES = {'month': (1000, 30, '1 месяц'), 'year': (1000, 365, '12 месяцев')}     # копейки, дни, подпись
+PRO_PRICES = {'month': (35000, 30, '1 месяц'), 'year': (370000, 365, '12 месяцев')}     # копейки, дни, подпись
 
 def yk(method, path, body=None, key=None):
     """Запрос к API ЮKassa (Basic-авторизация shopId:секретный ключ). Ошибка — ApiError 502."""
