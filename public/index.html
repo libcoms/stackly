@@ -1265,7 +1265,6 @@ button.hwi { font-family: inherit; }
 <header class="top"><div class="wrap">
   <a class="logo" href="#home" aria-label="stackly — на главную"><span class="ball" aria-hidden="true"></span>stackly<small>ЕГЭ · Информатика</small></a>
   <nav class="nav" aria-label="Разделы сайта">
-    <a href="#home" data-nav="home">Главная</a>
     <a href="#bank" data-nav="bank">Банк задач</a>
     <a href="#materials" data-nav="materials">Материалы</a>
     <a href="#hw" data-nav="hw" hidden>ДЗ</a>
@@ -2175,6 +2174,8 @@ function stacklyApp() {
     ['Катя Волкова', [1, 1, 1, 1, 2, 1]],
   ];
   const mxCell = v => v > 0 ? `<span class="mx ok">${v}</span>` : v < 0 ? `<span class="mx bad">${-v}</span>` : '<span class="mx">-</span>';
+  // вошедшему вместо лендинга — его рабочая страница
+  const startPage = () => acct.role === 'admin' ? '#admin-home' : isTeacher() ? '#teach' : '#hw';
   function homeCta() {
     if (acct.cloud && (acct.role === 'teacher' || acct.role === 'admin')) return `<a class="btn blue hcta" href="#teach">Мои группы <span class="arr">${I.arrow}</span></a>`;
     if (acct.cloud) return `<a class="btn blue hcta" href="#hw">Мои задания <span class="arr">${I.arrow}</span></a>`;
@@ -3035,7 +3036,7 @@ function stacklyApp() {
     acct.checked = true; renderAcctBtn();
     $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
-    if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash) || isTeacher()) { curNav = ''; route(); }
+    if (/^#(login|me|teach|admin|hw|edit)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
   }
   async function logout() {
     try { await api('/auth/logout', 'POST', {}); } catch (e) { }
@@ -3067,6 +3068,8 @@ function stacklyApp() {
     b.setAttribute('href', acct.cloud ? '#me' : '#signup');
     b.setAttribute('aria-label', acct.cloud ? 'Личный кабинет' : 'Попробовать бесплатно');
     b.classList.toggle('on', acct.cloud);
+    const logo = $('.top .logo');
+    if (logo) logo.setAttribute('href', acct.cloud ? startPage() : '#home');
     const tl = $('.nav [data-nav="teach"]');
     if (tl) { tl.hidden = !isTeacher(); tl.textContent = acct.role === 'admin' ? 'Управление' : 'Учителю'; tl.setAttribute('href', acct.role === 'admin' ? '#admin-home' : '#teach'); }
     updHWBadge();
@@ -4251,10 +4254,11 @@ function stacklyApp() {
     const body = JSON.stringify({ p, e: hitFirst ? 1 : 0, r }); hitFirst = false;
     try { fetch(API + '/hit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', keepalive: true, body }).catch(() => { }); } catch (e) { }
   }
+  let landingWait = false;     // лендинг придержан, пока не узнали, вошёл ли посетитель
   function route() {
     const h = (location.hash || '#home').slice(1);
-    pageHit(h);
     let m, html, nav = 'home', scrollTo = null, focusPid = null;
+    landingWait = false;
     codeStore = [];
     const gate = LOCKED && GATES.find(g => g[0].test(h));
     if (gate) {
@@ -4295,7 +4299,16 @@ function stacklyApp() {
       if (LOCKED && !acct.cloud) { location.replace('#login'); return; }
       html = LOCKED ? pageNoContent() : pageMe(); nav = 'me';
     }
+    else if (acct.cloud) { location.replace(startPage()); return; }
+    else if (!acct.checked && (!LOCKED || !document.documentElement.classList.contains('guest'))) {
+      // материалы пришли или в прошлый раз здесь был вход — скорее всего, сессия жива: лендинг не мелькает
+      landingWait = true;
+      $('#app').innerHTML = `<div class="page wrap"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
+      curNav = '';
+      return;
+    }
     else html = pageHome();
+    pageHit(h);
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const jump = top => window.scrollTo({ top, behavior: 'instant' });
     const glide = top => window.scrollTo({ top, behavior: reduce ? 'instant' : 'smooth' });

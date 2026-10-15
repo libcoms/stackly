@@ -180,16 +180,23 @@ def sweep_metrics(now):
         db().execute('DELETE FROM hits WHERE ts < ?', (int(now) - METRIC_KEEP_DAYS * 86400,))
 
 # ---------------------------------------------------------------- пароли и токены
+# scrypt берёт ~32 МБ памяти и заметное время процессора: класс, входящий разом, без очереди
+# упёрся бы в MemoryMax сервиса. Остальные проверки ждут своей очереди в этом семафоре.
+_scrypt_slots = threading.BoundedSemaphore(int(os.environ.get('STACKLY_SCRYPT_SLOTS', '2')))
+
+def scrypt(pw: bytes, salt: bytes, n: int, r: int, p: int, dklen: int) -> bytes:
+    with _scrypt_slots:
+        return hashlib.scrypt(pw, salt=salt, n=n, r=r, p=p, maxmem=64 * 2**20, dklen=dklen)
+
 def hash_password(pw: str) -> str:
     salt = secrets.token_bytes(16)
-    dk = hashlib.scrypt(pw.encode(), salt=salt, n=2**15, r=8, p=1, maxmem=64 * 2**20, dklen=32)
+    dk = scrypt(pw.encode(), salt, 2**15, 8, 1, 32)
     return 'scrypt$32768$8$1$' + base64.b64encode(salt).decode() + '$' + base64.b64encode(dk).decode()
 
 def check_password(pw: str, stored: str) -> bool:
     try:
         _, n, r, p, salt, dk = stored.split('$')
-        got = hashlib.scrypt(pw.encode(), salt=base64.b64decode(salt), n=int(n), r=int(r), p=int(p),
-                             maxmem=64 * 2**20, dklen=len(base64.b64decode(dk)))
+        got = scrypt(pw.encode(), base64.b64decode(salt), int(n), int(r), int(p), len(base64.b64decode(dk)))
         return hmac.compare_digest(got, base64.b64decode(dk))
     except Exception:
         return False
@@ -541,7 +548,7 @@ class Handler(BaseHTTPRequestHandler):
         name = re.sub(r'\s+', ' ', str(d.get('name', ''))).strip()
         pw = str(d.get('password', ''))
         ip = self.client_ip()
-        if too_many('reg:' + ip, 10, 3600):
+        if too_many('reg:' + ip, 60, 3600):      # класс за одним NAT регистрируется на первом уроке
             raise ApiError(429, 'rate_limited', 'Слишком много регистраций с этого адреса, попробуйте через час')
         if not EMAIL_RE.match(email):
             raise ApiError(400, 'bad_email', 'Проверьте адрес почты')
