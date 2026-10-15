@@ -1479,6 +1479,87 @@ a.card:hover, .t-card:hover, .hw-link:hover, .me-link:hover, .kpi-link:hover, .t
 /* «Загрузка…» показывается, только если ответ задержался: быстрый ответ не мелькает */
 .loading-row { animation: fade .25s .3s both; }
 @media (prefers-reduced-motion: reduce) { .is-busy { transition: none; } }
+
+/* ── банк задач: как в «+балл» — сетка номеров, списки-карточки, страница одной задачи ── */
+.bk { padding-block: 32px 72px; display: grid; gap: 28px; align-content: start; }
+.bk-narrow { max-width: 860px; }
+.bk-head { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; justify-items: start; }
+.bk-head > * { max-width: 100%; min-width: 0; }
+.bk-head h1 { font: 800 clamp(32px, 4vw, 40px)/1.15 var(--f-display); letter-spacing: -.03em; }
+.bk-lead { margin: 0; max-width: 62ch; color: var(--ink-2); }
+.bk-caps { text-transform: uppercase; letter-spacing: -.025em; font-weight: 800; }
+.bk-back { display: inline-flex; align-items: center; gap: 4px; justify-self: start; font: 600 15px/1.2 var(--f-body); color: var(--ink-2); }
+.bk-back:hover { color: var(--ink); text-decoration: none; }
+.bk-back svg, .bk-link svg, .bk-pager svg { width: 16px; height: 16px; flex: none; }
+.bk-link { display: inline-flex; align-items: center; gap: 4px; font: 600 15px/1.2 var(--f-body); color: var(--blue-fg); }
+.bk-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; }
+.bk-search { position: relative; flex: 1 1 280px; max-width: 420px; }
+.bk-search span { position: absolute; left: 15px; top: 50%; translate: 0 -50%; font-weight: 700; color: var(--mute); pointer-events: none; }
+.bk-search input { width: 100%; height: 44px; padding: 0 16px 0 32px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--paper); color: var(--ink); font: 15px var(--f-body); transition: border-color .15s, box-shadow .15s; }
+.bk-search input:hover { border-color: var(--mute); }
+.bk-search input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.bk-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.bk-filters .seg, .bk-head > .seg { max-width: 100%; }
+.bk-sum { margin: 0; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bk-sum b { color: var(--ink); }
+.bk-bar { display: block; width: min(100%, 420px); height: 6px; border-radius: 999px; background: var(--blue-soft); overflow: hidden; }
+.bk-bar i { display: block; height: 100%; border-radius: inherit; background: var(--blue); transform-origin: left; animation: grow .8s var(--ease) both; }
+#bkmain { display: grid; gap: 12px; }
+#bkmain > .bk-bar { margin-bottom: 8px; }
+#bkres { display: grid; gap: 12px; }
+.bk-sec { display: grid; gap: 14px; margin-top: 16px; }
+.bk-sec-h { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+.bk-sec-h h2 { font: 800 clamp(20px, 2.2vw, 24px)/1.2 var(--f-display); letter-spacing: -.025em; text-transform: uppercase; }
+.bk-sec-h span { color: var(--mute); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* сетка номеров: число, название, «решено из», полоска; всё решено — индиго-обводка */
+.bk-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.bk-tile { height: 100%; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--r-s); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); color: var(--ink); transition: box-shadow .2s var(--ease), transform .2s var(--ease); }
+a.bk-tile:hover { text-decoration: none; transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--line-2), var(--shadow-lift); }
+.bk-tile b { font: 800 28px/1 var(--f-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.bk-tile small { font-size: 12.5px; line-height: 1.3; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.6em; }
+.bk-tile > span:not(.bk-bar) { margin-top: auto; padding-top: 4px; font-size: 13px; color: var(--mute); font-variant-numeric: tabular-nums; }
+.bk-tile .bk-bar { width: 100%; margin-top: 4px; }
+.bk-tile.done { box-shadow: inset 0 0 0 2px var(--blue); }
+a.bk-tile.done:hover { box-shadow: inset 0 0 0 2px var(--blue), var(--shadow-lift); }
+.bk-tile.empty { background: transparent; color: var(--mute); }
+.bk-tile.empty b, .bk-tile.empty small { color: var(--mute); }
+
+/* список: белая карточка с волосяными разделителями, вся строка — ссылка */
+.bk-list { list-style: none; margin: 0; padding: 0; border-radius: var(--r); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.bk-list > li + li { border-top: 1px solid var(--line); }
+.bk-row { display: flex; align-items: center; gap: 12px; padding: 14px 20px; color: var(--ink); transition: background-color .15s; }
+.bk-row:hover { background: var(--paper-2); text-decoration: none; }
+.bk-i { width: 24px; flex: none; font: 600 14px/1 var(--f-body); color: var(--mute); font-variant-numeric: tabular-nums; }
+.bk-t { flex: 1; min-width: 0; display: grid; gap: 6px; }
+.bk-t b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-t b.bk-caps { font-size: 17px; }
+.bk-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--mute); }
+.bk-meta .diff { margin: 0; }
+.bk-mark { flex: none; font-size: 13.5px; color: var(--mute); white-space: nowrap; }
+.bk-mark.ok { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--blue-soft); color: var(--blue-fg); animation: pop .35s var(--ease) both; }
+.bk-mark.ok svg { width: 16px; height: 16px; }
+.bk-mark .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.bk-chev { flex: none; color: var(--mute); display: grid; transition: transform .2s var(--ease); }
+.bk-chev svg { width: 18px; height: 18px; }
+.bk-row:hover .bk-chev { transform: translateX(3px); color: var(--ink-2); }
+
+/* страница одной задачи и соседи */
+.bk-one { padding: 0; }
+.bk-one .prob { animation: none; }
+.bk-pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.bk-pos { font-size: 14px; color: var(--mute); font-variant-numeric: tabular-nums; }
+.bk .plist { padding-block: 0; }
+.prob.solved { border-color: color-mix(in srgb, var(--blue) 45%, var(--line)); }
+.badge-ok { color: var(--blue-ink); background: var(--blue-soft); border-radius: 999px; }
+@media (max-width: 560px) {
+  .bk-row { padding: 12px 16px; gap: 10px; }
+  .bk-i { width: 20px; }
+  .bk-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bk-pager .btn { padding-inline: 12px; }
+  .bk-pos { display: none; }
+  .bk-filters .seg { width: 100%; }
+}
 </style>
 <header class="top"><div class="wrap">
   <a class="logo" href="#home" aria-label="stackly — на главную"><span class="ball" aria-hidden="true"></span>stackly<small>ЕГЭ · Информатика</small></a>
@@ -2200,7 +2281,8 @@ function stacklyApp() {
   const pyBy = Object.fromEntries(PY.map(t => [t.id, t]));
   // у каждой задачи банка свой сквозной номер: #1, #2, … — по порядку в банке
   const shownExtra = x => x && x.replace(/<!--[\s\S]*?-->/g, '').trim() ? x : '';
-  const pnum = Object.fromEntries(BANK.map((p, i) => [p.id, i + 1]));
+  // ученику сервер присылает только задачи его ДЗ, и номер полного банка приходит в поле n
+  const pnum = Object.fromEntries(BANK.map((p, i) => [p.id, p.n || i + 1]));
   // «17», «#17», «5-9», «3, 12, 30–33» → множество номеров; null, если это не список номеров
   function parseNums(q) {
     const s = String(q).trim();
@@ -2247,6 +2329,8 @@ function stacklyApp() {
     tabBank: svg('<path d="m12 3.5 8.5 4.75L12 13 3.5 8.25 12 3.5z"/><path d="m3.5 12.5 8.5 4.75 8.5-4.75"/><path d="m3.5 16.5 8.5 4 8.5-4"/>'),
     tabMaterials: svg('<path d="M4.5 5.5A2 2 0 0 1 6.5 3.5h13v15h-13a2 2 0 0 0-2 2v-15z"/><path d="M4.5 20.5a2 2 0 0 1 2-2h13v2"/><path d="M9 8h6"/>'),
     tabHw: svg('<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><path d="M9 4.5V3h6v1.5"/><path d="m9 13 2.2 2.2L15.5 11"/>'),
+    chev: svg('<path d="m9.5 6 6 6-6 6"/>', 2),
+    chevL: svg('<path d="m14.5 6-6 6 6 6"/>', 2),
     tabTeach: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2"/>'),
   };
   const toolKind = t => /^Вручную|^Калькулятор/.test(t.tool) ? 'hand' : /^Таблиц/.test(t.tool) ? 'calc' : 'py';
@@ -2357,7 +2441,7 @@ function stacklyApp() {
         return `<section class="t-sec subj-sec"><div class="subj-h"><h2>${esc(sj)}</h2><span class="muted">${n ? `${n} ${plural(n, 'задача', 'задачи', 'задач')} в банке` : 'в банке пока нет задач'}</span></div>
           <div class="mods">${mods.map(m => modCard(m, true)).join('')}
             <article class="mod mod-own"><div class="mod-top"><h3>Свои задачи</h3></div><p>Задачи с формулами, таблицами и картинками. Видны вам и ученикам ваших групп, или всем, если захотите.</p>
-              <div class="mod-foot"><a class="btn small ghost" href="#bank" data-bsubj="${esc(sj === 'Информатика' && !BANK.some(p => !p.task && psubj(p) === sj) ? EGE_SUBJ : sj)}">Банк задач</a><a class="btn small blue" href="#edit-p-new">Новая задача</a></div></article></div>
+              <div class="mod-foot"><a class="btn small ghost" href="${BANK.some(p => !p.task && psubj(p) === sj) ? '#bank-s-' + encodeURIComponent(sj) : '#bank'}">Банк задач</a><a class="btn small blue" href="#edit-p-new">Новая задача</a></div></article></div>
           ${mods.length ? '' : '<p class="muted subj-note">Готовых материалов по этому предмету пока нет. Добавляйте свои задачи: они сразу доступны в банке и в домашних заданиях.</p>'}</section>`;
       }).join('') : `<section class="t-sec"><div class="t-empty"><b>Выберите хотя бы один предмет</b>После этого здесь появятся готовые материалы и банк задач по нему.</div></section>`}
     </div>`;
@@ -2379,9 +2463,6 @@ function stacklyApp() {
     const t = e.target.closest('[data-mmod]'); if (!t) return;
     const mats = new Set(acct.materials || []); t.checked ? mats.add(t.dataset.mmod) : mats.delete(t.dataset.mmod);
     saveTeaching(acct.subjects || [], [...mats]);
-  });
-  document.addEventListener('click', e => {
-    const b = e.target.closest('[data-bsubj]'); if (b) Object.assign(bankF, { subj: b.dataset.bsubj, src: '', task: 0, q: '' });
   });
 
   /* ═════════════ ГЛАВНАЯ: ПЛАТФОРМА ДЛЯ ПРЕПОДАВАТЕЛЕЙ ═════════════ */
@@ -2887,7 +2968,7 @@ function stacklyApp() {
   }
 
   /* ═════════════ БАНК ═════════════ */
-  const bankF = { task: 0, level: '', status: '', q: '', subj: '', src: '' };
+  const bankF = { level: '', status: '', q: '', src: '' };     // фильтры и поиск банка — живут, пока открыта вкладка
   // задача из ЕГЭ по информатике — с номером задания; любая другая (task = 0) — с предметом и темой от преподавателя
   const EGE_SUBJ = 'ЕГЭ · информатика';
   const psubj = p => p.task ? EGE_SUBJ : (p.src && p.src.subject) || 'Без предмета';
@@ -2932,57 +3013,132 @@ function stacklyApp() {
       </form><div class="reveal"></div>
     </article>`;
   }
-  function filteredBank() {
-    const q = bankF.q.trim().toLowerCase(), nums = parseNums(q);
-    if (nums) return BANK.filter(p => nums.has(pnum[p.id]));
-    return BANK.filter(p => (!bankF.src || psrc(p) === bankF.src) && (!bankF.subj || psubj(p) === bankF.subj)
-      && (!bankF.task || p.task === bankF.task) && (!bankF.level || p.level === bankF.level)
-      && (!bankF.status || (bankF.status === 'done') === solved.has(p.id))
-      && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q)));
+  /* Банк устроен как в «+балл»: предметы и сетка номеров → список задач номера → страница одной задачи.
+     Ученику сервер присылает только задачи его ДЗ, поэтому всё ниже работает с тем, что лежит в BANK. */
+  let bankCur = null;                                   // открытый список: { task } или { subj }; null — главная банка
+  const bankPool = () => BANK.filter(p => !bankF.src || psrc(p) === bankF.src);
+  const doneOf = list => list.filter(p => solved.has(p.id)).length;
+  const inGroup = (p, g) => g.task ? p.task === g.task : !p.task && psubj(p) === g.subj;
+  const bankGroupHref = p => p.task ? '#bank-' + p.task : '#bank-s-' + encodeURIComponent(psubj(p));
+  function groupList(g, filtered = true) {
+    return bankPool().filter(p => inGroup(p, g) && (!filtered
+      || ((!bankF.level || p.level === bankF.level) && (!bankF.status || (bankF.status === 'done') === solved.has(p.id)))));
   }
-  function ringHTML() {
-    const C = 2 * Math.PI * 52;
-    return `<div class="ring" aria-label="Решено ${solved.size} из ${BANK.length}"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" cx="60" cy="60" r="52" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - solved.size / BANK.length)}"/></svg><div class="lbl"><b>${solved.size}</b><span>из ${BANK.length}</span></div></div>`;
+  function searchBank(q) {
+    q = q.trim().toLowerCase();
+    const nums = parseNums(q);
+    return bankPool().filter(p => nums ? nums.has(pnum[p.id]) : (p.title + ' ' + strip(p.text)).toLowerCase().includes(q))
+      .sort((a, b) => pnum[a.id] - pnum[b.id]);
   }
-  function pageBank() {
-    const counts = {}; BANK.forEach(p => counts[p.task] = (counts[p.task] || 0) + 1);
-    const pool = BANK.filter(p => !bankF.src || psrc(p) === bankF.src), subjs = subjList(pool);
-    if (bankF.subj && !subjs.some(([n]) => n === bankF.subj)) bankF.subj = '';
-    // номера 1–27 нужны, только когда видны задачи ЕГЭ по информатике
-    const showNums = subjs.some(([n]) => n === EGE_SUBJ) && (bankF.subj === EGE_SUBJ || subjs.length === 1);
-    const multi = subjs.length > 1 || subjs.some(([n]) => n !== EGE_SUBJ);
-    const srcs = [['', 'Все'], ['platform', 'Платформа'], ['teachers', 'Преподаватели'], ...(isTeacher() ? [['mine', 'Мои']] : [])];
-    const allDone = n => counts[n] && BANK.filter(p => p.task === n).every(p => solved.has(p.id));
-    const grp = (lbl, key, opts) => `<span class="grp"><span class="lbl">${lbl}</span>${opts.map(([v, n]) => `<button type="button" class="chip ${bankF[key] === v ? 'on' : ''}" data-f="${key}" data-v="${v}">${n}</button>`).join('')}</span>`;
-    return `<div class="page wrap">
-      <header class="bank-top"><div><span class="eyebrow">Тренировка</span><h1>Банк задач</h1>
-        <p>${multi ? `Общий банк платформы и задачи преподавателей. Выберите предмет, введите ответ и нажмите «Проверить».` : `${BANK.length} задач по всем номерам в формате КЕГЭ. Введи ответ и нажми «Проверить». Данные для файловых заданий копируются кнопкой — сохрани их в файл с указанным именем и запусти своё решение.`}</p>
-        ${isTeacher() ? `<div class="form-acts" style="margin-top:14px"><a class="btn small blue" href="#edit-p-new">Новая задача</a><a class="btn small ghost" href="#edit">Редактор задач</a></div>` : ''}</div>${ringHTML()}</header>
-      <div class="filters">
-        ${subjs.length > 1 ? `<div class="filter-row subj-row" role="group" aria-label="Предмет"><button type="button" class="chip ${!bankF.subj ? 'on' : ''}" data-subj="">Все · ${pool.length}</button>
-          ${subjs.map(([n, c]) => `<button type="button" class="chip ${bankF.subj === n ? 'on' : ''}" data-subj="${esc(n)}">${esc(n)} · ${c}</button>`).join('')}</div>` : ''}
-        ${showNums ? `<div class="filter-row" role="group" aria-label="Номер задания"><button type="button" class="chip num ${!bankF.task ? 'on' : ''}" data-task="0">${subjs.length > 1 ? 'Все номера' : 'Все · ' + BANK.length}</button>
-          ${EGE.map(t => `<button type="button" class="chip num ${bankF.task === t.n ? 'on' : ''} ${allDone(t.n) ? 'all-done' : ''}" data-task="${t.n}" ${counts[t.n] ? '' : 'disabled'} title="${esc(t.title)}">${t.n}</button>`).join('')}</div>` : ''}
-        <div class="filter-sub">${BANK.some(p => psrc(p) !== 'platform') ? grp('Банк', 'src', srcs) : ''}${grp('Сложность', 'level', [['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']])}
-          ${grp('Статус', 'status', [['', 'Все'], ['todo', 'Не решённые'], ['done', 'Решённые']])}
-          <input id="bankq" type="search" placeholder="#17, 5-9 или слова из условия" value="${esc(bankF.q)}"><span class="count-note" id="bankcount"></span></div>
-      </div>
-      <div id="banktheory">${bankTheory()}</div>
-      <div class="plist" id="plist"></div>
+  const bankBar = (d, t) => `<span class="bk-bar" aria-hidden="true"><i style="width:${t ? d / t * 100 : 0}%"></i></span>`;
+  const dotsHTML = p => `<span class="diff" title="Сложность: ${lvWord[p.level]}">${[1, 2, 3].map(k => `<i class="${k <= lvDots[p.level] ? 'on' : ''}"></i>`).join('')}</span>`;
+  // отметка в строке: решена — индиго-галочка; были попытки — тихая подпись
+  function markHTML(p) {
+    if (solved.has(p.id)) return `<span class="bk-mark ok" title="Решена">${I.check}<span class="sr">решена</span></span>`;
+    const a = stats.att[p.id];
+    return a && a.n ? '<span class="bk-mark">есть попытки</span>' : '';
+  }
+  const rowHTML = (p, i) => `<li><a class="bk-row" href="#p-${p.id}"><span class="bk-i">${i + 1}</span>
+      <span class="bk-t"><b>${esc(p.title)}</b><span class="bk-meta"><span class="pnum">#${pnum[p.id]}</span>${p.task ? '' : `<span>${esc(ptag(p))}</span>`}${dotsHTML(p)}${p.src && !p.src.builtin ? `<span>${esc(p.src.author || 'учитель')}</span>` : ''}</span></span>
+      ${markHTML(p)}<span class="bk-chev">${I.chev}</span></a></li>`;
+  const listHTML = list => list.length ? `<ol class="bk-list">${list.map(rowHTML).join('')}</ol>`
+    : '<div class="t-empty"><b>Задач не найдено</b>Сбросьте фильтры или поищите по-другому.</div>';
+  const segHTML = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(([v, n]) => `<button type="button" class="${bankF[key] === v ? 'on' : ''}" data-f="${key}" data-v="${v}" aria-pressed="${bankF[key] === v}">${n}</button>`).join('')}</div>`;
+  const srcSeg = () => BANK.some(p => psrc(p) !== 'platform')
+    ? segHTML('src', 'Чьи задачи', [['', 'Все'], ['platform', 'Платформа'], ['teachers', 'Преподаватели'], ...(isTeacher() ? [['mine', 'Мои']] : [])]) : '';
+  const bankSum = list => { const d = doneOf(list); return `<p class="bk-sum">Решено <b>${d}</b> из ${list.length} ${plural(list.length, 'задачи', 'задач', 'задач')}</p>${bankBar(d, list.length)}`; };
+
+  function pageBankHome() {
+    bankCur = null;
+    const pool = bankPool(), teacher = isTeacher();
+    const head = `<header class="bk-head"><h1>Банк задач</h1>
+        <p class="bk-lead">${teacher ? 'Общий банк платформы и задачи преподавателей. Выберите номер задания или предмет — ответ проверяется сразу, решение открывается в любой момент.'
+          : 'Задачи из ваших домашних заданий. Решайте их здесь или прямо в задании — отметки общие.'}</p>
+        <div class="bk-tools"><form class="bk-search" role="search" onsubmit="return false"><span aria-hidden="true">#</span><input id="bankq" type="search" placeholder="Номер (17, 5-9) или слова из условия" aria-label="Поиск задачи" value="${esc(bankF.q)}" autocomplete="off"></form>
+          ${teacher ? `<a class="btn" href="#edit-p-new">Новая задача</a><a class="btn ghost" href="#edit">Редактор задач</a>` : ''}</div>
+        ${srcSeg()}</header>`;
+    if (!BANK.length) return `<div class="page wrap bk">${head.replace(/<div class="bk-tools">[\s\S]*?<\/form>/, '<div class="bk-tools">')}
+      <div class="t-empty"><b>Задач пока нет</b>${teacher ? 'В банке ещё нет задач. Добавьте свою — она сразу появится здесь.' : 'Здесь появятся задачи, которые выдаст преподаватель. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.'}</div></div>`;
+    const ege = pool.filter(p => p.task), others = subjList(pool.filter(p => !p.task));
+    const tile = t => {
+      const ps = ege.filter(p => p.task === t.n), d = doneOf(ps);
+      if (!ps.length) return teacher ? `<li><span class="bk-tile empty" aria-disabled="true"><b>${t.n}</b><small>${esc(t.title)}</small><span>пока нет</span></span></li>` : '';
+      return `<li><a class="bk-tile ${d === ps.length ? 'done' : ''}" href="#bank-${t.n}" aria-label="Задание ${t.n}, ${esc(t.title)}: решено ${d} из ${ps.length}"><b>${t.n}</b><small>${esc(t.title)}</small><span>${d} из ${ps.length}</span>${bankBar(d, ps.length)}</a></li>`;
+    };
+    return `<div class="page wrap bk">${head}
+      <div id="bkres" ${bankF.q.trim() ? '' : 'hidden'}>${bankF.q.trim() ? searchHTML() : ''}</div>
+      <div id="bkmain" ${bankF.q.trim() ? 'hidden' : ''}>
+        ${pool.length ? bankSum(pool) : '<div class="t-empty"><b>Здесь пусто</b>В этом разделе банка пока нет задач.</div>'}
+        ${ege.length ? `<section class="bk-sec"><div class="bk-sec-h"><h2>ЕГЭ · информатика</h2><span>${doneOf(ege)} из ${ege.length}</span></div><ol class="bk-grid">${EGE.map(tile).join('')}</ol></section>` : ''}
+        ${others.length ? `<section class="bk-sec"><div class="bk-sec-h"><h2>${ege.length ? 'Другие предметы' : 'Предметы'}</h2></div><ul class="bk-list">${others.map(([n, c]) => {
+          const d = doneOf(pool.filter(p => !p.task && psubj(p) === n));
+          return `<li><a class="bk-row" href="#bank-s-${encodeURIComponent(n)}"><span class="bk-t"><b class="bk-caps">${esc(n)}</b><span class="bk-meta"><span>решено ${d} из ${c}</span></span></span><span class="bk-chev">${I.chev}</span></a></li>`;
+        }).join('')}</ul></section>` : ''}
+      </div></div>`;
+  }
+  function searchHTML() {
+    const list = searchBank(bankF.q);
+    return `<p class="bk-sum">Найдено: <b>${list.length}</b></p>${listHTML(list)}`;
+  }
+  function renderSearch() {
+    const res = $('#bkres'), main = $('#bkmain'); if (!res) return;
+    const on = !!bankF.q.trim();
+    res.hidden = !on; main.hidden = on;
+    res.innerHTML = on ? searchHTML() : '';
+  }
+
+  function pageBankList(g) {
+    bankCur = g;
+    const t = g.task ? egeBy[g.task] : null, all = groupList(g, false);
+    // соседние номера — только те, где есть задачи
+    const nums = g.task ? EGE.map(x => x.n).filter(n => n === g.task || bankPool().some(p => p.task === n)) : [];
+    const i = nums.indexOf(g.task), prev = nums[i - 1], next = nums[i + 1];
+    return `<div class="page wrap bk bk-narrow">
+      <a class="bk-back" href="#bank">${I.chevL}Банк задач</a>
+      <header class="bk-head"><h1>${t ? `Задание ${t.n}` : `<span class="bk-caps">${esc(g.subj)}</span>`}</h1>
+        ${t ? `<p class="bk-lead">${esc(t.title)}</p>` : ''}
+        ${bankSum(all)}
+        ${t && (isTeacher() || canSee('inf-ege')) ? `<a class="bk-link" href="#ege-${t.n}">Теория к заданию ${t.n} ${I.chev}</a>` : ''}
+        <div class="bk-filters">${srcSeg()}${segHTML('level', 'Сложность', [['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']])}${segHTML('status', 'Статус', [['', 'Все'], ['todo', 'Не решённые'], ['done', 'Решённые']])}</div>
+      </header>
+      <div id="bklist">${listHTML(groupList(g))}</div>
+      ${g.task && (prev || next) ? `<nav class="bk-pager" aria-label="Соседние номера">${prev ? `<a class="btn ghost" href="#bank-${prev}">${I.chevL}Задание ${prev}</a>` : '<span></span>'}${next ? `<a class="btn ghost" href="#bank-${next}">Задание ${next}${I.chev}</a>` : ''}</nav>` : ''}
     </div>`;
   }
+
+  function pageTask(p) {
+    // соседи — по всему номеру (или предмету), без фильтров: «Следующая» не должна пропадать
+    const list = BANK.filter(x => inGroup(x, p.task ? { task: p.task } : { subj: psubj(p) })), i = list.findIndex(x => x.id === p.id);
+    const prev = list[i - 1], next = list[i + 1];
+    return `<div class="page wrap bk bk-narrow">
+      <a class="bk-back" href="${bankGroupHref(p)}">${I.chevL}${p.task ? `Задание ${p.task}` : esc(psubj(p))}</a>
+      <div class="plist bk-one">${probHTML(p, 0)}</div>
+      <nav class="bk-pager" aria-label="Соседние задачи">${prev ? `<a class="btn ghost" href="#p-${prev.id}">${I.chevL}Предыдущая</a>` : '<span></span>'}
+        <span class="bk-pos">${i + 1} из ${list.length}</span>
+        ${next ? `<a class="btn ${solved.has(p.id) ? '' : 'ghost'} bk-next" href="#p-${next.id}">Следующая${I.chev}</a>` : `<a class="btn ghost" href="${bankGroupHref(p)}">К списку</a>`}</nav>
+    </div>`;
+  }
+
+  function pageSet(g) {
+    return `<div class="page wrap bk bk-narrow">
+      <a class="bk-back" href="#bank-19">${I.chevL}Задание 19</a>
+      <header class="bk-head"><h1>Комплект 19–21</h1><p class="bk-lead">Одна игра и три вопроса о ней, как на экзамене. Решено ${doneOf(g.set)} из 3.</p></header>
+      <div class="plist">${g.set.map(probHTML).join('')}</div></div>`;
+  }
+
+  // фильтры меняют только список (или главную банка) на месте — без перехода и прыжка страницы
   function redrawBank() {
-    if (/^#bank-\d+$/.test(location.hash)) history.replaceState(null, '', '#bank');
-    $('#app').innerHTML = pageBank(); renderProbs();
-  }
-  function bankTheory() {
-    return bankF.task ? `<p style="margin:16px 0 0"><a class="chip wrap-ok" href="#ege-${bankF.task}">Теория к заданию ${bankF.task}: ${esc(egeBy[bankF.task].title)} →</a></p>` : '';
-  }
-  function renderProbs() {
-    const list = filteredBank(), el = $('#plist'); if (!el) return;
-    el.innerHTML = list.length ? list.map(probHTML).join('') : '<div class="empty"><b>Задач не найдено</b>Сбрось фильтры или выбери другой номер.</div>';
-    const c = $('#bankcount'); if (c) c.textContent = `Показано задач: ${list.length}`;
-    reveal(el);
+    if ($('#bklist') && bankCur) {
+      $('#bklist').innerHTML = listHTML(groupList(bankCur));
+      $$('.bk [data-f]').forEach(x => { const on = bankF[x.dataset.f] === x.dataset.v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); });
+      const sum = $('.bk-head .bk-sum'); if (sum) { sum.nextElementSibling.remove(); sum.outerHTML = bankSum(groupList(bankCur, false)); }
+      return;
+    }
+    const y = scrollY, q = document.activeElement && document.activeElement.id === 'bankq';
+    $('#app').innerHTML = pageBankHome();
+    $('#app .page').style.animation = 'none';
+    window.scrollTo({ top: y, behavior: 'instant' });
+    if (q) { const inp = $('#bankq'); inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
   }
   function checkAnswer(form) {
     const id = form.dataset.check, p = BANK.find(b => b.id === id);
@@ -2994,7 +3150,7 @@ function stacklyApp() {
       inp.classList.add('ok'); box.classList.add('solved');
       vd.className = 'verdict ok'; vd.textContent = 'Верно! Задача отмечена как решённая.';
       if (!box.querySelector('.badge-ok')) box.querySelector('.prob-head h3').insertAdjacentHTML('afterend', '<span class="badge-ok">решено</span>');
-      const ring = $('.ring'); if (ring) ring.outerHTML = ringHTML();
+      const nx = $('.bk-next'); if (nx) nx.classList.remove('ghost');      // решено — «Следующая» становится главной кнопкой
     } else {
       track('a', id, false);
       inp.classList.add('bad'); vd.className = 'verdict bad'; vd.textContent = 'Не сходится. Проверь решение на примере из условия и попробуй ещё раз.';
@@ -3150,7 +3306,7 @@ function stacklyApp() {
     const list = ORIG.bank.filter(p => !(over[p.id] && over[p.id].hidden)).map(p => over[p.id] ? toBank(over[p.id], p) : { ...p });
     const custom = c.problems.filter(p => !p.builtin && !p.hidden).map(p => toBank(p, null));
     for (const k in pnum) delete pnum[k];
-    ORIG.bank.forEach((p, i) => pnum[p.id] = i + 1);
+    ORIG.bank.forEach((p, i) => pnum[p.id] = p.n || i + 1);
     custom.forEach(p => pnum[p.id] = p.src.num);
     BANK.length = 0; BANK.push(...list, ...custom.sort((a, b) => pnum[a.id] - pnum[b.id]));
     BANK.sort((a, b) => a.task - b.task || pnum[a.id] - pnum[b.id]);
@@ -3678,7 +3834,7 @@ function stacklyApp() {
     if (!acct.cloud || !$('#myclass')) return;
     try {
       const [g, h] = await Promise.all([api('/me/groups'), api('/me/homework')]);
-      myHW = h.homework; renderMyClass(g.groups); updHWBadge();
+      myHW = h.homework; if (bankStale()) return; renderMyClass(g.groups); updHWBadge();
     } catch (e) { const l = $('#hwlist'); if (l) l.innerHTML = `<p class="muted">${esc(e.message || 'Не получилось загрузить задания')}</p>`; }
   }
   function renderMyClass(groups) {
@@ -3713,12 +3869,24 @@ function stacklyApp() {
     if (!acct.cloud) return put(tMsg('Войдите в аккаунт', 'Домашние задания видны после входа — учитель выдаёт их в группе.', '#login', 'Войти'));
     try { myHW = (await api('/me/homework')).homework; updHWBadge(); }
     catch (e) { return put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#me', 'В кабинет')); }
+    if (bankStale()) return;
     const m = h.match(/^hw-(\d+)$/);
     if (!m) { curHW = 0; return put(hwListHTML()); }
     const hw = myHW.find(x => x.id === +m[1]);
     if (!hw) return put(tMsg('Задание не найдено', 'Возможно, учитель его удалил или вы вышли из группы.', '#hw', 'Ко всем заданиям'));
     curHW = hw.id; curHWDone = hwProg(hw.items, localSets())[0] >= itemsCount(hw.items);
     put(hwPageHTML(hw));
+  }
+  // ученику банк приходит только с задачами его ДЗ. Если учитель выдал новое задание после загрузки страницы,
+  // его задач здесь ещё нет — перезагружаемся один раз за набор недостающих (удалённая задача не зациклит)
+  function bankStale() {
+    if (acct.role !== 'student') return false;
+    const miss = [...new Set(myHW.flatMap(h => (h.items.bank || []).filter(id => !pnum[id])))].sort().join(',');
+    if (!miss) return false;
+    try { if (sessionStorage.getItem('stackly-bank-miss') === miss) return false; sessionStorage.setItem('stackly-bank-miss', miss); }
+    catch (e) { return false; }
+    location.reload();
+    return true;
   }
   function hwListHTML() {
     const S = localSets(), list = myHW.map(h => ({ h, p: hwProg(h.items, S) }));
@@ -4569,7 +4737,7 @@ function stacklyApp() {
   let landingWait = false;     // лендинг придержан, пока не узнали, вошёл ли посетитель
   function route() {
     const h = (location.hash || '#home').slice(1);
-    let m, html, nav = 'home', scrollTo = null, focusPid = null;
+    let m, html, nav = 'home', scrollTo = null;
     landingWait = false;
     codeStore = [];
     const gate = LOCKED && GATES.find(g => g[0].test(h));
@@ -4579,21 +4747,20 @@ function stacklyApp() {
     }
     else if ((m = h.match(/^ege(?:-(\d+))?$/))) { html = pageEge(m[1] ? +m[1] : 1); nav = 'ege'; }
     else if ((m = h.match(/^py-(\d+)$/)) || h === 'python') { html = pagePython(); nav = 'python'; scrollTo = m ? +m[1] : null; }
-    else if ((m = h.match(/^bank(?:-(\d+))?$/))) {
-      if (bankF.fromSet) { Object.assign(bankF, { q: '', fromSet: false }); curNav = ''; }   // из комплекта — снова весь банк
-      bankF.task = m[1] ? +m[1] : 0;
-      if (bankF.task && bankF.subj !== EGE_SUBJ && (bankF.subj || bankF.src)) { Object.assign(bankF, { subj: EGE_SUBJ, src: '' }); curNav = ''; }
-      html = pageBank(); nav = 'bank';
+    else if ((m = h.match(/^bank(?:-(\d+))?$/))) { html = m[1] ? pageBankList({ task: +m[1] }) : pageBankHome(); nav = 'bank'; }
+    else if ((m = h.match(/^bank-s-(.+)$/))) {
+      let subj = ''; try { subj = decodeURIComponent(m[1]); } catch (e) { }
+      html = pageBankList({ subj }); nav = 'bank';
     }
     else if ((m = h.match(/^set-([\w.-]+)$/)) && BANK.some(p => p.id === '19-' + m[1]) && gameSet(BANK.find(p => p.id === '19-' + m[1]))) {
-      // комплект 19–21 одной игры: все три задачи подряд
-      const g = gameSet(BANK.find(p => p.id === '19-' + m[1]));
-      Object.assign(bankF, { task: 0, level: '', status: '', q: g.set.map(p => pnum[p.id]).join(', '), fromSet: true }); html = pageBank(); nav = 'bank'; curNav = '';
+      // комплект 19–21 одной игры: все три задачи на одной странице
+      html = pageSet(gameSet(BANK.find(p => p.id === '19-' + m[1]))); nav = 'bank';
     }
-    else if ((m = h.match(/^p-([\w.-]+)$/)) && BANK.some(p => p.id === m[1])) {
-      // ссылка на одну задачу (из домашнего задания): открываем её номер без фильтров
-      const p = BANK.find(x => x.id === m[1]);
-      Object.assign(bankF, { task: p.task, subj: psubj(p), src: '', level: '', status: '', q: '' }); html = pageBank(); nav = 'bank'; focusPid = p.id; curNav = '';
+    else if ((m = h.match(/^p-([\w.-]+)$/)) && BANK.some(p => p.id === m[1])) { html = pageTask(BANK.find(x => x.id === m[1])); nav = 'bank'; }
+    else if (/^(p|set)-/.test(h) && acct.cloud) {
+      // задачи нет в банке этого пользователя: ученику видны только выданные в ДЗ
+      html = `<div class="page wrap bk bk-narrow"><a class="bk-back" href="#bank">${I.chevL}Банк задач</a><div class="t-empty"><b>Задача недоступна</b>${isTeacher() ? 'Возможно, её удалили или автор закрыл к ней доступ.' : 'Ученику видны задачи, которые выдал преподаватель в домашнем задании.'}</div></div>`;
+      nav = 'bank';
     }
     else if (/^(teach|admin|edit)/.test(h)) { html = teachShell(); nav = 'teach'; }
     else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
@@ -4644,16 +4811,6 @@ function stacklyApp() {
       // без пустой страницы с «Загрузка…» между соседними разделами. Новый экран кладёт put() в loadTeach/loadHW
       $(nav === 'teach' ? '#tpage' : '#hwpage').classList.add('is-busy');
       jump(0);
-    } else if (nav === 'bank' && curNav === 'bank' && $('.filters')) {
-      // банк уже открыт — меняем только список задач, фильтры и шапка остаются на месте
-      const list = $('#plist');
-      list.style.minHeight = list.offsetHeight + 'px';
-      $$('.filter-row [data-task]').forEach(x => x.classList.toggle('on', +x.dataset.task === bankF.task));
-      $('#banktheory').innerHTML = bankTheory();
-      renderProbs();
-      const anchor = Math.round($('.bank-top').getBoundingClientRect().bottom + scrollY - $('.top').offsetHeight);   // фильтры прилипают к шапке, список сразу под ними
-      if (scrollY > anchor) glide(anchor);
-      clearTimeout(route.b); route.b = setTimeout(() => { list.style.minHeight = ''; }, reduce ? 0 : 900);
     } else if (nav === 'python' && curNav === 'python' && scrollTo && $('#topic-' + scrollTo)) {
       // учебник уже открыт — плавно едем к теме без перерисовки
       const el = $('#topic-' + scrollTo);
@@ -4666,8 +4823,6 @@ function stacklyApp() {
       else jump(0);
     }
     curNav = nav;
-    if (nav === 'bank' && !$('#plist').innerHTML) renderProbs();
-    if (nav === 'bank') { const fr = $('.filter-row'), on = $('.filter-row .on'); if (fr && on && fr.scrollWidth > fr.clientWidth) fr.scrollTo({ left: on.getBoundingClientRect().left - fr.getBoundingClientRect().left + fr.scrollLeft - fr.clientWidth / 2 + on.offsetWidth / 2, behavior: reduce ? 'instant' : 'smooth' }); }
     // активный пункт держим в видимой зоне, прокручивая только сам список — окно не трогаем
     const side = $('.side'), sel = $('.side a.on');
     if (side && sel) {
@@ -4683,11 +4838,6 @@ function stacklyApp() {
     // на телефоне меню прокручивается — подвигаем его к активному разделу
     const navEl = $('.nav'), navOn = $('.nav a.on');
     if (navEl && navEl.scrollWidth > navEl.clientWidth) navEl.scrollTo({ left: navOn ? navOn.offsetLeft - navEl.offsetLeft - navEl.clientWidth / 2 + navOn.offsetWidth / 2 : 0, behavior: reduce ? 'instant' : 'smooth' });
-    if (focusPid) {
-      // под шапкой может прилипать панель фильтров банка — карточка должна оказаться под ней
-      const el = $(`[data-pid="${focusPid}"]`), fl = $('.filters'), under = fl && getComputedStyle(fl).position === 'sticky' ? fl.offsetHeight : 0;
-      if (el) { jump(el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - under - 16); el.classList.add('flash'); }
-    }
     reveal($('#app'));
     if (nav === 'home') mountHome();
     if (nav === 'teach') loadTeach(h);
@@ -4744,10 +4894,7 @@ function stacklyApp() {
       $('pre code', box).innerHTML = hl(list[i].c); box.dataset.cur = i;
     } else if ((b = t.closest('[data-copy]'))) { const box = b.closest('.code'); copyText(codeStore[b.dataset.copy][+(box.dataset.cur || 0)].c, b); }
     else if ((b = t.closest('[data-map]'))) { mapFilter = b.dataset.map; $$('[data-map]').forEach(x => x.classList.toggle('on', x === b)); $$('#tiles .tile').forEach((el, i) => el.classList.toggle('dim', !!mapFilter && toolKind(EGE[i]) !== mapFilter)); }
-    else if ((b = t.closest('[data-task]'))) { const n = +b.dataset.task; location.hash = n ? 'bank-' + n : 'bank'; }
-    else if ((b = t.closest('[data-subj]'))) { bankF.subj = b.dataset.subj; bankF.task = 0; redrawBank(); }
-    else if ((b = t.closest('[data-f="src"]'))) { bankF.src = b.dataset.v; bankF.subj = ''; bankF.task = 0; redrawBank(); }
-    else if ((b = t.closest('[data-f]'))) { bankF[b.dataset.f] = b.dataset.v; $$(`[data-f="${b.dataset.f}"]`).forEach(x => x.classList.toggle('on', x === b)); renderProbs(); }
+    else if ((b = t.closest('[data-f]'))) { bankF[b.dataset.f] = b.dataset.v; redrawBank(); }
     else if ((b = t.closest('[data-show]'))) {
       const p = BANK.find(x => x.id === b.dataset.p), rv = $('.reveal', b.closest('.prob'));
       rv.innerHTML = b.dataset.show === 'ans' ? `<div class="ansbox">${esc(p.answer)}</div>`
@@ -4783,7 +4930,7 @@ function stacklyApp() {
   });
   document.addEventListener('submit', e => { const f = e.target.closest('[data-check]'); if (f) { e.preventDefault(); checkAnswer(f); } });
   document.addEventListener('input', e => {
-    if (e.target.id === 'bankq') { bankF.q = e.target.value; bankF.fromSet = false; renderProbs(); }
+    if (e.target.id === 'bankq') { bankF.q = e.target.value; renderSearch(); }
     if (e.target.id === 'sideq') { sideQuery = e.target.value; const m = location.hash.match(/ege-(\d+)/); $('#sidelist').innerHTML = sideList(m ? +m[1] : 1); }
   });
   document.addEventListener('keydown', e => {

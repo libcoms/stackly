@@ -2,7 +2,7 @@
 
 Запуск:  python3 -m unittest discover -s tests -v
 """
-import json, os, socket, sqlite3, subprocess, sys, tempfile, time, unittest, urllib.error, urllib.request
+import json, os, re, socket, sqlite3, subprocess, sys, tempfile, time, unittest, urllib.error, urllib.request
 from http.cookies import SimpleCookie
 from urllib.parse import quote
 
@@ -412,7 +412,8 @@ class ContentTest(ServerCase):
         pid = r['id']
         self.assertTrue(pid.startswith('u'))
         self.assertEqual(self.content(Client(self.base))['problems'], [])     # гостю задачи не отдаём
-        p = next(x for x in self.content(s)['problems'] if x['id'] == pid)
+        self.assertNotIn(pid, [x['id'] for x in self.content(s)['problems']])  # ученику — только выданные в ДЗ
+        p = next(x for x in self.content(other)['problems'] if x['id'] == pid)
         self.assertGreaterEqual(p['num'], 1001)
         self.assertEqual((p['answer'], p['builtin']), ('42', False))
         # второй учитель не может править чужую, автор — может
@@ -444,18 +445,20 @@ class ContentTest(ServerCase):
         ids = lambda c: [x['id'] for x in self.content(c)['problems']]
         p = next(x for x in self.content(t)['problems'] if x['id'] == pid)
         self.assertEqual((p['task'], p['subject'], p['topic'], p['vis']), (0, 'Математика', 'Дроби', 'private'))
-        # закрытую задачу видят только автор и ученики его групп
+        # закрытую задачу видит автор; ученик — только когда её выдали ему в ДЗ, членства в группе мало
         self.assertNotIn(pid, ids(other)); self.assertNotIn(pid, ids(s))
         g = t.call('POST', '/teach/groups', {'name': '9Б'})[1]['group']
         self.assertEqual(s.call('POST', '/me/groups/join', {'code': g['code']})[0], 200)
+        self.assertNotIn(pid, ids(s))
+        self.assertEqual(t.call('POST', '/teach/homework', {'group_id': g['id'], 'title': 'Дроби', 'items': {'bank': [pid]}})[0], 201)
         self.assertIn(pid, ids(s)); self.assertNotIn(pid, ids(stranger))
         # чужую закрытую задачу нельзя выдать в ДЗ, даже зная её номер
         g2 = other.call('POST', '/teach/groups', {'name': '10А'})[1]['group']
         hw = {'group_id': g2['id'], 'title': 'Дроби', 'items': {'bank': [pid]}}
         self.assertEqual(other.call('POST', '/teach/homework', hw)[1]['error'], 'bad_problem')
-        # открытую — можно; ученики второго учителя видят её и после того, как автор снова её закроет
+        # открытую — можно: её видят все учителя, а ученик — только выданную; выданная видна и после того, как автор её закроет
         self.assertEqual(t.call('POST', '/content/problem', dict(math, id=pid, subject='Математика', vis='public'))[0], 200)
-        self.assertIn(pid, ids(other)); self.assertIn(pid, ids(stranger))
+        self.assertIn(pid, ids(other)); self.assertNotIn(pid, ids(stranger))
         self.assertEqual(other.call('POST', '/teach/homework', hw)[0], 201)
         self.assertEqual(stranger.call('POST', '/me/groups/join', {'code': g2['code']})[0], 200)
         self.assertEqual(t.call('POST', '/content/problem', dict(math, id=pid, subject='Математика', vis='private'))[0], 200)
@@ -588,6 +591,33 @@ class ContentAccessTest(ServerCase):
         c.call('POST', '/auth/logout', {})
         c.cookie = cookie                                   # старая cookie после выхода не работает
         self.assertEqual(self.fetch(c, {'If-None-Match': h['ETag']})[0], 401)
+
+    def bank(self, c):
+        st, _, body = self.fetch(c)
+        self.assertEqual(st, 200)
+        return json.loads(re.search(rb'^window\.BANK = (\[.*\]);\r?$', body, re.M).group(1))
+
+    def test_student_gets_only_assigned_tasks(self):
+        t, t_email = self.register()
+        ClassroomTest.set_role(self, t_email, 'teacher')
+        s, _ = self.register()
+        other, _ = self.register()
+        full = self.bank(t)
+        self.assertGreater(len(full), 100)                  # учителю — весь банк
+        self.assertEqual(self.bank(s), [])                  # ученику без ДЗ — ничего, методичка при этом есть
+        self.assertIn(b'window.EGE', self.fetch(s)[2])
+        g = t.call('POST', '/teach/groups', {'name': '11А'})[1]['group']
+        for c in (s, other):
+            self.assertEqual(c.call('POST', '/me/groups/join', {'code': g['code']})[0], 200)
+        sid = s.call('GET', '/auth/me')[1]['user']['id']
+        pick = [full[0]['id'], full[50]['id']]
+        # ДЗ только для одного ученика: второй ученик той же группы задач не получает
+        st, r = t.call('POST', '/teach/homework', {'group_id': g['id'], 'title': 'Тренировка', 'items': {'bank': pick}, 'students': [sid]})
+        self.assertEqual(st, 201, r)
+        got = self.bank(s)
+        self.assertEqual([p['id'] for p in got], pick)
+        self.assertEqual([p['n'] for p in got], [1, 51])    # сквозные номера — как в полном банке
+        self.assertEqual(self.bank(other), [])
 
 
 if __name__ == '__main__':

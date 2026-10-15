@@ -226,6 +226,30 @@ def content_file(name):
             c = _content[name] = (mtime, body, '"%s"' % hashlib.sha256(body).hexdigest()[:32])
     return c[1], c[2]
 
+BANK_LINE_RE = re.compile(r'^window\.BANK = (\[.*\]);\r?$', re.M)     # \r — файл, выписанный git на Windows
+
+def content_bank():
+    """ege.js в трёх частях: текст до банка, задачи банка, текст после. У каждой задачи — n, её сквозной
+    номер в полном банке: ученику приходит только часть задач, а номера (#17) должны совпадать с учительскими."""
+    body, etag = content_file('ege.js')
+    with _content_lock:
+        c = _content.get('ege.js#bank')
+        if c is None or c[0] != etag:
+            text = body.decode('utf-8')
+            m = BANK_LINE_RE.search(text)
+            items = json.loads(m.group(1))
+            for i, p in enumerate(items):
+                p['n'] = i + 1
+            c = _content['ege.js#bank'] = (etag, text[:m.start(1)], items, text[m.end(1):])
+    return c[1], c[2], c[3]
+
+def student_bank_ids(user_id):
+    """Задачи банка, которые ученику выдали в ДЗ: только их он и видит."""
+    ids = set()
+    for h in assigned_homework(user_id):
+        ids.update(str(x) for x in json.loads(h['items']).get('bank', []))
+    return ids
+
 # ---------------------------------------------------------------- ограничение попыток
 _hits, _hits_lock = {}, threading.Lock()
 _HITS_TTL = 3600          # самое длинное окно среди лимитов
@@ -717,8 +741,14 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, 'bad_credentials', message)
 
     def content_js(self):
-        self.current_user()
+        u = self.current_user()
         body, etag = content_file('ege.js')
+        if u['role'] == 'student':
+            # ученику — методичка целиком, а из банка только задачи его ДЗ (с номерами из полного банка)
+            ids = student_bank_ids(u['id'])
+            head, items, tail = content_bank()
+            body = (head + json.dumps([p for p in items if p['id'] in ids], ensure_ascii=False) + tail).encode('utf-8')
+            etag = '"%s"' % hashlib.sha256(body).hexdigest()[:32]
         fresh = self.headers.get('If-None-Match') == etag
         self.send_response(304 if fresh else 200)
         self.send_header('Content-Type', 'text/javascript; charset=utf-8')
@@ -809,7 +839,11 @@ class Handler(BaseHTTPRequestHandler):
             return '0', ()
         if u['role'] == 'admin':
             return '(p.hidden = 0 OR p.builtin = 1)', ()
-        # задачи из ДЗ групп, где пользователь учится или которые ведёт
+        if u['role'] == 'student':
+            # ученик видит только задачи, выданные ему в ДЗ; правки встроенных — тоже только для них
+            return ('((p.builtin = 1 OR p.hidden = 0) AND p.id IN (SELECT value FROM json_each(?)))',
+                    (json.dumps(sorted(student_bank_ids(u['id']))),))
+        # учитель: задачи из ДЗ групп, которые ведёт или где учится
         assigned = set()
         for r in db().execute('SELECT h.items FROM homework h JOIN study_groups g ON g.id = h.group_id '
                               'WHERE g.teacher_id = ? OR g.id IN (SELECT group_id FROM group_members WHERE user_id = ?)',
