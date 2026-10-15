@@ -929,6 +929,9 @@ table.mapping td, table.mapping th { text-align: left; }
 .t-create input { flex: 1 1 220px; min-width: 0; padding: 12px 15px; border-radius: 999px; border: 1.5px solid var(--line-2); background: var(--paper); color: var(--ink); font: 15px var(--f-body); }
 .t-create input:focus { outline: none; border-color: var(--blue); }
 .t-create .form-msg { flex-basis: 100%; }
+.t-add { max-width: 560px; margin-bottom: 18px; }
+.t-add #addres:not(:empty) { margin-top: 6px; }
+.t-add .muted { margin: 8px 0 0; font-size: 14px; }
 .code-box { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-radius: 18px; background: var(--lime); color: var(--on-lime); }
 .code-box .lbl { font-size: 12.5px; }
 .code-box b { font: 800 24px/1 var(--f-mono); letter-spacing: .14em; }
@@ -3548,6 +3551,7 @@ function stacklyApp() {
         ${hws.length ? hws.map(hwRow).join('') : `<div class="t-empty"><b>Заданий пока нет</b>Соберите задание из задач банка, тем Python и разборов методички — ученики увидят его в личном кабинете.</div>`}</section>
 
       <section class="t-sec"><h2>Ученики</h2>
+        ${acct.role === 'admin' ? `<div class="t-add"><div class="t-create"><input id="addq" type="search" maxlength="80" autocomplete="off" placeholder="Добавить ученика: имя или почта" aria-label="Найти ученика, чтобы добавить в группу"></div><div id="addres" aria-live="polite"></div></div>` : ''}
         ${ms.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ученик</th><th class="num">Решено</th><th class="num">Точность</th><th class="num">Серия</th><th class="num">За 7 дней</th><th>Заходил</th><th class="num">ДЗ</th><th></th></tr></thead><tbody>
           ${ms.map(m => { const s = m.stats, [hd, ht] = hwOf(m.id); return `<tr><td class="name"><a href="#teach-s-${m.id}">${esc(m.name)}</a><small>${esc(m.email)}</small></td>
             <td class="num">${s.solved}<span class="muted"> / ${BANK.length}</span></td><td class="num"><span class="acc ${accCls(s.accuracy)}">${s.accuracy === null ? '—' : s.accuracy + '%'}</span></td>
@@ -4110,6 +4114,7 @@ function stacklyApp() {
       if (a === 'del-hw') { await api('/teach/homework/delete', 'POST', { id }); toast('Задание удалено'); }
       else if (a === 'del-group') { await api('/teach/groups/delete', 'POST', { id }); toast('Группа удалена'); location.hash = 'teach'; return; }
       else if (a === 'rm-member') { await api('/teach/groups/remove', 'POST', { group_id: tGroup.group.id, user_id: id }); toast('Ученик убран из группы'); }
+      else if (a === 'add-member') { await api('/admin/groups/add', 'POST', { group_id: tGroup.group.id, user_id: id }); toast(`${b.dataset.name} в группе`); }
       else if (a === 'new-code') { await api('/teach/groups/update', 'POST', { id, new_code: true }); toast('Новый код готов'); }
       else if (a === 'leave') { await api('/me/groups/leave', 'POST', { id }); toast('Вы вышли из группы'); return loadMyClass(); }
       route();
@@ -4151,6 +4156,22 @@ function stacklyApp() {
     if (e.target.id !== 'usrq') return;
     clearTimeout(usrT); const q = e.target.value;
     usrT = setTimeout(async () => { try { const r = await api('/admin/users?q=' + encodeURIComponent(q)); const tb = $('#usrbody'); if (tb) tb.innerHTML = usersRows(r.users); } catch (err) { } }, 250);
+  });
+  // администратор на странице группы: поиск зарегистрированных учеников, которых в ней ещё нет
+  let addT;
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'addq') return;
+    clearTimeout(addT); const q = e.target.value.trim();
+    if (!q) { $('#addres').innerHTML = ''; return; }
+    addT = setTimeout(async () => {
+      try {
+        const r = await api('/admin/users?q=' + encodeURIComponent(q)), box = $('#addres');
+        if (!box || $('#addq').value.trim() !== q) return;
+        const inGroup = new Set(tGroup.members.map(m => m.id)), found = r.users.filter(u => u.role === 'student' && !inGroup.has(u.id)).slice(0, 8);
+        box.innerHTML = found.map(u => `<div class="grp-row"><span><b>${esc(u.name)}</b><small>${esc(u.email)}</small></span><button type="button" class="btn small" data-tact="add-member" data-id="${u.id}" data-name="${esc(u.name)}">Добавить</button></div>`).join('')
+          || '<p class="muted">Учеников с таким именем или почтой нет — или они уже в группе.</p>';
+      } catch (err) { }
+    }, 250);
   });
 
   /* ═════════════ ПОИСК ═════════════ */

@@ -4,6 +4,7 @@
 """
 import json, os, socket, sqlite3, subprocess, sys, tempfile, time, unittest, urllib.error, urllib.request
 from http.cookies import SimpleCookie
+from urllib.parse import quote
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ORIGIN = 'https://stackly.test'
@@ -264,6 +265,26 @@ class ClassroomTest(ServerCase):
         self.assertEqual(a.call('POST', '/admin/role', {'user_id': sid, 'role': 'root'})[0], 400)
         users = a.call('GET', '/admin/users?q=' + email.split('@')[0])[1]['users']
         self.assertEqual([u['email'] for u in users], [email])
+        # русское имя находится в любом регистре
+        self.assertIn(sid, [u['id'] for u in a.call('GET', '/admin/users?q=' + quote('уЧЕНИК'))[1]['users']])
+
+    def test_admin_adds_student_to_group(self):
+        a, email = self.register()
+        self.set_role(email, 'admin')
+        t, _ = self.teacher()
+        gid = t.call('POST', '/teach/groups', {'name': '10Б'})[1]['group']['id']
+        s, _ = self.register()
+        sid = s.call('GET', '/auth/me')[1]['user']['id']
+        tid = t.call('GET', '/auth/me')[1]['user']['id']
+        # только администратор, только в существующую группу и только ученика
+        self.assertEqual(t.call('POST', '/admin/groups/add', {'group_id': gid, 'user_id': sid})[0], 403)
+        self.assertEqual(a.call('POST', '/admin/groups/add', {'group_id': gid + 999, 'user_id': sid})[0], 404)
+        self.assertEqual(a.call('POST', '/admin/groups/add', {'group_id': gid, 'user_id': tid})[0], 404)
+        self.assertEqual(a.call('POST', '/admin/groups/add', {'group_id': gid, 'user_id': sid})[0], 200)
+        self.assertEqual(a.call('POST', '/admin/groups/add', {'group_id': gid, 'user_id': sid})[0], 200)   # повтор не дублирует
+        members = t.call('GET', f'/teach/group?id={gid}')[1]['members']
+        self.assertEqual([m['id'] for m in members], [sid])
+        self.assertEqual([g['id'] for g in s.call('GET', '/me/groups')[1]['groups']], [gid])
 
     def test_page_metrics(self):
         a, email = self.register()

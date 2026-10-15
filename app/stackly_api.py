@@ -64,6 +64,8 @@ def db():
     if con is None:
         con = sqlite3.connect(DB_PATH, timeout=10, isolation_level=None)
         con.row_factory = sqlite3.Row
+        # lower() в SQLite знает только латиницу — для поиска по русским именам нужен питоновский
+        con.create_function('ulower', 1, lambda s: s.lower() if isinstance(s, str) else s, deterministic=True)
         con.execute('PRAGMA journal_mode=WAL')
         con.execute('PRAGMA foreign_keys=ON')
         con.execute('PRAGMA busy_timeout=5000')
@@ -487,6 +489,7 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/admin/users'): self.a_users,
             ('GET', '/api/admin/metrics'): self.a_metrics,
             ('POST', '/api/admin/role'): self.a_role,
+            ('POST', '/api/admin/groups/add'): self.a_group_add,
             ('GET', '/api/admin/overview'): self.a_overview,
             ('POST', '/api/me/teaching'): self.save_teaching,
             # редактор задач и методички
@@ -1266,7 +1269,7 @@ class Handler(BaseHTTPRequestHandler):
                             '(SELECT COUNT(*) FROM group_members m WHERE m.user_id = u.id) AS groups_in, '
                             '(SELECT COUNT(*) FROM study_groups g WHERE g.teacher_id = u.id) AS groups_own '
                             'FROM users u LEFT JOIN progress p ON p.user_id = u.id '
-                            'WHERE lower(u.email) LIKE ? OR lower(u.name) LIKE ? '
+                            'WHERE lower(u.email) LIKE ? OR ulower(u.name) LIKE ? '
                             "ORDER BY CASE u.role WHEN 'admin' THEN 0 WHEN 'teacher' THEN 1 ELSE 2 END, u.created DESC LIMIT 300",
                             (q, q)).fetchall()
         total = db().execute('SELECT COUNT(*) FROM users').fetchone()[0]
@@ -1282,6 +1285,21 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(400, 'self', 'Свою роль менять нельзя — попросите другого администратора')
         if not db().execute('UPDATE users SET role = ? WHERE id = ?', (role, uid)).rowcount:
             raise ApiError(404, 'not_found', 'Пользователь не найден')
+        self.send_json(200, {'ok': True})
+
+    def a_group_add(self):
+        """Администратор добавляет уже зарегистрированного ученика в любую группу — без кода."""
+        self.admin()
+        d = self.body()
+        g = db().execute('SELECT * FROM study_groups WHERE id = ?', (self.int_arg(d, 'group_id'),)).fetchone()
+        if not g:
+            raise ApiError(404, 'not_found', 'Группа не найдена')
+        s = db().execute('SELECT * FROM users WHERE id = ?', (self.int_arg(d, 'user_id'),)).fetchone()
+        if not s or s['role'] != 'student':
+            raise ApiError(404, 'not_found', 'Ученик не найден')
+        db().execute('INSERT OR IGNORE INTO group_members VALUES (?,?,?)', (g['id'], s['id'], int(time.time())))
+        data, _ = load_progress(s['id'])
+        record_homework_done(s['id'], data)       # уже выполненное засчитываем сразу, как при вступлении по коду
         self.send_json(200, {'ok': True})
 
 
