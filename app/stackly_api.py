@@ -226,6 +226,13 @@ def teacher_usage(uid):
             + one('SELECT COALESCE(SUM(length(CAST(title || subject || body AS BLOB))), 0) FROM materials WHERE author_id = ?'),
     }
 
+IX_BLOCK_RE = re.compile(r'^```\s*(график|карточки)\s*$', re.M | re.I)
+
+def check_ix(u, *texts):
+    """Интерактивные модули (```график, ```карточки) в материалах и задачах — только на тарифе Про."""
+    if not plan_of(u)['active'] and any(IX_BLOCK_RE.search(t or '') for t in texts):
+        raise ApiError(403, 'plan_limit', 'Интерактивные модули входят в тариф Про')
+
 def plan_limit(u, key, adding=1):
     """Бросает ошибку, если на бесплатном тарифе после добавления будет больше лимита."""
     if plan_of(u)['active']:
@@ -1321,6 +1328,7 @@ class Handler(BaseHTTPRequestHandler):
         if not f['data']:
             f['dname'] = ''
         plan_limit(u, 'storage', sum(len(str(v).encode()) for v in f.values()))
+        check_ix(u, f['body'], f['solution'])
         now, pid = int(time.time()), str(d.get('id') or '')
         cols = ', '.join(f'{k} = ?' for k in f)
         if pid and not pid.startswith('u'):
@@ -1468,6 +1476,7 @@ class Handler(BaseHTTPRequestHandler):
              'body': self.text_field(d, 'body', 0, 60000, 'Текст', strip=False).strip(),
              'shared': 1 if d.get('shared') else 0}
         plan_limit(u, 'storage', len((f['title'] + f['subject'] + f['body']).encode()))
+        check_ix(u, f['body'])
         now = int(time.time())
         if d.get('id'):
             mid = self.own_material(u, self.int_arg(d, 'id'))['id']

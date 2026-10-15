@@ -603,6 +603,10 @@ class PlansTest(ServerCase):
         a.call('POST', '/admin/role', {'user_id': tid, 'role': 'student'})
         a.call('POST', '/admin/role', {'user_id': tid, 'role': 'teacher'})
         self.assertEqual(t.call('GET', '/auth/me')[1]['user']['plan']['active'], False)
+        # интерактивные модули — только на Про; обычный материал на бесплатном сохраняется
+        st, r = t.call('POST', '/materials', {'title': 'График', 'body': 'Парабола:\n\n```график\ny = a*x^2\na = 1 (-3..3)\n```'})
+        self.assertEqual((st, r['error']), (403, 'plan_limit'))
+        self.assertEqual(t.call('POST', '/materials', {'title': 'Конспект', 'body': 'Просто текст'})[0], 200)
         # карточка пользователя — только администратору
         self.assertEqual(t.call('GET', f'/admin/user?id={tid}')[0], 403)
         st, r = a.call('GET', f'/admin/user?id={tid}')

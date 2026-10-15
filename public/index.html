@@ -1767,6 +1767,46 @@ footer.foot a:hover { color: var(--ink); }
 @media (max-width: 1060px) { .h-float.f1 { left: 0; } .h-float.f2 { right: 0; } }
 @media (max-width: 560px) { .h-float { font-size: 12.5px; padding: 8px 10px; } .h-float.f2 { min-width: 160px; } .h-float.f3 { display: none; } }
 @media (prefers-reduced-motion: reduce) { .h-float { animation: none; } }
+
+/* ── интерактивные модули: график с ползунками и карточки ── */
+.ix { margin: 14px 0; padding: 14px; border-radius: var(--r-s); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); display: grid; gap: 12px; max-width: 640px; }
+.ix-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13.5px; }
+.ix-tag { padding: 4px 10px; border-radius: 999px; background: var(--blue-soft); color: var(--blue-ink); font-weight: 700; font-size: 12.5px; }
+.ix-fn { font: 600 15px/1.3 var(--f-mono); color: var(--c); }
+.ix-graph svg { width: 100%; height: auto; display: block; border-radius: 10px; background: var(--bg); }
+.ix-grid { stroke: var(--line); stroke-width: 1; fill: none; }
+.ix-axes { stroke: var(--mute); stroke-width: 1.5; fill: none; }
+.ix-lab text { fill: var(--mute); font: 9px var(--f-mono); }
+.ix-curve { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; transition: d .15s ease; }
+.ix-sliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 18px; }
+.ix-sliders label { display: grid; gap: 4px; font: 14px var(--f-mono); color: var(--ink-2); }
+.ix-sliders b { color: var(--ink); }
+.ix-sliders input { width: 100%; accent-color: var(--blue); }
+.ix-err { margin: 6px 0; padding: 8px 12px; border-radius: 10px; background: var(--bad-soft); color: var(--bad); font-size: 14px; }
+.ix-deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.ix-card { position: relative; height: 92px; padding: 0; border: 0; background: none; perspective: 600px; cursor: pointer; font: inherit; color: inherit; }
+.ix-face { position: absolute; inset: 0; display: grid; place-items: center; padding: 10px; border-radius: 12px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; text-align: center; line-height: 1.3; backface-visibility: hidden; transition: transform .45s var(--ease); }
+.ix-back { background: var(--blue); color: #fff; box-shadow: none; transform: rotateY(180deg); }
+.ix-card.on .ix-face:not(.ix-back) { transform: rotateY(-180deg); }
+.ix-card.on .ix-back { transform: rotateY(0); }
+.ix-card:hover .ix-face:not(.ix-back) { box-shadow: inset 0 0 0 1px var(--blue-mid); }
+@media (prefers-reduced-motion: reduce) { .ix-face { transition: none; } .ix-curve { transition: none; } }
+
+/* ── главная: раздел модулей и исправленная карточка «Группы» ── */
+.h-ix-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(28px, 5vw, 64px); align-items: center; }
+.h-ix-demo { display: grid; gap: 14px; }
+.h-ix-demo .ix { margin: 0; max-width: none; box-shadow: inset 0 0 0 1px var(--line), var(--shadow-lift); }
+.ix-src { display: grid; gap: 8px; margin-top: 22px; font-size: 14px; color: var(--mute); }
+.ix-src pre { margin: 0; padding: 14px 16px; border-radius: var(--r-s); background: var(--code-bg); color: var(--code-fg); font: 13.5px/1.6 var(--f-mono); overflow-x: auto; }
+@media (max-width: 1060px) { .h-ix-grid { grid-template-columns: minmax(0, 1fr); } }
+.bx.bx-groups { background: var(--blue); border-color: transparent; color: #fff; }
+.bx-join { display: grid; gap: 12px; }
+.join-mock { display: flex; align-items: center; gap: 14px; width: max-content; max-width: 100%; padding: 8px 8px 8px 20px; border-radius: 999px; background: #fff; color: #111114; box-shadow: 0 10px 30px -12px rgb(0 0 0 / .45); }
+.join-mock span { font-size: 13px; color: #6B6C7B; white-space: nowrap; }
+.join-mock b { font: 700 clamp(20px, 2.4vw, 28px)/1 var(--f-mono); letter-spacing: .12em; color: #4A2DE2; white-space: nowrap; }
+.join-mock em { font-style: normal; padding: 10px 16px; border-radius: 999px; background: #4A2DE2; color: #fff; font-weight: 600; font-size: 14px; white-space: nowrap; }
+.bx-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 480px) { .join-mock { gap: 10px; padding-left: 14px; } .join-mock span { display: none; } }
 </style>
 <header class="top"><div class="wrap">
   <a class="logo" href="#home" aria-label="stackly — на главную"><span class="ball" aria-hidden="true"></span>stackly<small>ЕГЭ · Информатика</small></a>
@@ -3096,7 +3136,10 @@ function stacklyApp() {
         <article class="bx bx-groups">
           <h3>Группы и индивидуальные ученики</h3>
           <p>Класс, мини-группа или один ученик: у каждой группы свой код. Ученик вводит его и сразу видит ваши задания.</p>
-          <div class="bx-art"><span class="code-chip">FL4H-H4J4</span><span class="code-chip ghost">9Б · Пн 18:00</span><span class="code-chip ghost">Аня, индивидуально</span></div>
+          <div class="bx-art bx-join">
+            <div class="join-mock" aria-label="Пример: ученик вводит код группы"><span>Код группы</span><b>FL4H-H4J4</b><em>Вступить</em></div>
+            <div class="bx-chips"><span class="code-chip ghost">9Б · Пн 18:00</span><span class="code-chip ghost">Аня, индивидуально</span><span class="code-chip ghost">Мини-группа ОГЭ</span></div>
+          </div>
         </article>
         <article class="bx bx-check">
           <h3>Сроки и выборочная выдача</h3>
@@ -3163,6 +3206,19 @@ function stacklyApp() {
           <p>Разборы всех 27 заданий, учебник Python из ${PY.length} тем и ${BANK_TOTAL} задач с решениями. Возьмите курс целиком или посмотрите, как может выглядеть ваш собственный.</p>
           <a class="btn ghost" href="#course">Обзор курса <span class="arr">${I.arrow}</span></a></div>
         <div class="tiles h-tiles" lang="ru">${mapTiles()}</div>
+      </div>
+    </div></section>
+
+    <section class="section h-ix"><div class="wrap h-ix-grid">
+      <div class="h-copy">
+        <span class="eyebrow">Интерактивные модули · тариф Про</span>
+        <h2 class="h-title">Материалы, которые можно потрогать</h2>
+        <p class="lead">Вставьте в материал живой график: ученик двигает ползунки и сам видит, как меняется парабола. Или колоду карточек, чтобы запомнить даты, слова и формулы.</p>
+        <div class="ix-src"><span>Учитель пишет в материале:</span><pre>${esc(IX_TEMPLATES.graph)}</pre><span>или нажимает кнопку «график» в редакторе — ученик видит модуль справа.</span></div>
+      </div>
+      <div class="h-ix-demo">
+        ${ixGraph(IX_TEMPLATES.graph.split('\n').slice(1, -1))}
+        ${ixCards(['Бородинское сражение | 1812', 'apple | яблоко', 'H₂O | вода', 'sin²α + cos²α | 1'])}
       </div>
     </div></section>
 
@@ -3756,7 +3812,11 @@ function stacklyApp() {
     while (i < L.length) {
       const l = L[i];
       if (!l.trim()) { i++; continue; }
-      if (/^```/.test(l)) { i++; const buf = []; while (i < L.length && !/^```/.test(L[i])) buf.push(L[i++]); i++; html += `<pre class="algo">${esc(buf.join('\n'))}</pre>`; continue; }
+      if (/^```/.test(l)) {
+        // ```график и ```карточки — интерактивные модули, остальное — блок моноширинного текста
+        const kind = l.slice(3).trim().toLowerCase(); i++; const buf = []; while (i < L.length && !/^```/.test(L[i])) buf.push(L[i++]); i++;
+        html += kind === 'график' ? ixGraph(buf) : kind === 'карточки' ? ixCards(buf) : `<pre class="algo">${esc(buf.join('\n'))}</pre>`; continue;
+      }
       if (/^\s*\|/.test(l)) { html += mdTable(take(/^\s*\|/)); continue; }
       if (/^\s*[-•]\s+/.test(l)) { html += `<ul>${take(/^\s*[-•]\s+/).map(x => `<li>${mdInline(x.replace(/^\s*[-•]\s+/, ''))}</li>`).join('')}</ul>`; continue; }
       if (/^\s*\d+[.)]\s+/.test(l)) { html += `<ol>${take(/^\s*\d+[.)]\s+/).map(x => `<li>${mdInline(x.replace(/^\s*\d+[.)]\s+/, ''))}</li>`).join('')}</ol>`; continue; }
@@ -3769,6 +3829,138 @@ function stacklyApp() {
     }
     return html;
   }
+  /* ═════════════ ИНТЕРАКТИВНЫЕ МОДУЛИ В МАТЕРИАЛАХ (тариф Про) ═════════════
+     Пишутся в разметке блоком ```график … ``` или ```карточки … ```:
+       ```график                         ```карточки
+       y = a*x^2 + b*x + c               Столица Франции | Париж
+       a = 1 (-5..5)                     1812 | Бородинское сражение
+       b = 0 (-10..10)                   ```
+       c = 0 (-10..10)
+       x = -10..10
+       ```
+     Формула разбирается своим маленьким парсером (без eval): числа, x, параметры из одной буквы, + − * / ^, скобки,
+     sin cos tan sqrt abs ln log exp, pi, e; «2x» — то же, что 2*x. */
+  const IX_FN = { sin: Math.sin, cos: Math.cos, tan: Math.tan, sqrt: Math.sqrt, abs: Math.abs, ln: Math.log, log: Math.log10, exp: Math.exp };
+  function compileExpr(src, vars) {
+    const s = String(src).toLowerCase().replace(/\s+/g, '').replace(/,/g, '.').replace(/[·×]/g, '*').replace(/[−–]/g, '-').replace(/π/g, 'pi');
+    let i = 0;
+    const bad = () => { throw new Error('формула'); };
+    const atom = () => {
+      if (s[i] === '(') { i++; const e = expr(); if (s[i++] !== ')') bad(); return e; }
+      const n = /^\d+(?:\.\d+)?/.exec(s.slice(i));
+      if (n) { i += n[0].length; const v = +n[0]; return () => v; }
+      const fn = /^(sin|cos|tan|sqrt|abs|ln|log|exp)\(/.exec(s.slice(i));
+      if (fn) { i += fn[1].length + 1; const a = expr(); if (s[i++] !== ')') bad(); const f = IX_FN[fn[1]]; return v => f(a(v)); }
+      if (s.startsWith('pi', i)) { i += 2; return () => Math.PI; }
+      const c = s[i];
+      if (c === 'e' && !vars.includes('e')) { i++; return () => Math.E; }
+      if (c && vars.includes(c)) { i++; return v => v[c]; }
+      return bad();
+    };
+    const power = () => { const b = atom(); if (s[i] === '^') { i++; const e = unary(); return v => Math.pow(b(v), e(v)); } return b; };
+    const unary = () => s[i] === '-' ? (i++, (a => v => -a(v))(unary())) : s[i] === '+' ? (i++, unary()) : power();
+    const term = () => {
+      let a = unary();
+      for (;;) {
+        const c = s[i];
+        if (c === '*' || c === '/') { i++; const b = unary(), x = a; a = c === '*' ? v => x(v) * b(v) : v => x(v) / b(v); }
+        else if (c && /[a-z(\d]/.test(c)) { const b = power(), x = a; a = v => x(v) * b(v); }       // 2x, 3(x+1), a sin(x)
+        else return a;
+      }
+    };
+    const expr = () => { let a = term(); while (s[i] === '+' || s[i] === '-') { const op = s[i++], b = term(), x = a; a = op === '+' ? v => x(v) + b(v) : v => x(v) - b(v); } return a; };
+    const f = expr();
+    if (i !== s.length) bad();
+    return f;
+  }
+  const ixNum = t => parseFloat(String(t).replace(',', '.').replace(/[−–]/g, '-'));
+  // настройки графика из строк блока; ошибки в формуле не роняют страницу — показываем подсказку
+  function parseGraph(lines) {
+    const g = { fns: [], params: [], x: [-10, 10], y: null };
+    for (const raw of lines) {
+      const l = raw.trim(); if (!l) continue;
+      let m;
+      if ((m = /^x\s*=\s*([-−–]?[\d.,]+)\s*\.\.\s*([-−–]?[\d.,]+)$/i.exec(l))) g.x = [ixNum(m[1]), ixNum(m[2])];
+      else if ((m = /^y\s*=\s*([-−–]?[\d.,]+)\s*\.\.\s*([-−–]?[\d.,]+)$/i.exec(l))) g.y = [ixNum(m[1]), ixNum(m[2])];
+      else if ((m = /^y\s*=\s*(.+)$/i.exec(l)) && g.fns.length < 3) g.fns.push(m[1].trim());
+      else if ((m = /^([a-df-wz])\s*=\s*([-−–]?[\d.,]+)\s*\(\s*([-−–]?[\d.,]+)\s*\.\.\s*([-−–]?[\d.,]+)\s*\)$/i.exec(l)) && g.params.length < 4)
+        g.params.push({ k: m[1].toLowerCase(), v: ixNum(m[2]), lo: ixNum(m[3]), hi: ixNum(m[4]) });
+    }
+    if (!(g.x[1] > g.x[0])) g.x = [-10, 10];
+    if (!g.y || !(g.y[1] > g.y[0])) { const h = (g.x[1] - g.x[0]) * 5 / 16; g.y = [-h, h]; }   // те же единицы по осям, лист 16:10
+    return g;
+  }
+  const IX_W = 320, IX_H = 200, IX_COLORS = ['var(--blue)', '#E8590C', '#0F7A55'];
+  // путь кривой: разрываем на разрывах функции и уходах далеко за край
+  function graphPaths(g, vals) {
+    const vars = ['x', ...g.params.map(p => p.k)];
+    const sx = x => (x - g.x[0]) / (g.x[1] - g.x[0]) * IX_W, sy = y => IX_H - (y - g.y[0]) / (g.y[1] - g.y[0]) * IX_H;
+    return g.fns.map(src => {
+      let f; try { f = compileExpr(src, vars); } catch (e) { return null; }
+      let d = '', pen = false, prev = null;
+      for (let k = 0; k <= 320; k++) {
+        const x = g.x[0] + (g.x[1] - g.x[0]) * k / 320, y = f({ ...vals, x });
+        const ok = Number.isFinite(y) && Math.abs(sy(y)) < IX_H * 20 && !(prev !== null && Math.abs(sy(y) - sy(prev)) > IX_H * 3);
+        if (ok) { d += `${pen ? 'L' : 'M'}${sx(x).toFixed(1)} ${sy(y).toFixed(1)}`; pen = true; } else pen = false;
+        prev = Number.isFinite(y) ? y : null;
+      }
+      return d;
+    });
+  }
+  function graphGrid(g) {
+    const step = r => { const raw = r / 8, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
+    const sx = x => (x - g.x[0]) / (g.x[1] - g.x[0]) * IX_W, sy = y => IX_H - (y - g.y[0]) / (g.y[1] - g.y[0]) * IX_H;
+    const out = [], lab = [], dx = step(g.x[1] - g.x[0]), dy = step(g.y[1] - g.y[0]);
+    for (let x = Math.ceil(g.x[0] / dx) * dx; x <= g.x[1]; x += dx) { out.push(`M${sx(x).toFixed(1)} 0V${IX_H}`); if (Math.abs(x) > 1e-9 && sx(x) > 12 && sx(x) < IX_W - 12) lab.push(`<text x="${sx(x).toFixed(1)}" y="${Math.min(IX_H - 3, Math.max(10, sy(0) + 11)).toFixed(1)}" text-anchor="middle">${+x.toFixed(6)}</text>`); }
+    for (let y = Math.ceil(g.y[0] / dy) * dy; y <= g.y[1]; y += dy) { out.push(`M0 ${sy(y).toFixed(1)}H${IX_W}`); if (Math.abs(y) > 1e-9 && sy(y) > 12 && sy(y) < IX_H - 4) lab.push(`<text x="${Math.min(IX_W - 3, Math.max(3, sx(0) + 4)).toFixed(1)}" y="${(sy(y) - 3).toFixed(1)}">${+y.toFixed(6)}</text>`); }
+    const axes = `${g.y[0] <= 0 && g.y[1] >= 0 ? `M0 ${sy(0).toFixed(1)}H${IX_W}` : ''}${g.x[0] <= 0 && g.x[1] >= 0 ? `M${sx(0).toFixed(1)} 0V${IX_H}` : ''}`;
+    return `<path class="ix-grid" d="${out.join('')}"/><path class="ix-axes" d="${axes}"/><g class="ix-lab">${lab.join('')}</g>`;
+  }
+  const ixVal = v => (+v.toFixed(2)).toString().replace('.', ',');
+  function ixGraph(lines) {
+    const g = parseGraph(lines);
+    if (!g.fns.length) return '<p class="ix-err">График: нужна строка вида <code>y = a*x^2 + b</code></p>';
+    const vals = Object.fromEntries(g.params.map(p => [p.k, p.v]));
+    const paths = graphPaths(g, vals);
+    const err = paths.map((d, k) => d === null ? g.fns[k] : null).filter(Boolean);
+    return `<figure class="ix ix-graph" data-ix="${esc(JSON.stringify(g))}">
+      <div class="ix-head"><span class="ix-tag">Интерактивный график</span>${g.fns.map((f, k) => `<span class="ix-fn" style="--c:${IX_COLORS[k]}">y = ${esc(f)}</span>`).join('')}</div>
+      <svg viewBox="0 0 ${IX_W} ${IX_H}" role="img" aria-label="График ${esc(g.fns.join('; '))}">${graphGrid(g)}${paths.map((d, k) => d ? `<path class="ix-curve" style="stroke:${IX_COLORS[k]}" d="${d}"/>` : '').join('')}</svg>
+      ${g.params.length ? `<div class="ix-sliders">${g.params.map(p => `<label><span>${esc(p.k)} = <b>${ixVal(p.v)}</b></span><input type="range" min="${p.lo}" max="${p.hi}" step="${(p.hi - p.lo) / 100}" value="${p.v}" data-k="${esc(p.k)}"></label>`).join('')}</div>` : ''}
+      ${err.length ? `<p class="ix-err">Не получилось разобрать формулу: ${err.map(esc).join(', ')}. Пишите умножение звёздочкой: <code>a*x^2</code></p>` : ''}
+    </figure>`;
+  }
+  // ползунок двигается — пересчитываем кривые
+  document.addEventListener('input', e => {
+    const r = e.target.closest('.ix-graph input[type=range]'); if (!r) return;
+    const fig = r.closest('.ix-graph'), g = JSON.parse(fig.dataset.ix);
+    const vals = Object.fromEntries($$('input[type=range]', fig).map(x => [x.dataset.k, +x.value]));
+    r.closest('label').querySelector('b').textContent = ixVal(+r.value);
+    const ds = graphPaths(g, vals);
+    $$('.ix-curve', fig).forEach((p, k) => { if (ds[k]) p.setAttribute('d', ds[k]); });
+  });
+  function ixCards(lines) {
+    const cards = lines.map(l => l.split('|').map(x => x.trim())).filter(x => x[0]).slice(0, 40);
+    if (!cards.length) return '<p class="ix-err">Карточки: по одной в строке, стороны через <code>|</code></p>';
+    return `<figure class="ix ix-cards"><div class="ix-head"><span class="ix-tag">Карточки</span><span class="muted">нажмите на карточку, чтобы перевернуть</span></div>
+      <div class="ix-deck">${cards.map(([a, b]) => `<button type="button" class="ix-card" aria-pressed="false"><span class="ix-face">${mdInline(a)}</span><span class="ix-face ix-back">${mdInline(b || '—')}</span></button>`).join('')}</div></figure>`;
+  }
+  document.addEventListener('click', e => {
+    const c = e.target.closest('.ix-card'); if (!c) return;
+    const on = !c.classList.contains('on'); c.classList.toggle('on', on); c.setAttribute('aria-pressed', on);
+  });
+  const IX_TEMPLATES = {
+    graph: '```график\ny = a*x^2 + b*x + c\na = 1 (-3..3)\nb = 0 (-6..6)\nc = -2 (-6..6)\nx = -6..6\ny = -4..10\n```',
+    cards: '```карточки\nВопрос или слово | Ответ или перевод\nСтолица Франции | Париж\n```',
+  };
+  // кнопки «график» и «карточки» в панели разметки: вставляют заготовку блока; модули входят в тариф Про
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-mdix]'); if (!b) return;
+    if (!planActive()) return toast('Интерактивные модули входят в тариф Про');
+    const ta = $('#' + b.dataset.for), a = ta.selectionStart, lead = a && ta.value[a - 1] !== '\n' ? '\n\n' : '';
+    ta.setRangeText(`${lead}${IX_TEMPLATES[b.dataset.mdix]}\n`, a, ta.selectionEnd, 'end'); ta.focus(); ePreview();
+  });
+
   // встроенный HTML методички и банка → разметка (только для своего, доверенного содержимого)
   function htmlToMd(html) {
     const doc = new DOMParser().parseFromString(`<div>${html || ''}</div>`, 'text/html');
@@ -5080,10 +5272,13 @@ function stacklyApp() {
       <button type="button" data-md="table" title="Таблица">таблица</button><button type="button" data-md="pre" title="Блок текста моноширинным шрифтом">алгоритм</button>
       <label class="md-img" title="Картинка: схема, граф, рисунок">картинка<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-mdimg="${id}" hidden></label>
       <button type="button" class="md-draw" data-mddraw="${id}" title="Нарисовать схему, график или чертёж от руки">${svg('<path d="M4 20l4-1 11-11-3-3L5 16l-1 4z"/><path d="M14 7l3 3"/>', 1.8)}рисунок</button>
+      <button type="button" class="md-ix" data-mdix="graph" data-for="${id}" title="Интерактивный график с ползунками (тариф Про)">график</button>
+      <button type="button" class="md-ix" data-mdix="cards" data-for="${id}" title="Карточки-перевёртыши для запоминания (тариф Про)">карточки</button>
       <details class="md-help"><summary>?</summary><div><code>**жирный**</code> <code>*курсив*</code> <code>\`код\`</code> <code>2^10^</code> <code>log~2~</code><br>
         Строки с <code>- </code> или <code>1. </code> — списки, с <code>|</code> — таблица (вторая строка <code>|---|---|</code> делает первую заголовком).<br>
         Пустая строка — новый абзац. <code>\`\`\`</code> до и после — блок моноширинного текста.<br>
-        «рисунок» — холст для схем и графиков от руки. Нажмите на картинку в превью, чтобы дорисовать её.</div></details></div>`;
+        «рисунок» — холст для схем и графиков от руки. Нажмите на картинку в превью, чтобы дорисовать её.<br>
+        «график» — функция с ползунками: строка <code>y = a*x^2 + b</code>, параметры <code>a = 1 (-5..5)</code>, область <code>x = -10..10</code>. «карточки» — по строке на карточку, стороны через <code>|</code>.</div></details></div>`;
   const field2 = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><input name="${name}" value="${esc(val)}" ${extra}></label>`;
   const area = (name, label, val, extra = '') => `<label class="fld"><span>${label}</span><textarea name="${name}" ${extra}>${esc(val)}</textarea></label>`;
 
