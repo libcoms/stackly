@@ -142,6 +142,10 @@ def migrate():
         id INTEGER PRIMARY KEY, chat_id INTEGER NOT NULL, text TEXT NOT NULL, markup TEXT NOT NULL DEFAULT '',
         created INTEGER NOT NULL, tries INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS tg_sent (key TEXT PRIMARY KEY, ts INTEGER NOT NULL);
+      -- общий банк (встроенные задачи и задачи администратора «для платформы»): что администратор снял с публикации —
+      -- отдельные задачи и целые предметы. Снятое не видно преподавателям, но остаётся в уже выданных ДЗ
+      CREATE TABLE IF NOT EXISTS bank_off (id TEXT PRIMARY KEY);
+      CREATE TABLE IF NOT EXISTS bank_subjects_off (subject TEXT PRIMARY KEY);
       -- оплата тарифа Про через ЮKassa: id — id платежа в ЮKassa, amount — копейки, status — как в ЮKassa
       -- (pending / succeeded / canceled), applied — когда Про продлён по этому платежу (продлевается один раз)
       CREATE TABLE IF NOT EXISTS payments (
@@ -324,6 +328,29 @@ def content_bank():
                 p['n'] = i + 1
             c = _content['ege.js#bank'] = (etag, text[:m.start(1)], items, text[m.end(1):])
     return c[1], c[2], c[3]
+
+EGE_SUBJECT = 'Информатика'          # предмет встроенного банка и задач с номером задания ЕГЭ
+
+def bank_rules():
+    """Снятые с публикации задачи и предметы общего банка."""
+    return ({r['id'] for r in db().execute('SELECT id FROM bank_off')},
+            {r['subject'] for r in db().execute('SELECT subject FROM bank_subjects_off')})
+
+def teacher_assigned_ids(user_id):
+    """Задачи из ДЗ, которые преподаватель уже выдал (иначе развалится статистика), и из ДЗ групп,
+    где он сам учится: они видны ему всегда."""
+    ids = student_bank_ids(user_id)
+    for r in db().execute('SELECT h.items FROM homework h JOIN study_groups g ON g.id = h.group_id WHERE g.teacher_id = ?', (user_id,)):
+        ids.update(str(x) for x in json.loads(r['items']).get('bank', []))
+    return ids
+
+def teacher_builtin_ids(u, items):
+    """Встроенные задачи, которые видит преподаватель: предмет отмечен у него в «Материалах», опубликован,
+    сама задача не снята — плюс задачи из его выданных ДЗ."""
+    off, subj_off = bank_rules()
+    subs = set(json.loads(u['subjects'] or '[]'))
+    open_ = EGE_SUBJECT in subs and EGE_SUBJECT not in subj_off
+    return {p['id'] for p in items if open_ and p['id'] not in off} | teacher_assigned_ids(u['id'])
 
 def student_bank_ids(user_id):
     """Задачи банка, которые ученику выдали в ДЗ: только их он и видит."""
@@ -739,6 +766,8 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/admin/role'): self.a_role,
             ('POST', '/api/admin/groups/add'): self.a_group_add,
             ('GET', '/api/admin/user'): self.a_user,
+            ('GET', '/api/admin/bank'): self.a_bank,
+            ('POST', '/api/admin/bank'): self.a_bank_set,
             # оплата Про через ЮKassa
             ('POST', '/api/pay/pro'): self.pay_pro,
             ('POST', '/api/pay/check'): self.pay_check,
@@ -924,10 +953,11 @@ class Handler(BaseHTTPRequestHandler):
     def content_js(self):
         u = self.current_user()
         body, etag = content_file('ege.js')
-        if u['role'] == 'student':
-            # ученику — методичка целиком, а из банка только задачи его ДЗ (с номерами из полного банка)
-            ids = student_bank_ids(u['id'])
+        if u['role'] in ('student', 'teacher'):
+            # ученику — методичка целиком, а из банка только задачи его ДЗ (с номерами из полного банка);
+            # преподавателю — задачи по отмеченным предметам, которые администратор оставил в общем банке
             head, items, tail = content_bank()
+            ids = student_bank_ids(u['id']) if u['role'] == 'student' else teacher_builtin_ids(u, items)
             body = (head + json.dumps([p for p in items if p['id'] in ids], ensure_ascii=False) + tail).encode('utf-8')
             etag = '"%s"' % hashlib.sha256(body).hexdigest()[:32]
         fresh = self.headers.get('If-None-Match') == etag
@@ -1032,15 +1062,17 @@ class Handler(BaseHTTPRequestHandler):
             # ученик видит только задачи, выданные ему в ДЗ; правки встроенных — тоже только для них
             return ('((p.builtin = 1 OR p.hidden = 0) AND p.id IN (SELECT value FROM json_each(?)))',
                     (json.dumps(sorted(student_bank_ids(u['id']))),))
-        # учитель: задачи из ДЗ групп, которые ведёт или где учится
-        assigned = set()
-        for r in db().execute('SELECT h.items FROM homework h JOIN study_groups g ON g.id = h.group_id '
-                              'WHERE g.teacher_id = ? OR g.id IN (SELECT group_id FROM group_members WHERE user_id = ?)',
-                              (u['id'], u['id'])):
-            assigned.update(str(x) for x in json.loads(r['items']).get('bank', []))
-        return ("(p.builtin = 1 OR (p.hidden = 0 AND (p.vis IN ('platform', 'public') OR p.author_id = ? "
-                "OR p.author_id IN (SELECT g.teacher_id FROM group_members m JOIN study_groups g ON g.id = m.group_id WHERE m.user_id = ?) "
-                "OR p.id IN (SELECT value FROM json_each(?)))))"), (u['id'], u['id'], json.dumps(sorted(assigned)))
+        # учитель: свои задачи; задачи из выданных им ДЗ; общий банк и открытые задачи коллег — только по предметам,
+        # отмеченным в «Материалах», и только то, что администратор не снял с публикации
+        assigned = teacher_assigned_ids(u['id'])
+        off, subj_off = bank_rules()
+        subs = sorted(set(json.loads(u['subjects'] or '[]')) - subj_off)
+        subj = f"(CASE WHEN p.task > 0 THEN '{EGE_SUBJECT}' ELSE p.subject END)"
+        return (f"((p.author_id = ? AND p.hidden = 0) OR p.id IN (SELECT value FROM json_each(?)) "
+                f"OR (p.builtin = 1 AND {subj} IN (SELECT value FROM json_each(?)) AND p.id NOT IN (SELECT value FROM json_each(?))) "
+                f"OR (p.hidden = 0 AND p.vis IN ('platform', 'public') AND {subj} IN (SELECT value FROM json_each(?)) "
+                f"AND p.id NOT IN (SELECT value FROM json_each(?))))",
+                (u['id'], json.dumps(sorted(assigned)), json.dumps(subs), json.dumps(sorted(off)), json.dumps(subs), json.dumps(sorted(off))))
 
     def teacher(self):
         u = self.current_user()
@@ -1682,6 +1714,30 @@ class Handler(BaseHTTPRequestHandler):
                 'JOIN users t ON t.id = g.teacher_id WHERE m.user_id = ? ORDER BY m.joined DESC', (u['id'],))]
             out['homework'] = {'total': len(hws), 'done': sum(h['id'] in done for h in hws)}
         self.send_json(200, out)
+
+    def a_bank(self):
+        """Что снято с публикации в общем банке: сами задачи админ видит в /api/content и ege.js целиком."""
+        self.admin()
+        off, subj_off = bank_rules()
+        self.send_json(200, {'off': sorted(off), 'subjects_off': sorted(subj_off), 'subjects': SUBJECTS, 'ege_subject': EGE_SUBJECT})
+
+    def a_bank_set(self):
+        """Опубликовать (on = true) или снять с публикации задачи ids или целый предмет subject."""
+        self.admin()
+        d = self.body(MAX_CONTENT_BODY)
+        on = bool(d.get('on'))
+        if 'subject' in d:
+            subject = re.sub(r'\s+', ' ', self.text_field(d, 'subject', 1, 60, 'Предмет'))
+            db().execute('DELETE FROM bank_subjects_off WHERE subject = ?' if on else
+                         'INSERT OR IGNORE INTO bank_subjects_off VALUES (?)', (subject,))
+        else:
+            ids = d.get('ids')
+            if not isinstance(ids, list) or not 1 <= len(ids) <= 5000 or not all(BANK_ID_RE.match(str(x)) for x in ids):
+                raise ApiError(400, 'bad_ids', 'Некорректный список задач')
+            db().executemany('DELETE FROM bank_off WHERE id = ?' if on else 'INSERT OR IGNORE INTO bank_off VALUES (?)',
+                             [(str(x),) for x in ids])
+        off, subj_off = bank_rules()
+        self.send_json(200, {'off': sorted(off), 'subjects_off': sorted(subj_off)})
 
     def a_plan(self):
         """Тариф преподавателя: free, trial или pro; until — срок (секунды), у pro можно без срока."""

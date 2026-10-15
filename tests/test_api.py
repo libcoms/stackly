@@ -394,10 +394,13 @@ class ContentTest(ServerCase):
     """Редактор: задачи учителей, правки встроенных задач и методички, картинки."""
     set_role = ClassroomTest.set_role
 
-    def user(self, role):
+    def user(self, role, subjects=('Информатика', 'Математика')):
+        """Учителю сразу отмечаем предметы: общий банк он видит только по ним."""
         c, email = self.register()
         if role != 'student':
             self.set_role(email, role)
+        if role == 'teacher' and subjects:
+            self.assertEqual(c.call('POST', '/me/teaching', {'subjects': list(subjects)})[0], 200)
         return c
 
     P = {'task': 5, 'level': 'П', 'title': 'Моя задача', 'body': 'Найдите **N**.', 'answer': '42', 'solution': 'print(42)'}
@@ -701,6 +704,7 @@ class ContentAccessTest(ServerCase):
     def test_student_gets_only_assigned_tasks(self):
         t, t_email = self.register()
         ClassroomTest.set_role(self, t_email, 'teacher')
+        t.call('POST', '/me/teaching', {'subjects': ['Информатика']})
         s, _ = self.register()
         other, _ = self.register()
         full = self.bank(t)
@@ -717,8 +721,61 @@ class ContentAccessTest(ServerCase):
         self.assertEqual(st, 201, r)
         got = self.bank(s)
         self.assertEqual([p['id'] for p in got], pick)
-        self.assertEqual([p['n'] for p in got], [1, 51])    # сквозные номера — как в полном банке
+        self.assertEqual([p['n'] for p in got], [full[0]['n'], full[50]['n']])    # сквозные номера — как в полном банке
         self.assertEqual(self.bank(other), [])
+
+    def staff(self, role, subjects=()):
+        c, email = self.register()
+        ClassroomTest.set_role(self, email, role)
+        if subjects:
+            self.assertEqual(c.call('POST', '/me/teaching', {'subjects': list(subjects)})[0], 200)
+        return c
+
+    def test_shared_bank_by_subjects(self):
+        a, t, m = self.staff('admin'), self.staff('teacher'), self.staff('teacher', ['Математика'])
+        ids = lambda c: [p['id'] for p in self.bank(c)]
+        pids = lambda c: [x['id'] for x in c.call('GET', '/content')[1]['problems']]
+        full = ids(a)
+        self.assertGreater(len(full), 100)                  # администратору — весь банк
+        self.assertEqual(ids(t), [])                        # без отмеченных предметов общего банка нет
+        self.assertEqual(ids(m), [])                        # встроенный банк — информатика
+        t.call('POST', '/me/teaching', {'subjects': ['Информатика']})
+        self.assertEqual(ids(t), full)
+        # управлять общим банком может только администратор
+        self.assertEqual(t.call('POST', '/admin/bank', {'ids': [full[0]], 'on': False})[0], 403)
+        self.assertEqual(t.call('GET', '/admin/bank')[0], 403)
+        self.assertEqual(a.call('POST', '/admin/bank', {'ids': ['../x'], 'on': False})[1]['error'], 'bad_ids')
+        self.assertEqual(a.call('POST', '/admin/bank', {'ids': [], 'on': False})[1]['error'], 'bad_ids')
+        # снятая задача пропадает у преподавателя, но остаётся в уже выданном им ДЗ
+        g = t.call('POST', '/teach/groups', {'name': '11Б'})[1]['group']
+        self.assertEqual(t.call('POST', '/teach/homework', {'group_id': g['id'], 'title': 'ДЗ', 'items': {'bank': [full[1]]}})[0], 201)
+        st, r = a.call('POST', '/admin/bank', {'ids': full[:2], 'on': False})
+        self.assertEqual((st, r['off']), (200, sorted(full[:2])))
+        got = ids(t)
+        self.assertNotIn(full[0], got); self.assertIn(full[1], got); self.assertEqual(len(got), len(full) - 1)
+        self.assertEqual(ids(a), full)                      # администратор видит и снятые
+        # снятый предмет закрывает весь встроенный банк, кроме выданного
+        self.assertEqual(a.call('POST', '/admin/bank', {'subject': 'Информатика', 'on': False})[1]['subjects_off'], ['Информатика'])
+        self.assertEqual(ids(t), [full[1]])
+        self.assertEqual(a.call('GET', '/admin/bank')[1]['subjects_off'], ['Информатика'])
+        a.call('POST', '/admin/bank', {'subject': 'Информатика', 'on': True})
+        self.assertEqual(a.call('POST', '/admin/bank', {'ids': [full[0]], 'on': True})[1]['off'], [full[1]])
+        self.assertEqual(len(ids(t)), len(full))
+        # задачи других предметов: открытые видят преподаватели с этим предметом, свои автор видит всегда
+        math = {'task': 0, 'subject': 'Математика', 'level': 'Б', 'title': 'Дроби', 'body': '1/2 + 1/3', 'answer': '5/6'}
+        plat = a.call('POST', '/content/problem', dict(math, vis='platform'))[1]['id']
+        own = t.call('POST', '/content/problem', dict(math, vis='private'))[1]['id']
+        pub = t.call('POST', '/content/problem', dict(math, vis='public'))[1]['id']
+        self.assertIn(plat, pids(m)); self.assertIn(pub, pids(m)); self.assertNotIn(own, pids(m))
+        self.assertNotIn(plat, pids(t)); self.assertIn(own, pids(t)); self.assertIn(pub, pids(t))
+        a.call('POST', '/admin/bank', {'ids': [plat, pub], 'on': False})
+        self.assertNotIn(plat, pids(m)); self.assertNotIn(pub, pids(m)); self.assertIn(pub, pids(t))
+        a.call('POST', '/admin/bank', {'ids': [plat, pub], 'on': True})
+        a.call('POST', '/admin/bank', {'subject': 'Математика', 'on': False})
+        self.assertNotIn(plat, pids(m))
+        self.assertIn(plat, pids(a))
+        a.call('POST', '/admin/bank', {'subject': 'Математика', 'on': True})
+        a.call('POST', '/admin/bank', {'ids': full[:2], 'on': True})
 
 
 if __name__ == '__main__':

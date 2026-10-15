@@ -1180,6 +1180,18 @@ button.hwi { font-family: inherit; }
 .sw input:focus-visible + i { outline: 2.5px solid var(--blue); outline-offset: 2px; }
 .sw input:checked ~ span { color: var(--blue-ink); font-weight: 600; }
 
+.bk-hint { margin: 8px 0 0; font-size: 13.5px; color: var(--mute); }
+.bk-hint a { color: var(--blue-ink); }
+
+/* ---------- общий банк (администратор) ---------- */
+.ab-list .sw span { min-width: 92px; }
+.ab-list li.ab-off > span:first-child { opacity: .6; }
+.ab-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.ab-tools input[type=search] { flex: 1 1 260px; min-width: 0; }
+.ab-bulk { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 10px; font-size: 13.5px; }
+.ab-tasks small { white-space: normal; }
+@media (max-width: 560px) { .ab-list li { grid-template-columns: minmax(0, 1fr) auto; } .ab-list li > :last-child:empty, .ab-list li > a.btn { display: none; } .ab-list .sw span { min-width: 0; } }
+
 /* ---------- сводки кабинетов ---------- */
 .t-sum { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }
 .t-sum .kpi b { font-size: 34px; }
@@ -2690,7 +2702,7 @@ function stacklyApp() {
         <p>Собирайте свои материалы — конспекты, разборы, схемы и рисунки от руки. Отметьте предметы, которые ведёте, и включите готовые модули: ученики ваших групп увидят их здесь и в домашних заданиях.</p></div></header>
       <section class="t-sec"><div class="mat-h"><h2 class="sec-h">${acct.role === 'admin' ? 'Материалы учителей' : 'Мои материалы'}</h2><a class="btn" href="#mat-new">Новый материал</a></div>
         ${MATS.length ? (acct.role === 'admin' ? matGroups(MATS) : matRows(MATS)) : '<div class="t-empty"><b>Своих материалов пока нет</b>Соберите первый: текст с формулами и таблицами, картинки и рисунки от руки. Его можно показать ученикам групп или выдать в домашнем задании.</div>'}</section>
-      <section class="t-sec"><h2 class="sec-h">Предметы</h2><div class="subj-pick" role="group" aria-label="Мои предметы">${SUBJECTS.map(x => `<button type="button" class="chip ${mine.includes(x) ? 'on' : ''}" data-msubj="${esc(x)}" aria-pressed="${mine.includes(x)}">${mine.includes(x) ? I.check : ''}${esc(x)}</button>`).join('')}</div></section>
+      <section class="t-sec"><h2 class="sec-h">Предметы</h2>${acct.role === 'admin' ? '' : '<p class="bk-hint" style="margin:-4px 0 12px">По отмеченным предметам в банке задач открываются задачи общего банка.</p>'}<div class="subj-pick" role="group" aria-label="Мои предметы">${SUBJECTS.map(x => `<button type="button" class="chip ${mine.includes(x) ? 'on' : ''}" data-msubj="${esc(x)}" aria-pressed="${mine.includes(x)}">${mine.includes(x) ? I.check : ''}${esc(x)}</button>`).join('')}</div></section>
       ${mine.length ? SUBJECTS.filter(x => mine.includes(x)).map(sj => {
         const mods = MODULES.filter(m => m.subj === sj), n = subjBank(sj);
         return `<section class="t-sec subj-sec"><div class="subj-h"><h2>${esc(sj)}</h2><span class="muted">${n ? `${n} ${plural(n, 'задача', 'задачи', 'задач')} в банке` : 'в банке пока нет задач'}</span></div>
@@ -2779,8 +2791,10 @@ function stacklyApp() {
   });
 
   async function saveTeaching(subjects, materials) {
+    const before = (acct.subjects || []).join('|');
     try { const r = await api('/me/teaching', 'POST', { subjects, materials }); setUser(r.user); }
     catch (e) { toast(e.message || 'Не получилось сохранить'); }
+    if ((acct.subjects || []).join('|') !== before) reloadBank();
     const y = scrollY; $('#app').innerHTML = pageMaterials(); window.scrollTo({ top: y, behavior: 'instant' });
   }
   document.addEventListener('click', e => {
@@ -3658,14 +3672,18 @@ function stacklyApp() {
   function pageBankHome() {
     bankCur = null;
     const pool = bankPool(), teacher = isTeacher();
+    // общий банк преподаватель видит только по предметам, отмеченным в «Материалах»
+    const subjHint = teacher && acct.role !== 'admin' ? `<p class="bk-hint">${(acct.subjects || []).length
+      ? `Общий банк — по вашим предметам: ${esc(acct.subjects.join(', '))}. <a href="#materials">Изменить предметы</a>`
+      : 'Отметьте свои предметы в <a href="#materials">«Материалах»</a> — тогда здесь появятся задачи общего банка по ним. Пока видны только ваши задачи и задачи из выданных заданий.'}</p>` : '';
     const head = `<header class="bk-head"><h1>Банк задач</h1>
         <p class="bk-lead">${teacher ? 'Общий банк платформы и задачи преподавателей. Выберите номер задания или предмет — ответ проверяется сразу, решение открывается в любой момент.'
-          : 'Задачи из ваших домашних заданий. Решайте их здесь или прямо в задании — отметки общие.'}</p>
+          : 'Задачи из ваших домашних заданий. Решайте их здесь или прямо в задании — отметки общие.'}</p>${subjHint}
         <div class="bk-tools"><form class="bk-search" role="search" onsubmit="return false"><span aria-hidden="true">#</span><input id="bankq" type="search" placeholder="Номер (17, 5-9) или слова из условия" aria-label="Поиск задачи" value="${esc(bankF.q)}" autocomplete="off"></form>
           ${teacher ? `<a class="btn" href="#edit-p-new">Новая задача</a><a class="btn ghost" href="#edit">Редактор задач</a>` : ''}</div>
         ${srcSeg()}</header>`;
     if (!BANK.length) return `<div class="page wrap bk">${head.replace(/<div class="bk-tools">[\s\S]*?<\/form>/, '<div class="bk-tools">')}
-      <div class="t-empty"><b>Задач пока нет</b>${teacher ? 'В банке ещё нет задач. Добавьте свою — она сразу появится здесь.' : 'Здесь появятся задачи, которые выдаст преподаватель. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.'}</div></div>`;
+      <div class="t-empty"><b>Задач пока нет</b>${teacher ? ((acct.subjects || []).length || acct.role === 'admin' ? 'По вашим предметам в банке пока нет задач. Добавьте свою — она сразу появится здесь.' : 'Отметьте предметы в <a href="#materials">«Материалах»</a> или добавьте свою задачу.') : 'Здесь появятся задачи, которые выдаст преподаватель. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.'}</div></div>`;
     const ege = pool.filter(p => p.task), others = subjList(pool.filter(p => !p.task));
     const tile = t => {
       const ps = ege.filter(p => p.task === t.n), d = doneOf(ps);
@@ -4057,6 +4075,17 @@ function stacklyApp() {
     for (const t of EGE) { const n = t.n, o = (L.ege || {})[n]; for (const k of Object.keys(t)) delete t[k]; Object.assign(t, JSON.parse(JSON.stringify(ORIG.ege[n]))); if (o) applyEge(t, o); }
     for (const t of PY) { const id = t.id, o = (L.py || {})[id]; for (const k of Object.keys(t)) delete t[k]; Object.assign(t, JSON.parse(JSON.stringify(ORIG.py[id]))); if (o) applyPy(t, o); }
     buildIndex();
+  }
+  // встроенные задачи сервер отдаёт преподавателю по его предметам: после их смены забираем ege.js заново
+  async function reloadBank() {
+    try {
+      const r = await fetch(API + '/content/ege.js', { credentials: 'same-origin', cache: 'no-cache' });
+      const m = r.ok && /^window\.BANK = (\[.*\]);\r?$/m.exec(await r.text());
+      if (!m) return;
+      ORIG.bank = JSON.parse(m[1]);
+      contentReq = null;
+      await loadContent(true);
+    } catch (e) { }
   }
   // свежая версия с сервера; force — дождаться и применить даже без смены версии
   let contentReq = null;
@@ -4754,7 +4783,7 @@ function stacklyApp() {
   let tSeq = 0, tGroup = null, hwDraft = null;
   const teachShell = () => `<div class="page wrap t-page" id="tpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`;
   const tMsg = (title, text, href, label) => `<div class="t-empty" style="margin-top:30px"><b>${esc(title)}</b>${esc(text)}${href ? `<div class="cta-row"><a class="btn small" href="${href}">${label}</a></div>` : ''}</div>`;
-  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя">${acct.role === 'admin' ? `<a class="chip ${cur === 'home' ? 'on' : ''}" href="#admin-home">Обзор</a>` : ''}<a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip ${cur === 'edit' ? 'on' : ''}" href="#edit">Редактор задач</a><a class="chip" href="#materials">Материалы</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a><a class="chip ${cur === 'stats' ? 'on' : ''}" href="#admin-stats">Посещаемость</a>` : ''}</nav>`;
+  const tTabs = cur => `<nav class="t-tabs" aria-label="Разделы кабинета учителя">${acct.role === 'admin' ? `<a class="chip ${cur === 'home' ? 'on' : ''}" href="#admin-home">Обзор</a>` : ''}<a class="chip ${cur === 'mine' ? 'on' : ''}" href="#teach">Мои группы</a><a class="chip ${cur === 'edit' ? 'on' : ''}" href="#edit">Редактор задач</a><a class="chip" href="#materials">Материалы</a>${acct.role === 'admin' ? `<a class="chip ${cur === 'all' ? 'on' : ''}" href="#teach-all">Все группы</a><a class="chip ${cur === 'users' ? 'on' : ''}" href="#admin">Пользователи</a><a class="chip ${cur === 'bank' ? 'on' : ''}" href="#admin-bank">Общий банк</a><a class="chip ${cur === 'stats' ? 'on' : ''}" href="#admin-stats">Посещаемость</a>` : ''}</nav>`;
   async function loadTeach(h) {
     const seq = ++tSeq;
     const put = html => { const box = $('#tpage'); if (seq !== tSeq || !box) return false; box.innerHTML = html; swapIn(box); reveal(box); return true; };
@@ -4793,6 +4822,14 @@ function stacklyApp() {
       else if (h === 'admin-home') {
         if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
         put(tAdminHome(await api('/admin/overview')));
+      }
+      else if ((m = h.match(/^admin-bank(?:-s-(.+))?$/))) {
+        if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
+        const r = await api('/admin/bank');
+        abank.off = new Set(r.off); abank.soff = new Set(r.subjects_off); abank.subjects = r.subjects; abank.ege = r.ege_subject;
+        if (m[1]) { const sj = decodeURIComponent(m[1]); if (sj !== abank.subj) Object.assign(abank, { subj: sj, q: '', st: '', task: 0 }); }
+        else abank.subj = '';
+        if (put(m[1] ? tAdminBankSubj() : tAdminBankHTML()) && m[1]) abRenderList();
       }
       else if (h === 'admin') {
         if (acct.role !== 'admin') return put(tMsg('Только для администратора', 'Этот раздел видит только администратор сайта.', '#teach', 'К группам'));
@@ -5115,6 +5152,80 @@ function stacklyApp() {
       : pending ? '<b>Платёж ещё обрабатывается</b>Как только ЮKassa его подтвердит, тариф включится сам. Обновите страницу через минуту.<div class="cta-row"><button type="button" class="btn small" data-act="reload">Обновить</button></div>'
       : '<b>Оплата не прошла</b>Деньги не списаны. Попробуйте ещё раз на странице «Мои группы».<div class="cta-row"><a class="btn small" href="#teach">К группам</a></div>';
   }
+
+  /* Общий банк для администратора: встроенные задачи и открытые задачи (для платформы и для всех) по предметам.
+     Снятое с публикации сервер не отдаёт преподавателям; в уже выданных ДЗ задачи остаются. */
+  const abank = { off: new Set(), soff: new Set(), subjects: [], ege: 'Информатика', subj: '', q: '', st: '', task: 0 };
+  const abShared = p => !p.src || p.src.builtin || p.src.vis === 'platform' || p.src.vis === 'public';
+  const abSubj = p => p.task ? abank.ege : (p.src && p.src.subject) || 'Без предмета';
+  const abPool = () => BANK.filter(abShared);
+  const abSw = (attr, on, label) => `<label class="sw"><input type="checkbox" ${attr} ${on ? 'checked' : ''}><i></i><span>${label}</span></label>`;
+  function tAdminBankHTML() {
+    const pool = abPool(), by = new Map();
+    pool.forEach(p => { const k = abSubj(p); by.set(k, [...(by.get(k) || []), p]); });
+    const names = [...new Set([...abank.subjects, ...by.keys()])];
+    return `<header class="t-head"><div><span class="eyebrow">Администратор</span><h1>Общий банк</h1>
+        <p>Встроенные задачи и задачи, открытые для платформы или для всех. Преподаватель видит их только по предметам, отмеченным у него в «Материалах», и только опубликованные. Свои задачи и задачи из уже выданных ДЗ он видит всегда.</p></div>${tTabs('bank')}</header>
+      <section class="t-sec"><div class="panel"><div class="panel-h"><h2>Предметы</h2><span class="muted">${pool.length} ${plural(pool.length, 'задача', 'задачи', 'задач')} в общем банке</span></div>
+        <ul class="adm-list ab-list">${names.map(n => {
+          const ps = by.get(n) || [], on = !abank.soff.has(n), pub = ps.filter(p => !abank.off.has(p.id)).length;
+          return `<li class="${on ? '' : 'ab-off'}"><span>${ps.length ? `<a href="#admin-bank-s-${encodeURIComponent(n)}"><b>${esc(n)}</b></a>` : `<b>${esc(n)}</b>`}<small>${ps.length ? `опубликовано ${pub} из ${ps.length}` : 'задач пока нет'}</small></span>
+            ${abSw(`data-absubj="${esc(n)}"`, on, on ? 'Опубликован' : 'Снят')}${ps.length ? `<a class="btn small ghost" href="#admin-bank-s-${encodeURIComponent(n)}">Задачи</a>` : '<span></span>'}</li>`;
+        }).join('')}</ul></div></section>`;
+  }
+  const abAll = () => abPool().filter(p => abSubj(p) === abank.subj);
+  function abFound() {
+    const q = abank.q.trim().toLowerCase(), nums = parseNums(q);
+    return abAll().filter(p => (!abank.task || p.task === abank.task) && (!abank.st || (abank.st === 'off') === abank.off.has(p.id))
+      && (!q || (nums ? nums.has(pnum[p.id]) : (p.title + ' ' + strip(p.text) + ' ' + ((p.src && p.src.topic) || '')).toLowerCase().includes(q))));
+  }
+  function tAdminBankSubj() {
+    const n = abank.subj, all = abAll(), on = !abank.soff.has(n), tasks = [...new Set(all.map(p => p.task).filter(Boolean))].sort((a, b) => a - b);
+    const seg = (key, opts) => `<div class="seg" role="group" aria-label="Статус">${opts.map(([v, t]) => `<button type="button" class="${abank[key] === v ? 'on' : ''}" data-abf="${key}" data-v="${v}" aria-pressed="${abank[key] === v}">${t}</button>`).join('')}</div>`;
+    return `<header class="t-head"><div><span class="eyebrow">Общий банк</span><h1>${esc(n)}</h1>
+        <p>${on ? 'Предмет опубликован: преподаватели, отметившие его, видят опубликованные задачи.' : 'Предмет снят с публикации: преподаватели не видят ни одной его задачи, даже опубликованной.'}</p></div>${tTabs('bank')}</header>
+      <a class="t-back" href="#admin-bank">← Все предметы</a>
+      <section class="t-sec"><div class="panel">
+        <div class="panel-h"><h2>Задачи</h2>${abSw(`data-absubj="${esc(n)}"`, on, on ? 'Предмет опубликован' : 'Предмет снят')}</div>
+        <div class="ab-tools"><input id="abq" type="search" maxlength="80" autocomplete="off" placeholder="Номер (#17, 5-40) или слова из условия" aria-label="Поиск задач" value="${esc(abank.q)}">
+          ${tasks.length > 1 ? `<select id="abtask" aria-label="Номер задания"><option value="0">Все задания</option>${tasks.map(t => `<option value="${t}" ${abank.task === t ? 'selected' : ''}>Задание ${t}</option>`).join('')}</select>` : ''}
+          ${seg('st', [['', 'Все'], ['on', 'Опубликованные'], ['off', 'Снятые']])}</div>
+        <div class="ab-bulk" id="abbulk"></div>
+        <div id="ablist"></div></div></section>`;
+  }
+  function abRenderList() {
+    const list = abFound(), box = $('#ablist'), bulk = $('#abbulk'); if (!box) return;
+    const offN = list.filter(p => abank.off.has(p.id)).length;
+    bulk.innerHTML = `<span class="muted">Найдено ${list.length} · снято ${offN}</span>`
+      + (list.length - offN ? `<button type="button" class="btn small ghost" data-abbulk="0">Снять найденные (${list.length - offN})</button>` : '')
+      + (offN ? `<button type="button" class="btn small" data-abbulk="1">Опубликовать найденные (${offN})</button>` : '');
+    const shown = list.slice(0, 300);
+    box.innerHTML = list.length ? `<ul class="adm-list ab-list ab-tasks">${shown.map(p => { const on = !abank.off.has(p.id); return `<li class="${on ? '' : 'ab-off'}"><span><a href="#p-${p.id}"><b>#${pnum[p.id]} ${esc(p.title)}</b></a>
+        <small>${p.task ? 'задание ' + p.task : esc((p.src && p.src.topic) || 'без темы')} · ${lvWord[p.level]} · ${!p.src || p.src.builtin ? 'встроенная' : `${p.src.vis === 'platform' ? 'для платформы' : 'для всех'}, ${esc(p.src.author || 'учитель')}`}</small></span>
+        ${abSw(`data-abid="${esc(p.id)}"`, on, on ? 'Опубликована' : 'Снята')}<span></span></li>`; }).join('')}</ul>${list.length > shown.length ? `<p class="muted">Показаны первые ${shown.length}. Уточните поиск, чтобы увидеть остальные; кнопки выше действуют на все найденные.</p>` : ''}`
+      : '<div class="t-empty"><b>Задач не найдено</b>Сбросьте фильтры или поищите по-другому.</div>';
+  }
+  async function abSave(body) {
+    try { const r = await api('/admin/bank', 'POST', body); abank.off = new Set(r.off); abank.soff = new Set(r.subjects_off); }
+    catch (e) { toast(e.message || 'Не получилось сохранить'); }
+    const box = $('#tpage'); if (!box || !/^#admin-bank/.test(location.hash)) return;
+    const y = scrollY; box.innerHTML = abank.subj ? tAdminBankSubj() : tAdminBankHTML(); if (abank.subj) abRenderList(); window.scrollTo({ top: y, behavior: 'instant' });
+  }
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.dataset.absubj !== undefined) return abSave({ subject: t.dataset.absubj, on: t.checked });
+    if (t.dataset.abid) return abSave({ ids: [t.dataset.abid], on: t.checked });
+    if (t.id === 'abtask') { abank.task = +t.value; abRenderList(); }
+  });
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-abf],[data-abbulk]'); if (!b) return;
+    if (b.dataset.abf) { abank[b.dataset.abf] = b.dataset.v; $$('[data-abf]').forEach(x => { const on = abank[x.dataset.abf] === x.dataset.v; x.classList.toggle('on', on); x.setAttribute('aria-pressed', on); }); return abRenderList(); }
+    const on = b.dataset.abbulk === '1', ids = abFound().filter(p => abank.off.has(p.id) === on).map(p => p.id);
+    if (!on && ids.length > 1 && !confirm(`Снять с публикации ${ids.length} ${plural(ids.length, 'задачу', 'задачи', 'задач')}? Преподаватели перестанут их видеть.`)) return;
+    b.disabled = true; abSave({ ids, on });
+  });
+  let abT;
+  document.addEventListener('input', e => { if (e.target.id !== 'abq') return; abank.q = e.target.value; clearTimeout(abT); abT = setTimeout(abRenderList, 150); });
 
   // карточка любого пользователя для администратора: #admin-u-<id>
   function tAdminUserHTML(r) {
