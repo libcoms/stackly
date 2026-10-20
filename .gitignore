@@ -6,3 +6,6 @@ __pycache__/
 *.db-shm
 .env
 stackly.env
+
+# выгрузка открытого банка ФИПИ — только для внутреннего использования (tools/fipi_bank.py)
+tools/fipi/
