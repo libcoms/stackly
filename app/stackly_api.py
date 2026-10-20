@@ -190,6 +190,10 @@ def migrate():
         # задачи, созданные до разделения банков, были видны всем — так и оставляем
         db().execute("UPDATE problems SET vis = CASE WHEN author_id IN (SELECT id FROM users WHERE role = 'admin') "
                      "THEN 'platform' ELSE 'public' END WHERE builtin = 0")
+    # bank_open = 1 — учитель открыл ученикам группы свой банк: они видят те же задачи общего банка
+    # по его предметам и его задачи, а не только выданные в ДЗ
+    if 'bank_open' not in [r['name'] for r in db().execute('PRAGMA table_info(study_groups)')]:
+        db().execute("ALTER TABLE study_groups ADD COLUMN bank_open INTEGER NOT NULL DEFAULT 0")
     # snum — номер задания внутри предмета (1, 2, …) у задач не из ЕГЭ по информатике; 0 — без номера
     if 'snum' not in cols:
         db().execute("ALTER TABLE problems ADD COLUMN snum INTEGER NOT NULL DEFAULT 0")
@@ -347,16 +351,32 @@ def teacher_assigned_ids(user_id):
         ids.update(str(x) for x in json.loads(r['items']).get('bank', []))
     return ids
 
-def teacher_builtin_ids(u, items):
-    """Встроенные задачи, которые видит преподаватель: предмет отмечен у него в «Материалах», опубликован,
-    сама задача не снята — плюс задачи из его выданных ДЗ."""
+def subject_builtin_ids(u, items):
+    """Встроенные задачи общего банка по предметам преподавателя: предмет отмечен у него в «Материалах»,
+    опубликован, сама задача не снята."""
     off, subj_off = bank_rules()
     subs = set(json.loads(u['subjects'] or '[]'))
     open_ = EGE_SUBJECT in subs and EGE_SUBJECT not in subj_off
-    return {p['id'] for p in items if open_ and p['id'] not in off} | teacher_assigned_ids(u['id'])
+    return {p['id'] for p in items if open_ and p['id'] not in off}
+
+def teacher_builtin_ids(u, items):
+    """Встроенные задачи, которые видит преподаватель: общий банк по его предметам и задачи из его выданных ДЗ."""
+    return subject_builtin_ids(u, items) | teacher_assigned_ids(u['id'])
+
+def open_bank_teachers(user_id):
+    """Преподаватели групп ученика, где открыт банк: ученик видит их банк, а не только задачи из ДЗ."""
+    return db().execute('SELECT DISTINCT t.* FROM group_members m JOIN study_groups g ON g.id = m.group_id '
+                        'JOIN users t ON t.id = g.teacher_id WHERE m.user_id = ? AND g.bank_open = 1', (user_id,)).fetchall()
+
+def student_builtin_ids(user_id, items):
+    """Встроенные задачи, которые видит ученик: выданные в ДЗ и общий банк учителей групп с открытым банком."""
+    ids = student_bank_ids(user_id)
+    for t in open_bank_teachers(user_id):
+        ids |= subject_builtin_ids(t, items)
+    return ids
 
 def student_bank_ids(user_id):
-    """Задачи банка, которые ученику выдали в ДЗ: только их он и видит."""
+    """Задачи банка, которые ученику выдали в ДЗ."""
     ids = set()
     for h in assigned_homework(user_id):
         ids.update(str(x) for x in json.loads(h['items']).get('bank', []))
@@ -957,10 +977,11 @@ class Handler(BaseHTTPRequestHandler):
         u = self.current_user()
         body, etag = content_file('ege.js')
         if u['role'] in ('student', 'teacher'):
-            # ученику — методичка целиком, а из банка только задачи его ДЗ (с номерами из полного банка);
+            # ученику — методичка целиком, а из банка задачи его ДЗ и банк учителей, открывших его группе
+            # (с номерами из полного банка);
             # преподавателю — задачи по отмеченным предметам, которые администратор оставил в общем банке
             head, items, tail = content_bank()
-            ids = student_bank_ids(u['id']) if u['role'] == 'student' else teacher_builtin_ids(u, items)
+            ids = student_builtin_ids(u['id'], items) if u['role'] == 'student' else teacher_builtin_ids(u, items)
             body = (head + json.dumps([p for p in items if p['id'] in ids], ensure_ascii=False) + tail).encode('utf-8')
             etag = '"%s"' % hashlib.sha256(body).hexdigest()[:32]
         fresh = self.headers.get('If-None-Match') == etag
@@ -1062,20 +1083,30 @@ class Handler(BaseHTTPRequestHandler):
         if u['role'] == 'admin':
             return '(p.hidden = 0 OR p.builtin = 1)', ()
         if u['role'] == 'student':
-            # ученик видит только задачи, выданные ему в ДЗ; правки встроенных — тоже только для них
-            return ('((p.builtin = 1 OR p.hidden = 0) AND p.id IN (SELECT value FROM json_each(?)))',
-                    (json.dumps(sorted(student_bank_ids(u['id']))),))
+            # ученик видит задачи, выданные ему в ДЗ (правки встроенных — тоже только для них),
+            # и банк учителей групп, где банк открыт
+            where, args = ['((p.builtin = 1 OR p.hidden = 0) AND p.id IN (SELECT value FROM json_each(?)))'], [json.dumps(sorted(student_bank_ids(u['id'])))]
+            for t in open_bank_teachers(u['id']):
+                w, a = Handler.teacher_bank_where(t)
+                where.append(w)
+                args += a
+            return '(' + ' OR '.join(where) + ')', tuple(args)
         # учитель: свои задачи; задачи из выданных им ДЗ; общий банк и открытые задачи коллег — только по предметам,
         # отмеченным в «Материалах», и только то, что администратор не снял с публикации
-        assigned = teacher_assigned_ids(u['id'])
+        w, a = Handler.teacher_bank_where(u)
+        return f"(p.id IN (SELECT value FROM json_each(?)) OR {w})", (json.dumps(sorted(teacher_assigned_ids(u['id']))), *a)
+
+    @staticmethod
+    def teacher_bank_where(u):
+        """Банк преподавателя без выданных ДЗ: свои задачи, общий банк и открытые задачи коллег по его предметам."""
         off, subj_off = bank_rules()
         subs = sorted(set(json.loads(u['subjects'] or '[]')) - subj_off)
         subj = f"(CASE WHEN p.task > 0 THEN '{EGE_SUBJECT}' ELSE p.subject END)"
-        return (f"((p.author_id = ? AND p.hidden = 0) OR p.id IN (SELECT value FROM json_each(?)) "
+        return (f"((p.author_id = ? AND p.hidden = 0) "
                 f"OR (p.builtin = 1 AND {subj} IN (SELECT value FROM json_each(?)) AND p.id NOT IN (SELECT value FROM json_each(?))) "
                 f"OR (p.hidden = 0 AND p.vis IN ('platform', 'public') AND {subj} IN (SELECT value FROM json_each(?)) "
                 f"AND p.id NOT IN (SELECT value FROM json_each(?))))",
-                (u['id'], json.dumps(sorted(assigned)), json.dumps(subs), json.dumps(sorted(off)), json.dumps(subs), json.dumps(sorted(off))))
+                (u['id'], json.dumps(subs), json.dumps(sorted(off)), json.dumps(subs), json.dumps(sorted(off))))
 
     def teacher(self):
         u = self.current_user()
@@ -1124,6 +1155,8 @@ class Handler(BaseHTTPRequestHandler):
             db().execute('UPDATE study_groups SET name = ? WHERE id = ?', (self.group_name(d), g['id']))
         if d.get('new_code'):
             db().execute('UPDATE study_groups SET code = ? WHERE id = ?', (new_group_code(), g['id']))
+        if 'bank_open' in d:
+            db().execute('UPDATE study_groups SET bank_open = ? WHERE id = ?', (1 if d['bank_open'] else 0, g['id']))
         self.send_json(200, {'group': dict(db().execute('SELECT * FROM study_groups WHERE id = ?', (g['id'],)).fetchone())})
 
     def t_group_delete(self):

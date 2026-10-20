@@ -736,6 +736,33 @@ class ContentAccessTest(ServerCase):
         self.assertEqual([p['n'] for p in got], [full[0]['n'], full[50]['n']])    # сквозные номера — как в полном банке
         self.assertEqual(self.bank(other), [])
 
+    def test_group_bank_open(self):
+        t, t_email = self.register()
+        ClassroomTest.set_role(self, t_email, 'teacher')
+        t.call('POST', '/me/teaching', {'subjects': ['Информатика', 'Математика']})
+        s, _ = self.register()
+        outsider, _ = self.register()
+        pids = lambda c: [x['id'] for x in c.call('GET', '/content')[1]['problems']]
+        g = t.call('POST', '/teach/groups', {'name': '10В'})[1]['group']
+        self.assertEqual(g['bank_open'], 0)
+        s.call('POST', '/me/groups/join', {'code': g['code']})
+        own = t.call('POST', '/content/problem', {'task': 0, 'subject': 'Математика', 'level': 'Б', 'title': 'Дроби',
+                                                   'body': '1/2 + 1/3', 'answer': '5/6', 'vis': 'private'})[1]['id']
+        self.assertEqual(self.bank(s), [])                  # банк закрыт — только задачи из ДЗ
+        self.assertNotIn(own, pids(s))
+        # открывает только учитель группы
+        self.assertEqual(s.call('POST', '/teach/groups/update', {'id': g['id'], 'bank_open': True})[0], 403)
+        st, r = t.call('POST', '/teach/groups/update', {'id': g['id'], 'bank_open': True})
+        self.assertEqual((st, r['group']['bank_open']), (200, 1))
+        self.assertEqual(t.call('GET', '/teach/group?id=%d' % g['id'])[1]['group']['bank_open'], 1)
+        self.assertEqual([p['id'] for p in self.bank(s)], [p['id'] for p in self.bank(t)])
+        self.assertIn(own, pids(s))
+        self.assertEqual(self.bank(outsider), [])           # ученика не из группы это не касается
+        self.assertNotIn(own, pids(outsider))
+        t.call('POST', '/teach/groups/update', {'id': g['id'], 'bank_open': False})
+        self.assertEqual(self.bank(s), [])
+        self.assertNotIn(own, pids(s))
+
     def staff(self, role, subjects=()):
         c, email = self.register()
         ClassroomTest.set_role(self, email, role)

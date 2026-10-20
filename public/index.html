@@ -1875,7 +1875,7 @@ window.LOOP_PATH = 'M-80.0 288.4 L-75.7 292.0 L-71.2 295.3 L-66.6 298.5 L-61.9 3
    Здесь — краткие карточки 27 заданий для главной, поиска и учебника Python, без разборов.
    Их проверяет тест tests/test_content.py: при правке заданий в content/ege.js обновите и карточки. */
 window.BANK = [];
-window.BANK_TOTAL = 462;
+window.BANK_TOTAL = 562;
 window.EGE = [
   {"n": 1, "title": "Графы и весовые матрицы", "short": "Граф ↔ таблица", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Вручную", "lead": "Дана схема дорог (граф с буквами) и таблица расстояний (с номерами). Нумерации не связаны. Нужно сопоставить вершины и найти длину дороги, сумму длин или количество вершин с каким-то свойством."},
   {"n": 2, "title": "Таблицы истинности", "short": "Логические функции", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Python", "lead": "Дана логическая функция от 3–4 переменных и фрагмент её таблицы истинности, где часть клеток пуста, а столбцы не подписаны. Нужно определить, какой переменной соответствует каждый столбец."},
@@ -3729,12 +3729,12 @@ function stacklyApp() {
       : 'Отметьте свои предметы в <a href="#materials">«Материалах»</a> — тогда здесь появятся задачи общего банка по ним. Пока видны только ваши задачи и задачи из выданных заданий.'}</p>` : '';
     const head = `<header class="bk-head"><h1>Банк задач</h1>
         <p class="bk-lead">${teacher ? 'Общий банк платформы и задачи преподавателей. Выберите номер задания или предмет — ответ проверяется сразу, решение открывается в любой момент.'
-          : 'Задачи из ваших домашних заданий. Решайте их здесь или прямо в задании — отметки общие.'}</p>${subjHint}
+          : 'Задачи из ваших домашних заданий и банк, который открыл преподаватель. Решайте их здесь или прямо в задании — отметки общие.'}</p>${subjHint}
         <div class="bk-tools"><form class="bk-search" role="search" onsubmit="return false"><span aria-hidden="true">#</span><input id="bankq" type="search" placeholder="Номер (17, 5-9) или слова из условия" aria-label="Поиск задачи" value="${esc(bankF.q)}" autocomplete="off"></form>
           ${teacher ? `<a class="btn" href="#edit-p-new">Новая задача</a><a class="btn ghost" href="#edit">Редактор задач</a>` : ''}</div>
         ${srcSeg()}</header>`;
     if (!BANK.length) return `<div class="page wrap bk">${head.replace(/<div class="bk-tools">[\s\S]*?<\/form>/, '<div class="bk-tools">')}
-      <div class="t-empty"><b>Задач пока нет</b>${teacher ? ((acct.subjects || []).length || acct.role === 'admin' ? 'По вашим предметам в банке пока нет задач. Добавьте свою — она сразу появится здесь.' : 'Отметьте предметы в <a href="#materials">«Материалах»</a> или добавьте свою задачу.') : 'Здесь появятся задачи, которые выдаст преподаватель. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.'}</div></div>`;
+      <div class="t-empty"><b>Задач пока нет</b>${teacher ? ((acct.subjects || []).length || acct.role === 'admin' ? 'По вашим предметам в банке пока нет задач. Добавьте свою — она сразу появится здесь.' : 'Отметьте предметы в <a href="#materials">«Материалах»</a> или добавьте свою задачу.') : 'Здесь появятся задачи, которые выдаст или откроет преподаватель. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.'}</div></div>`;
     const ege = pool.filter(p => p.task), others = subjList(pool.filter(p => !p.task)).map(([n]) => n);
     // учителю — и отмеченные предметы без задач: в них можно сразу добавить задание 1
     if (teacher && !bankF.src) (acct.subjects || []).forEach(sj => { if (sj !== 'Информатика' && !others.includes(sj)) others.push(sj); });
@@ -4944,6 +4944,8 @@ function stacklyApp() {
           : `<div class="t-empty"><b>В группе пока никого</b>Отправьте ученикам код <b style="display:inline;font-family:var(--f-mono)">${esc(g.code)}</b> — они введут его в личном кабинете на stackly.</div>`}</section>
 
       <section class="t-sec"><h2>Настройки группы</h2><div class="panel" style="display:grid;gap:14px">
+        <div><label class="sw"><input type="checkbox" data-gbank="${g.id}" ${g.bank_open ? 'checked' : ''}><i></i><span>Открыть ученикам банк задач</span></label>
+          <p class="auth-note">${g.bank_open ? 'Ученики группы видят в банке те же задачи, что и вы: общий банк по вашим предметам и ваши задачи.' : 'Сейчас ученики видят в банке только задачи из выданных им заданий.'}</p></div>
         <form class="t-create" data-tform="group-rename" data-id="${g.id}" novalidate><input name="name" maxlength="60" value="${esc(g.name)}" aria-label="Название группы"><button class="btn small" type="submit">Переименовать</button><div class="form-msg" role="alert"></div></form>
         <div class="form-acts"><button type="button" class="btn small ghost" data-tact="new-code" data-id="${g.id}">Выдать новый код</button><button type="button" class="btn small danger-btn" data-tact="del-group" data-id="${g.id}" data-name="${esc(g.name)}">Удалить группу</button></div>
         <p class="auth-note">Новый код нужен, если старый попал не к тем людям: уже вступившие ученики останутся в группе. Удаление группы удалит и все её задания.</p></div></section>`;
@@ -6010,6 +6012,10 @@ function stacklyApp() {
       if (k !== 'bank') t.checked ? hwDraft[k].add(v) : hwDraft[k].delete(v); renderPicker(false); const r = t.closest('.pk-row'); if (r) r.classList.toggle('on', t.checked);
     }
     else if (t.name === 'to' && t.closest('[data-tform="hw"]')) $('#studlist').hidden = t.value !== 'some';
+    else if (t.dataset.gbank) {
+      try { await api('/teach/groups/update', 'POST', { id: +t.dataset.gbank, bank_open: t.checked }); toast(t.checked ? 'Банк открыт ученикам группы' : 'Банк закрыт: ученики видят только задачи из заданий'); route(); }
+      catch (err) { t.checked = !t.checked; toast(err.message || 'Ошибка'); }
+    }
     else if (t.dataset.urole) {
       const prev = [...t.options].find(o => o.defaultSelected);
       try { await api('/admin/role', 'POST', { user_id: +t.dataset.urole, role: t.value }); [...t.options].forEach(o => o.defaultSelected = o.selected); toast('Роль изменена'); }
