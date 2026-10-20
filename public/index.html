@@ -4168,9 +4168,9 @@ function stacklyApp() {
   const kxNum = n => n.toLocaleString('ru-RU');
   const kxSeg = (f, cur, opts) => `<div class="kx-seg" role="group">${opts.map(([v, l]) => `<button type="button" class="${v === cur ? 'on' : ''}" aria-pressed="${v === cur}" data-kxv="${f}:${v}">${l}</button>`).join('')}</div>`;
   const kxFld = (label, input) => `<label class="kx-fld"><span>${label}</span>${input}</label>`;
-  const kxText = (f, v, w, ph) => `<input type="text" data-f="${f}" value="${esc(v)}" style="width:${w}ch" spellcheck="false" autocomplete="off"${ph ? ` placeholder="${esc(ph)}"` : ''}>`;
-  const kxRange = (f, v, lo, hi) => `<input type="range" data-f="${f}" min="${lo}" max="${hi}" value="${v}">`;
-  const kxSelect = (f, v, opts) => `<select data-f="${f}">${opts.map(([o, l]) => `<option value="${esc(o)}"${String(o) === String(v) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  const kxText = (f, v, w, ph) => `<input type="text" data-kxf="${f}" value="${esc(v)}" style="width:${w}ch" spellcheck="false" autocomplete="off"${ph ? ` placeholder="${esc(ph)}"` : ''}>`;
+  const kxRange = (f, v, lo, hi) => `<input type="range" data-kxf="${f}" min="${lo}" max="${hi}" value="${v}">`;
+  const kxSelect = (f, v, opts) => `<select data-kxf="${f}">${opts.map(([o, l]) => `<option value="${esc(o)}"${String(o) === String(v) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
   // слово под номером i (с нуля) в алфавитном списке слов длины k — это запись i в системе с основанием |a|
   const kxWord = (a, k, i) => { let s = ''; for (let j = 0; j < k; j++) { s = a[i % a.length] + s; i = Math.floor(i / a.length); } return s; };
   const KX = {};
@@ -4223,7 +4223,7 @@ function stacklyApp() {
   KX.slots = {
     tag: 'Правило произведения',
     init(c) { const a = kxSort(kxClean(c.alph || 'КОТЛА', 8)), k = c.k || 5; return { src: c.alph || a, a, k, allow: Array(k).fill(a) }; },
-    ctl: st => kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина слова: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 7)),
+    ctl: st => kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина слова: <b data-kxshow="k">${st.k}</b>`, kxRange('k', st.k, 1, 7)),
     input(st, f, v) {
       if (f === 'src') { st.src = v; const a = kxSort(kxClean(v, 8)); if (a && a !== st.a) { st.a = a; st.allow = Array(st.k).fill(a); } }
       if (f === 'k') { st.k = +v; st.allow = Array.from({ length: st.k }, (_, i) => st.allow[i] ?? st.a); }
@@ -4256,8 +4256,8 @@ function stacklyApp() {
   KX.lex = {
     tag: 'Словарь: номер ↔ слово',
     init(c) { const a = kxSort(kxClean(c.alph || 'ДЕКОР', 8)); return { src: c.alph || a, a, k: c.k || 4, N: c.N || 1, w: c.w || '', bad: '' }; },
-    ctl: st => kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 6))
-      + kxFld('Номер', `<input type="number" data-f="N" min="1" max="${st.a.length ** st.k}" value="${st.N}" style="width:10ch">`)
+    ctl: st => kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина: <b data-kxshow="k">${st.k}</b>`, kxRange('k', st.k, 1, 6))
+      + kxFld('Номер', `<input type="number" data-kxf="N" min="1" max="${st.a.length ** st.k}" value="${st.N}" style="width:10ch">`)
       + kxFld('или слово', kxText('w', st.w, 9, kxWord(st.a, st.k, 0))),
     input(st, f, v) {
       if (f === 'src') { st.src = v; const a = kxSort(kxClean(v, 8)); if (a.length >= 2) st.a = a; }
@@ -4272,7 +4272,7 @@ function stacklyApp() {
       st.N = Math.min(Math.max(1, st.N), st.a.length ** st.k);
     },
     sync(st, fig, el) {
-      const n = $('[data-f="N"]', fig);
+      const n = $('[data-kxf="N"]', fig);
       if (n !== el) n.value = st.N;
       n.max = st.a.length ** st.k;
     },
@@ -4325,11 +4325,11 @@ function stacklyApp() {
     },
     ctl(st) {
       const D = kxEnumData(st), c = st.c, sym = [...D.sym].map(x => [x, x]);
-      const box = (key, body) => `<label class="kx-cond${c[key].on ? ' on' : ''}"><input type="checkbox" data-f="c.${key}.on"${c[key].on ? ' checked' : ''}>${body}</label>`;
+      const box = (key, body) => `<label class="kx-cond${c[key].on ? ' on' : ''}"><input type="checkbox" data-kxf="c.${key}.on"${c[key].on ? ' checked' : ''}>${body}</label>`;
       const len = st.mode === 'perm' ? D.word.length : st.k;
-      const head = st.mode === 'words' ? kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 7))
+      const head = st.mode === 'words' ? kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина: <b data-kxshow="k">${st.k}</b>`, kxRange('k', st.k, 1, 7))
         : st.mode === 'perm' ? kxFld('Слово', kxText('word', st.word, 12))
-        : kxFld('Основание', kxSelect('b', st.b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16].map(b => [b, b]))) + kxFld(`Цифр в числе: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 7));
+        : kxFld('Основание', kxSelect('b', st.b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16].map(b => [b, b]))) + kxFld(`Цифр в числе: <b data-kxshow="k">${st.k}</b>`, kxRange('k', st.k, 1, 7));
       return `${kxFld('Что перебираем', kxSelect('mode', st.mode, [['words', 'Слова: буквы можно повторять'], ['perm', 'Перестановки букв слова'], ['nums', 'Числа в системе счисления']]))}${head}
         <div class="kx-conds">
           ${box('cnt', `<span>${D.u}</span>${kxSelect('c.cnt.x', c.cnt.x, sym)}<span>встречается</span>${kxSelect('c.cnt.op', c.cnt.op, [['==', 'ровно'], ['<=', 'не более'], ['>=', 'не менее']])}${kxSelect('c.cnt.v', c.cnt.v, Array.from({ length: len + 1 }, (_, i) => [i, i]))}<span>раз</span>`)}
@@ -4412,18 +4412,18 @@ function stacklyApp() {
   function kxEvent(e) {
     let el = e.target;
     if (e.type === 'click') { el = el.closest && el.closest('.kx [data-kxv]'); if (!el) return; }
-    else if (!el.dataset || !el.dataset.f || !el.closest('.kx')) return;
+    else if (!el.dataset || !el.dataset.kxf || !el.closest('.kx')) return;
     const typed = /^(text|range|number)$/.test(el.type);
     if (e.type === 'change' && el.type !== 'text') return;          // флажки и списки уже обработаны событием input
     const fig = el.closest('.kx'), K = KX[fig.dataset.kx], st = JSON.parse(fig.dataset.st);
     if (e.type === 'click') { const [f, ...v] = el.dataset.kxv.split(':'); K.click(st, f, v); }
-    else K.input(st, el.dataset.f, el.type === 'checkbox' ? (el.checked ? 1 : 0) : el.value, e.type);
+    else K.input(st, el.dataset.kxf, el.type === 'checkbox' ? (el.checked ? 1 : 0) : el.value, e.type);
     fig.dataset.st = JSON.stringify(st);
     // набор текста — только результат; после ввода (change) — ещё и поля: в списках могли смениться буквы
     if (e.type === 'change') { $('.kx-ctl', fig).innerHTML = K.ctl(st); return; }
     if (!typed) $('.kx-ctl', fig).innerHTML = K.ctl(st);
     $('.kx-out', fig).innerHTML = K.out(st);
-    if (typed) { $$('[data-show]', fig).forEach(n => { n.textContent = st[n.dataset.show]; }); if (K.sync) K.sync(st, fig, el); }
+    if (typed) { $$('[data-kxshow]', fig).forEach(n => { n.textContent = st[n.dataset.kxshow]; }); if (K.sync) K.sync(st, fig, el); }
   }
   ['input', 'change', 'click'].forEach(t => document.addEventListener(t, kxEvent));
 
