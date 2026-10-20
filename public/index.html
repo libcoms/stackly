@@ -1830,6 +1830,129 @@ footer.foot a:hover { color: var(--ink); }
 .ix-card:hover .ix-face:not(.ix-back) { box-shadow: inset 0 0 0 1px var(--blue-mid); }
 @media (prefers-reduced-motion: reduce) { .ix-face { transition: none; } .ix-curve { transition: none; } }
 
+/* ── комбинаторика: модули разбора задания 8 (дерево, ячейки, словарь, лаборатория) ── */
+.kx { max-width: 780px; }
+.kx-ctl { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: end; }
+.kx-ctl:empty { display: none; }
+.kx-out { display: grid; gap: 12px; min-width: 0; }
+.kx-fld { display: grid; gap: 4px; font-size: 13px; color: var(--mute); min-width: 0; }
+.kx-fld b { color: var(--ink); }
+.kx input[type=text], .kx input[type=number], .kx select { font: 600 15px/1.2 var(--f-mono); padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--paper); color: var(--ink); max-width: 100%; min-width: 0; }
+.kx select { font: 500 14px/1.2 var(--f-body); padding: 7px 8px; }
+.kx input:focus-visible, .kx select:focus-visible, .kx button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.kx input[type=range] { width: 150px; accent-color: var(--blue); }
+.kx-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.kx-seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--sunken); gap: 2px; }
+.kx-seg button { border: 0; background: none; padding: 6px 12px; border-radius: 999px; font: 600 13px/1.2 var(--f-body); color: var(--ink-2); cursor: pointer; }
+.kx-seg button.on { background: var(--paper); color: var(--ink); box-shadow: var(--shadow-card); }
+.kx-say { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); }
+.kx-say b { color: var(--ink); }
+.kx-svg { width: 100%; height: auto; display: block; border-radius: 10px; background: var(--bg); }
+.kx-tree .e { stroke: var(--line-2); stroke-width: 1.5; }
+.kx-tree .e.on { stroke: var(--blue); stroke-width: 3.5; }
+.kx-tree .root { fill: var(--ink-2); }
+.kx-tree .nd circle { fill: var(--paper); stroke: var(--line-2); stroke-width: 1.5; }
+.kx-tree .nd text { fill: var(--ink); font: 650 14px var(--f-display); text-anchor: middle; dominant-baseline: central; }
+.kx-tree .nd text.sm { font-size: 11px; }
+.kx-tree .nd.on circle { fill: var(--blue); stroke: var(--blue); }
+.kx-tree .nd.on > text:not(.w):not(.num) { fill: #fff; }
+.kx-tree .leaf { cursor: pointer; }
+.kx-tree .leaf .hit { fill: transparent; }
+.kx-tree .leaf text.w { font: 600 13px var(--f-mono); fill: var(--ink-2); dominant-baseline: central; }
+.kx-tree .leaf text.num { font: 500 11px var(--f-body); fill: var(--mute); }
+.kx-tree .leaf:hover circle { stroke: var(--blue); }
+.kx-tree .leaf:hover text.w, .kx-tree .leaf.on text.w { fill: var(--blue-fg); }
+.kx-levels { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; color: var(--ink-2); }
+.kx-levels span { padding: 4px 10px; border-radius: 999px; background: var(--paper-2); }
+.kx-levels i { font-style: normal; color: var(--mute); }
+.kx-levels b { font: 650 15px var(--f-mono); color: var(--ink); }
+.kx-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.kx-btns button { border: 1px solid var(--line-2); background: var(--paper); border-radius: 999px; padding: 6px 12px; font: 600 12.5px/1.2 var(--f-body); color: var(--ink-2); cursor: pointer; }
+.kx-btns button:hover { border-color: var(--blue); color: var(--blue-fg); }
+.kx-slots { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.kx-slot { flex: 1 1 78px; max-width: 128px; padding: 8px 6px; border-radius: 12px; background: var(--paper-2); display: grid; gap: 6px; justify-items: center; }
+.kx-slot > span { font-size: 11.5px; color: var(--mute); }
+.kx-slot > b { font: 650 20px/1 var(--f-display); color: var(--ink); }
+.kx-x { font-style: normal; color: var(--mute); font-size: 13px; }
+.kx-chips { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.kx-chip { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; border: 1px solid var(--line-2); background: var(--paper); font: 600 13px/1 var(--f-mono); color: var(--mute); cursor: pointer; text-decoration: line-through; }
+.kx-chip.on { background: var(--blue); border-color: var(--blue); color: #fff; text-decoration: none; }
+.kx-formula { font: 600 17px/1.5 var(--f-mono); color: var(--ink-2); overflow-wrap: anywhere; }
+.kx-formula b { color: var(--ink); }
+.kx-map { display: flex; flex-wrap: wrap; gap: 6px; }
+.kx-map span { padding: 4px 9px; border-radius: 8px; background: var(--blue-soft); color: var(--blue-ink); font: 600 13px/1.3 var(--f-mono); }
+.kx-lexgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(150px, 210px); gap: 16px; align-items: start; }
+.kx-lexgrid > div { display: grid; gap: 10px; min-width: 0; }
+.kx-conv { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 54px)); gap: 6px; }
+.kx-cell { display: grid; justify-items: center; gap: 3px; padding: 7px 4px; border-radius: 10px; background: var(--paper-2); }
+.kx-cell small { font-size: 11px; color: var(--mute); }
+.kx-cell b { font: 650 18px/1 var(--f-mono); color: var(--blue-fg); }
+.kx-cell span { font: 650 18px/1 var(--f-mono); color: var(--ink); }
+.kx-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font: 14px/1.5 var(--f-mono); color: var(--ink-2); }
+.kx-list li { display: flex; gap: 12px; padding: 2px 10px; border-radius: 8px; }
+.kx-list li.on { background: var(--blue-soft); color: var(--blue-ink); font-weight: 700; }
+.kx-list i { font-style: normal; color: var(--mute); min-width: 5ch; text-align: right; }
+.kx-conds { display: grid; gap: 6px; flex-basis: 100%; }
+.kx-cond { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; font-size: 14px; color: var(--mute); background: var(--paper-2); cursor: pointer; }
+.kx-cond.on { color: var(--ink); background: var(--blue-soft); }
+.kx-cond input[type=checkbox] { width: 17px; height: 17px; margin: 0; accent-color: var(--blue); }
+.kx-cond select { padding: 4px 6px; font-size: 13.5px; }
+.kx-res { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; font-size: 14.5px; color: var(--ink-2); }
+.kx-big { font: 700 34px/1 var(--f-display); letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.kx-words { display: flex; flex-wrap: wrap; gap: 5px; }
+.kx-words span { font: 13px/1.3 var(--f-mono); padding: 4px 8px; border-radius: 8px; background: var(--paper-2); color: var(--ink); }
+.kx-words i { font-style: normal; color: var(--mute); margin-right: 5px; font-size: 11px; }
+.kx .code { margin-top: 2px; }
+@media (max-width: 560px) { .kx-lexgrid { grid-template-columns: minmax(0, 1fr); } .kx input[type=range] { width: 120px; } .kx-slot { flex-basis: 64px; } }
+
+/* ── подробный разбор: оглавление, «руками», схемы и рисунки ── */
+.gd-toc { display: flex; flex-wrap: wrap; gap: 6px; }
+.gd-toc button { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px 7px 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper); font: 600 13.5px/1.2 var(--f-body); color: var(--ink); cursor: pointer; text-align: left; }
+.gd-toc button:hover { border-color: var(--blue); }
+.gd-toc b { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--blue-soft); color: var(--blue-ink); font-size: 12px; flex: none; }
+.gd-part > h2 { display: flex; align-items: center; gap: 11px; }
+.gd-n { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: var(--blue); color: #fff; font: 650 16px/1 var(--f-display); flex: none; }
+.gd-lab { display: block; font: 650 11.5px/1 var(--f-display); letter-spacing: .1em; text-transform: uppercase; color: var(--blue-fg); margin: 0 0 10px; }
+.gd-hand { margin: 16px 0; padding: 16px 18px 6px; border-radius: var(--r-s); background: var(--paper-2); max-width: 80ch; box-shadow: inset 3px 0 0 var(--blue); }
+.gd-code { margin: 16px 0; max-width: 820px; }
+.gd-part .prose h3 { font-size: 17px; font-weight: 650; color: var(--ink); margin: 20px 0 8px; }
+.gd-part .prose code { font: 500 .92em var(--f-mono); padding: 1px 5px; border-radius: 5px; background: var(--paper-2); color: var(--ink); }
+.gd-part .prose .tblwrap { margin: 10px 0 14px; }
+.gd-part .prose .tblwrap td, .gd-part .prose .tblwrap th { font-family: var(--f-body); text-align: left; }
+.gd-part .prose .tblwrap td code { white-space: nowrap; }
+.gfig { margin: 14px 0 16px; max-width: 640px; }
+.gfig svg { width: 100%; height: auto; display: block; }
+.gfig figcaption { font-size: 13px; color: var(--mute); margin-top: 8px; line-height: 1.45; }
+.gf-box { fill: var(--paper); stroke: var(--line-2); stroke-width: 1.5; }
+.gf-acc { fill: var(--blue-soft); stroke: var(--blue); stroke-width: 1.5; }
+.gf-sol { fill: var(--blue); }
+.gf-soft { fill: var(--paper-2); }
+.gf-t { fill: var(--ink); font: 600 16px var(--f-display); text-anchor: middle; dominant-baseline: central; }
+.gf-t.l { text-anchor: start; }
+.gf-w { fill: #fff; }
+.gf-m { fill: var(--mute); font: 500 13px var(--f-body); text-anchor: middle; dominant-baseline: central; }
+.gf-a { fill: var(--blue-fg); }
+.gf-mono { font-family: var(--f-mono); }
+.gf-l { stroke: var(--ink-2); stroke-width: 1.5; fill: none; }
+.gf-la { stroke: var(--blue); stroke-width: 2; fill: none; }
+.gf-dash { stroke-dasharray: 5 4; }
+/* схема «какой инструмент брать» и плитки букв — HTML, чтобы переносились на телефоне */
+.gd-flow { display: grid; gap: 10px; max-width: 760px; margin: 14px 0; }
+.gd-q { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 12px; padding: 14px 16px; border-radius: var(--r-s); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
+.gd-q > span { grid-row: span 3; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--blue-soft); color: var(--blue-ink); font: 650 15px/1 var(--f-display); }
+.gd-q > b { color: var(--ink); font: 650 16px/1.35 var(--f-display); padding-top: 6px; }
+.gd-q > div { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; color: var(--ink-2); font-size: 14.5px; }
+.gd-q > div > i { font-style: normal; font: 650 11.5px/1 var(--f-display); text-transform: uppercase; letter-spacing: .06em; padding: 4px 8px; border-radius: 6px; background: var(--ok-soft); color: var(--ok); }
+.gd-q > div > i.no { background: var(--bad-soft); color: var(--bad); }
+.gd-q code { font: 600 13.5px var(--f-mono); color: var(--ink); background: var(--paper-2); padding: 2px 6px; border-radius: 6px; }
+.gd-tiles { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 10px 0; }
+.gd-tiles span { min-width: 36px; height: 40px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 9px; background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--line-2); font: 650 18px/1 var(--f-mono); color: var(--ink); }
+.gd-tiles span.a { background: var(--blue-soft); box-shadow: inset 0 0 0 1.5px var(--blue); color: var(--blue-ink); }
+.gd-tiles span.s { background: var(--blue); box-shadow: none; color: #fff; }
+.gd-tiles span.g { min-width: 30px; background: none; box-shadow: none; outline: 1.5px dashed var(--blue); outline-offset: -2px; color: var(--blue-fg); font-size: 13px; }
+.gd-tiles em { font-style: normal; color: var(--mute); font-size: 14px; padding: 0 4px; }
+.gd-tiles sub { font-size: 11px; }
+
 /* ── главная: раздел модулей и исправленная карточка «Группы» ── */
 .h-ix-grid { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: clamp(28px, 5vw, 64px); align-items: center; }
 .h-ix-demo { display: grid; gap: 14px; }
@@ -1875,7 +1998,7 @@ window.LOOP_PATH = 'M-80.0 288.4 L-75.7 292.0 L-71.2 295.3 L-66.6 298.5 L-61.9 3
    Здесь — краткие карточки 27 заданий для главной, поиска и учебника Python, без разборов.
    Их проверяет тест tests/test_content.py: при правке заданий в content/ege.js обновите и карточки. */
 window.BANK = [];
-window.BANK_TOTAL = 462;
+window.BANK_TOTAL = 562;
 window.EGE = [
   {"n": 1, "title": "Графы и весовые матрицы", "short": "Граф ↔ таблица", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Вручную", "lead": "Дана схема дорог (граф с буквами) и таблица расстояний (с номерами). Нумерации не связаны. Нужно сопоставить вершины и найти длину дороги, сумму длин или количество вершин с каким-то свойством."},
   {"n": 2, "title": "Таблицы истинности", "short": "Логические функции", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Python", "lead": "Дана логическая функция от 3–4 переменных и фрагмент её таблицы истинности, где часть клеток пуста, а столбцы не подписаны. Нужно определить, какой переменной соответствует каждый столбец."},
@@ -3581,6 +3704,7 @@ function stacklyApp() {
           ${t.changed ? `<div class="changed"><span class="newbadge">${t.isNew ? 'new' : '2027'}</span><span>${esc(t.changed)}</span></div>` : ''}
           <section class="block"><h2><span class="ball"></span>Типы заданий</h2><div class="types">${t.types.map(([a, b]) => `<div class="type"><h3>${esc(a)}</h3><p>${esc(b)}</p></div>`).join('')}</div></section>
           <section class="block"><h2><span class="ball"></span>Теория</h2><div class="prose">${t.theory}</div></section>
+          ${t.guide ? guideHTML(t) : ''}
           <section class="block"><h2><span class="ball"></span>Формулы и правила</h2><div class="formulas">${t.formulas.map(([f, d]) => `<div class="formula-row"><div class="f">${f}</div><div class="d">${esc(d)}</div></div>`).join('')}</div></section>
           <section class="block"><h2><span class="ball"></span>Ход решения</h2><ol class="steps">${t.steps.map(s => `<li><span>${s}</span></li>`).join('')}</ol></section>
           <section class="block"><h2><span class="ball"></span>Решение на Python</h2>${codeBlock(t.code)}</section>
@@ -4030,6 +4154,294 @@ function stacklyApp() {
     if (!planActive()) return toast('Интерактивные модули входят в тариф Про');
     const ta = $('#' + b.dataset.for), a = ta.selectionStart, lead = a && ta.value[a - 1] !== '\n' ? '\n\n' : '';
     ta.setRangeText(`${lead}${IX_TEMPLATES[b.dataset.mdix]}\n`, a, ta.selectionEnd, 'end'); ta.focus(); ePreview();
+  });
+
+  /* ═════════════ КОМБИНАТОРИКА: интерактивные модули разборов (задание 8) ═════════════
+     В разборе (content/ege.js, поле guide) модуль задаётся блоком ['ix', { kx: 'tree' | 'slots' | 'lex' | 'enum', … }].
+     Состояние модуля хранится в data-st. Набор текста и ползунки перерисовывают только .kx-out — фокус и перетаскивание
+     не сбиваются; кнопки, флажки и списки перерисовывают модуль целиком. */
+  const KX_VOW = 'АЕИОУЫЭЮЯ', KX_DIG = '0123456789ABCDEF';
+  // буквы без повторов; Ё → Е, чтобы порядок по кодам совпадал с алфавитом (как sorted в Python)
+  const kxClean = (s, max) => [...new Set(String(s).toUpperCase().replace(/Ё/g, 'Е').replace(/[^А-ЯA-Z]/g, ''))].slice(0, max).join('');
+  const kxSort = s => [...s].sort().join('');
+  const kxSub = n => String(n).replace(/\d/g, d => '₀₁₂₃₄₅₆₇₈₉'[d]);
+  const kxNum = n => n.toLocaleString('ru-RU');
+  const kxSeg = (f, cur, opts) => `<div class="kx-seg" role="group">${opts.map(([v, l]) => `<button type="button" class="${v === cur ? 'on' : ''}" aria-pressed="${v === cur}" data-kxv="${f}:${v}">${l}</button>`).join('')}</div>`;
+  const kxFld = (label, input) => `<label class="kx-fld"><span>${label}</span>${input}</label>`;
+  const kxText = (f, v, w, ph) => `<input type="text" data-f="${f}" value="${esc(v)}" style="width:${w}ch" spellcheck="false" autocomplete="off"${ph ? ` placeholder="${esc(ph)}"` : ''}>`;
+  const kxRange = (f, v, lo, hi) => `<input type="range" data-f="${f}" min="${lo}" max="${hi}" value="${v}">`;
+  const kxSelect = (f, v, opts) => `<select data-f="${f}">${opts.map(([o, l]) => `<option value="${esc(o)}"${String(o) === String(v) ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+  // слово под номером i (с нуля) в алфавитном списке слов длины k — это запись i в системе с основанием |a|
+  const kxWord = (a, k, i) => { let s = ''; for (let j = 0; j < k; j++) { s = a[i % a.length] + s; i = Math.floor(i / a.length); } return s; };
+  const KX = {};
+
+  // дерево вариантов: каждая буква — ветка, листья — все слова по алфавиту
+  KX.tree = {
+    tag: 'Дерево вариантов',
+    init: c => ({ n: c.n || 3, k: c.k || 2, pick: -1 }),
+    ctl: () => '',
+    click(st, f, [v]) {
+      if (f === 'pick') st.pick = st.pick === +v ? -1 : +v;
+      else { st[f] = +v; st.pick = -1; }
+    },
+    out(st) {
+      const a = 'АБВ'.slice(0, st.n), k = st.k, L = st.n ** k, W = 640, top = 22, gap = 76, many = L > 9;
+      const H = top + k * gap + (many ? 64 : 52);
+      const x = (d, i) => +((i + .5) * W / st.n ** d).toFixed(1), y = d => top + d * gap;
+      const path = new Set();
+      if (st.pick >= 0) for (let d = k, i = st.pick; d >= 0; d--, i = Math.floor(i / st.n)) path.add(d + ':' + i);
+      let edges = '', nodes = `<circle class="root" cx="${x(0, 0)}" cy="${y(0)}" r="5"/>`, leaves = '';
+      for (let d = 0; d < k; d++) for (let i = 0; i < st.n ** d; i++) for (let j = 0; j < st.n; j++) {
+        const c = i * st.n + j, on = path.has(d + ':' + i) && path.has(d + 1 + ':' + c);
+        edges += `<line class="e${on ? ' on' : ''}" x1="${x(d, i)}" y1="${y(d)}" x2="${x(d + 1, c)}" y2="${y(d + 1)}"/>`;
+      }
+      for (let d = 1; d < k; d++) for (let i = 0; i < st.n ** d; i++)
+        nodes += `<g class="nd${path.has(d + ':' + i) ? ' on' : ''}"><circle cx="${x(d, i)}" cy="${y(d)}" r="13"/><text x="${x(d, i)}" y="${y(d)}">${a[i % st.n]}</text></g>`;
+      const r = many ? 9 : 13, cw = W / L;
+      for (let i = 0; i < L; i++) {
+        const cx = x(k, i), cy = y(k), w = kxWord(a, k, i);
+        leaves += `<g class="nd leaf${path.has(k + ':' + i) ? ' on' : ''}" data-kxv="pick:${i}" role="button" aria-label="Слово ${w}, номер ${i + 1}">
+          <rect class="hit" x="${(cx - cw / 2).toFixed(1)}" y="${cy - r - 4}" width="${cw.toFixed(1)}" height="${H - cy + r + 4}"/>
+          <circle cx="${cx}" cy="${cy}" r="${r}"/><text x="${cx}" y="${cy}"${many ? ' class="sm"' : ''}>${a[i % st.n]}</text>
+          ${many ? `<text class="w" x="${cx}" y="${cy + 16}" transform="rotate(90 ${cx} ${cy + 16})" style="text-anchor:start">${w}</text>`
+                 : `<text class="w" x="${cx}" y="${cy + 26}">${w}</text><text class="num" x="${cx}" y="${cy + 42}">№${i + 1}</text>`}</g>`;
+      }
+      const lv = Array.from({ length: k }, (_, d) => `<span>${d + 1}-я буква: ${st.n}</span>`).join('<i>×</i>');
+      let say = `<p class="kx-say">Нажмите на лист — увидите слово, его номер и связь с системой счисления.</p>`;
+      if (st.pick >= 0) {
+        const w = kxWord(a, k, st.pick), digs = [...w].map(ch => a.indexOf(ch)).join('');
+        say = `<p class="kx-say">Слово <b>${w}</b> стоит под номером <b>${st.pick + 1}</b>. Замените буквы цифрами (${[...a].map((ch, j) => `${ch} = ${j}`).join(', ')}):
+          ${digs}${kxSub(st.n)} = ${st.pick}, а нумерация в списке начинается с единицы — ${st.pick + 1}.</p>`;
+      }
+      return `<div class="kx-row">${kxSeg('n', st.n, [[2, '2 буквы'], [3, '3 буквы']])}${kxSeg('k', st.k, [[1, 'длина 1'], [2, 'длина 2'], [3, 'длина 3']])}</div>
+        <svg class="kx-svg kx-tree" viewBox="0 0 ${W} ${H}" role="img" aria-label="Дерево всех слов длины ${k} из букв ${a}">${edges}${nodes}${leaves}</svg>
+        <div class="kx-levels">${lv}<i>=</i><b>${st.n}<sup>${k}</sup> = ${L} ${plural(L, 'слово', 'слова', 'слов')}</b></div>${say}`;
+    },
+  };
+
+  // ячейки: на каждом месте — свой набор букв, число слов — произведение размеров наборов
+  KX.slots = {
+    tag: 'Правило произведения',
+    init(c) { const a = kxSort(kxClean(c.alph || 'КОТЛА', 8)), k = c.k || 5; return { src: c.alph || a, a, k, allow: Array(k).fill(a) }; },
+    ctl: st => kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина слова: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 7)),
+    input(st, f, v) {
+      if (f === 'src') { st.src = v; const a = kxSort(kxClean(v, 8)); if (a && a !== st.a) { st.a = a; st.allow = Array(st.k).fill(a); } }
+      if (f === 'k') { st.k = +v; st.allow = Array.from({ length: st.k }, (_, i) => st.allow[i] ?? st.a); }
+    },
+    click(st, f, [v, ch]) {
+      const vow = [...st.a].filter(c => KX_VOW.includes(c)).join(''), con = [...st.a].filter(c => !KX_VOW.includes(c)).join('');
+      if (f === 'tog') { const s = st.allow[+v]; st.allow[+v] = s.includes(ch) ? s.replace(ch, '') : kxSort(s + ch); }
+      if (f === 'pre') {
+        st.allow = Array(st.k).fill(st.a);
+        const last = st.k - 1;
+        if (v === 'v0' && vow) st.allow[0] = vow;
+        if (v === 'c0' && con) st.allow[0] = con;
+        if (v === 'clast' && con) st.allow[last] = con;
+        if (v === 'v0clast' && vow && con) { st.allow[0] = vow; st.allow[last] = con; }
+      }
+    },
+    out(st) {
+      const cnt = st.allow.map(s => s.length), total = cnt.reduce((p, c) => p * c, 1);
+      const slots = st.allow.map((s, i) => `<div class="kx-slot"><span>${i + 1}-е место</span><div class="kx-chips">${[...st.a].map(ch =>
+        `<button type="button" class="kx-chip${s.includes(ch) ? ' on' : ''}" aria-pressed="${s.includes(ch)}" data-kxv="tog:${i}:${ch}">${ch}</button>`).join('')}</div><b>${s.length}</b></div>`).join('<i class="kx-x">×</i>');
+      return `<div class="kx-btns"><button type="button" data-kxv="pre:all">Любые буквы</button><button type="button" data-kxv="pre:v0">Начинается с гласной</button>
+          <button type="button" data-kxv="pre:c0">Начинается с согласной</button><button type="button" data-kxv="pre:clast">Кончается согласной</button><button type="button" data-kxv="pre:v0clast">Гласная в начале, согласная в конце</button></div>
+        <div class="kx-slots">${slots}</div>
+        <div class="kx-formula">${cnt.join(' · ')} = <b>${kxNum(total)}</b> ${plural(total, 'слово', 'слова', 'слов')}</div>
+        <p class="kx-say">Нажимайте на буквы, чтобы убрать их с места или вернуть. Выбор на каждом месте не зависит от остальных — поэтому числа перемножаются.</p>`;
+    },
+  };
+
+  // словарь: номер слова ↔ запись числа (номер − 1) в системе с основанием «число букв»
+  KX.lex = {
+    tag: 'Словарь: номер ↔ слово',
+    init(c) { const a = kxSort(kxClean(c.alph || 'ДЕКОР', 8)); return { src: c.alph || a, a, k: c.k || 4, N: c.N || 1, w: c.w || '', bad: '' }; },
+    ctl: st => kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 6))
+      + kxFld('Номер', `<input type="number" data-f="N" min="1" max="${st.a.length ** st.k}" value="${st.N}" style="width:10ch">`)
+      + kxFld('или слово', kxText('w', st.w, 9, kxWord(st.a, st.k, 0))),
+    input(st, f, v) {
+      if (f === 'src') { st.src = v; const a = kxSort(kxClean(v, 8)); if (a.length >= 2) st.a = a; }
+      if (f === 'k') st.k = +v;
+      if (f === 'N') st.N = Math.round(+v) || 1;
+      if (f === 'w') {
+        st.w = v; const w = String(v).toUpperCase().replace(/Ё/g, 'Е').trim();
+        st.bad = '';
+        if (w && (w.length !== st.k || [...w].some(ch => !st.a.includes(ch)))) st.bad = `В списке только слова из ${st.k} ${plural(st.k, 'буквы', 'букв', 'букв')} ${[...st.a].join(', ')}`;
+        else if (w) st.N = [...w].reduce((s, ch) => s * st.a.length + st.a.indexOf(ch), 0) + 1;
+      }
+      st.N = Math.min(Math.max(1, st.N), st.a.length ** st.k);
+    },
+    sync(st, fig, el) {
+      const n = $('[data-f="N"]', fig);
+      if (n !== el) n.value = st.N;
+      n.max = st.a.length ** st.k;
+    },
+    out(st) {
+      const n = st.a.length, k = st.k, i = st.N - 1, w = kxWord(st.a, k, i), total = n ** k;
+      const digs = [...w].map(ch => st.a.indexOf(ch));
+      const pw = p => p === 0 ? '' : p === 1 ? `·${n}` : `·${n}<sup>${p}</sup>`;
+      const sum = digs.map((d, j) => d + pw(k - 1 - j)).join(' + ');
+      const cells = digs.map((d, j) => `<div class="kx-cell"><small>${n}<sup>${k - 1 - j}</sup></small><b>${d}</b><span>${w[j]}</span></div>`).join('');
+      const from = Math.max(1, Math.min(st.N - 3, total - 6)), to = Math.min(total, from + 6);
+      const rows = []; for (let j = from; j <= to; j++) rows.push(`<li class="${j === st.N ? 'on' : ''}"><i>${j}</i><span>${kxWord(st.a, k, j - 1)}</span></li>`);
+      const f0 = st.a.indexOf(w[0]);
+      return `<div class="kx-map">${[...st.a].map((ch, j) => `<span>${ch} = ${j}</span>`).join('')}</div>
+        ${st.bad ? `<p class="ix-err">${esc(st.bad)}</p>` : ''}
+        <div class="kx-lexgrid"><div>
+          <div class="kx-conv" style="--n:${k}">${cells}</div>
+          <p class="kx-say">Слово <b>${w}</b> — номер <b>${kxNum(st.N)}</b> из ${kxNum(total)}.<br>Номер − 1 = ${kxNum(i)} = ${sum} = ${digs.join('')}${kxSub(n)}.</p>
+          <p class="kx-say">Слова на букву ${w[0]} начинаются с номера ${f0}${pw(k - 1)} + 1 = ${kxNum(f0 * n ** (k - 1) + 1)}.</p></div>
+          <ol class="kx-list" aria-label="Фрагмент списка">${rows.join('')}</ol></div>`;
+    },
+  };
+
+  // лаборатория: выбираем объекты и условия, браузер перебирает варианты и пишет такой же перебор на Python
+  const KX_CONDS = { cnt: { on: 0, x: '', op: '==', v: 1 }, first: { on: 0, neg: 0, x: '' }, adj: { on: 0 }, same: { on: 0 }, dist: { on: 0 }, after: { on: 0, x: '' } };
+  function kxEnumData(st) {
+    if (st.mode === 'nums') {
+      const d = KX_DIG.slice(0, st.b);
+      return { units: d, sym: d, sp: [...d].filter(c => parseInt(c, 16) % 2).join(''), u: 'цифра', us: 'цифры', spn: ['нечётные цифры', 'нечётной цифры'] };
+    }
+    if (st.mode === 'perm') {
+      const w = String(st.word).toUpperCase().replace(/Ё/g, 'Е').replace(/[^А-ЯA-Z]/g, '').slice(0, 9) || 'А';
+      const sym = kxSort([...new Set(w)].join(''));
+      return { word: w, sym, sp: [...sym].filter(c => KX_VOW.includes(c)).join(''), u: 'буква', us: 'буквы', spn: ['гласные', 'гласной'] };
+    }
+    const a = kxSort(kxClean(st.src, 8)) || 'А';
+    return { units: a, sym: a, sp: [...a].filter(c => KX_VOW.includes(c)).join(''), u: 'буква', us: 'буквы', spn: ['гласные', 'гласной'] };
+  }
+  KX.enum = {
+    tag: 'Лаборатория перебора',
+    init(c) {
+      const st = { mode: c.mode || 'words', src: c.alph || 'КОТЛА', word: c.word || 'КОЛОКОЛ', b: c.b || 8, k: c.k || 5, c: JSON.parse(JSON.stringify(KX_CONDS)) };
+      Object.entries(c.c || {}).forEach(([key, v]) => Object.assign(st.c[key], v));
+      KX.enum.fix(st); return st;
+    },
+    fix(st) {
+      const D = kxEnumData(st), c = st.c;
+      ['cnt', 'first', 'after'].forEach(key => { if (!D.sym.includes(c[key].x)) c[key].x = key === 'after' && D.sym.includes('Й') ? 'Й' : D.sym[0]; });
+      const len = st.mode === 'perm' ? D.word.length : st.k;
+      c.cnt.v = Math.min(c.cnt.v, len);
+    },
+    ctl(st) {
+      const D = kxEnumData(st), c = st.c, sym = [...D.sym].map(x => [x, x]);
+      const box = (key, body) => `<label class="kx-cond${c[key].on ? ' on' : ''}"><input type="checkbox" data-f="c.${key}.on"${c[key].on ? ' checked' : ''}>${body}</label>`;
+      const len = st.mode === 'perm' ? D.word.length : st.k;
+      const head = st.mode === 'words' ? kxFld('Буквы', kxText('src', st.src, 11)) + kxFld(`Длина: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 7))
+        : st.mode === 'perm' ? kxFld('Слово', kxText('word', st.word, 12))
+        : kxFld('Основание', kxSelect('b', st.b, [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 16].map(b => [b, b]))) + kxFld(`Цифр в числе: <b data-show="k">${st.k}</b>`, kxRange('k', st.k, 1, 7));
+      return `${kxFld('Что перебираем', kxSelect('mode', st.mode, [['words', 'Слова: буквы можно повторять'], ['perm', 'Перестановки букв слова'], ['nums', 'Числа в системе счисления']]))}${head}
+        <div class="kx-conds">
+          ${box('cnt', `<span>${D.u}</span>${kxSelect('c.cnt.x', c.cnt.x, sym)}<span>встречается</span>${kxSelect('c.cnt.op', c.cnt.op, [['==', 'ровно'], ['<=', 'не более'], ['>=', 'не менее']])}${kxSelect('c.cnt.v', c.cnt.v, Array.from({ length: len + 1 }, (_, i) => [i, i]))}<span>раз</span>`)}
+          ${box('first', `<span>${st.mode === 'nums' ? 'запись числа' : 'слово'}</span>${kxSelect('c.first.neg', c.first.neg, [[0, 'начинается'], [1, 'не начинается']])}<span>с</span>${kxSelect('c.first.x', c.first.x, sym)}`)}
+          ${box('adj', `<span>никакие две ${D.spn[0]} не стоят рядом</span>`)}
+          ${box('same', `<span>никакие две одинаковые ${D.us} не стоят рядом</span>`)}
+          ${st.mode === 'perm' ? '' : box('dist', `<span>все ${D.us} различны</span>`)}
+          ${box('after', `<span>${D.u}</span>${kxSelect('c.after.x', c.after.x, sym)}<span>не стоит сразу после ${D.spn[1]}</span>`)}
+        </div>`;
+    },
+    input(st, f, v, type) {
+      const p = f.split('.');
+      if (p[0] === 'c') st.c[p[1]][p[2]] = p[2] === 'x' || p[2] === 'op' ? v : +v;
+      else st[f] = f === 'b' || f === 'k' ? +v : v;
+      if (f === 'mode' && v === 'nums' && st.k > 6) st.k = 5;
+      KX.enum.fix(st);
+    },
+    test(st, D) {
+      const c = st.c, sp = D.sp, t = [];
+      if (c.cnt.on) t.push(s => { let n = 0; for (const ch of s) n += ch === c.cnt.x; return c.cnt.op === '==' ? n === c.cnt.v : c.cnt.op === '<=' ? n <= c.cnt.v : n >= c.cnt.v; });
+      if (c.first.on) t.push(s => (s[0] === c.first.x) !== !!c.first.neg);
+      if (c.adj.on) t.push(s => { for (let i = 0; i + 1 < s.length; i++) if (sp.includes(s[i]) && sp.includes(s[i + 1])) return false; return true; });
+      if (c.same.on) t.push(s => { for (let i = 0; i + 1 < s.length; i++) if (s[i] === s[i + 1]) return false; return true; });
+      if (c.dist.on && st.mode !== 'perm') t.push(s => new Set(s).size === s.length);
+      if (c.after.on) t.push(s => { for (let i = 0; i + 1 < s.length; i++) if (sp.includes(s[i]) && s[i + 1] === c.after.x) return false; return true; });
+      return s => t.every(f => f(s));
+    },
+    // перебор в алфавитном порядке (как в Python): cb(строка, номер в полном списке)
+    each(st, D, cb) {
+      if (st.mode === 'perm') {
+        const a = [...D.word].sort();
+        for (let num = 1; ; num++) {
+          cb(a.join(''), num);
+          let i = a.length - 2; while (i >= 0 && a[i] >= a[i + 1]) i--;
+          if (i < 0) return;
+          let j = a.length - 1; while (a[j] <= a[i]) j--;
+          [a[i], a[j]] = [a[j], a[i]];
+          for (let l = i + 1, r = a.length - 1; l < r; l++, r--) [a[l], a[r]] = [a[r], a[l]];
+        }
+      }
+      const n = D.units.length, lo = st.mode === 'nums' ? n ** (st.k - 1) : 0, hi = n ** st.k;
+      for (let i = lo; i < hi; i++) cb(kxWord(D.units, st.k, i), i - lo + 1);
+    },
+    code(st, D) {
+      const c = st.c, sp = D.sp, cs = [];
+      if (c.cnt.on) cs.push(`s.count('${c.cnt.x}') ${c.cnt.op} ${c.cnt.v}`);
+      if (c.first.on) cs.push(`s[0] ${c.first.neg ? '!=' : '=='} '${c.first.x}'`);
+      if (c.adj.on) cs.push(`not any(s[i] in '${sp}' and s[i + 1] in '${sp}' for i in range(len(s) - 1))`);
+      if (c.same.on) cs.push('all(s[i] != s[i + 1] for i in range(len(s) - 1))');
+      if (c.dist.on && st.mode !== 'perm') cs.push('len(set(s)) == len(s)');
+      if (c.after.on) cs.push(`not any(s[i] in '${sp}' and s[i + 1] == '${c.after.x}' for i in range(len(s) - 1))`);
+      const rep = st.mode === 'perm' && new Set(D.word).size < D.word.length;
+      const imp = st.mode === 'perm' ? 'permutations' : 'product';
+      const loop = st.mode === 'perm' ? (rep ? `set(permutations('${D.word}'))` : `permutations('${D.word}')`)
+        : `product('${D.units}', repeat=${st.k})`;
+      return `from itertools import ${imp}\n\ncnt = 0\nfor w in ${loop}:${rep ? '  # set: одинаковые буквы дают одинаковые слова' : ''}\n    s = ''.join(w)\n`
+        + (st.mode === 'nums' ? "    if s[0] == '0':  # запись числа не начинается с нуля\n        continue\n" : '')
+        + (cs.length ? `    if ${cs.length > 1 ? '(' + cs.join('\n            and ') + ')' : cs[0]}:\n        cnt += 1\n` : '    cnt += 1\n') + 'print(cnt)';
+    },
+    out(st) {
+      const D = kxEnumData(st), total = st.mode === 'perm' ? null : st.mode === 'nums' ? (D.units.length - 1) * D.units.length ** (st.k - 1) : D.units.length ** st.k;
+      if (total !== null && total > 400000) return `<p class="ix-err">Вариантов ${kxNum(total)} — для браузера многовато. Уменьшите длину или число букв: Python справится, но здесь мы считаем прямо на странице.</p>`;
+      const ok = KX.enum.test(st, D), shown = [];
+      let all = 0, good = 0;
+      KX.enum.each(st, D, (s, num) => { all++; if (ok(s)) { good++; if (shown.length < 30) shown.push([num, s]); } });
+      return `<div class="kx-res"><span class="kx-big">${kxNum(good)}</span><span>${plural(good, 'вариант подходит', 'варианта подходят', 'вариантов подходят')} из ${kxNum(all)}</span></div>
+        ${shown.length ? `<div class="kx-words">${shown.map(([n, s]) => `<span><i>${n}</i>${s}</span>`).join('')}${good > shown.length ? '<span class="more">…</span>' : ''}</div>
+        <p class="kx-say">Серые числа — номера в полном алфавитном списке. Первое подходящее — №${shown[0][0]}.</p>` : '<p class="kx-say">Ни один вариант не подходит.</p>'}
+        ${codeBlock([{ t: 'Этот же перебор на Python', c: KX.enum.code(st, D) }])}`;
+    },
+  };
+
+  function kxHTML(cfg) {
+    const K = KX[cfg.kx]; if (!K) return '';
+    const st = K.init(cfg);
+    return `<figure class="ix kx kx-${cfg.kx}" data-kx="${cfg.kx}" data-st="${esc(JSON.stringify(st))}">
+      <div class="ix-head"><span class="ix-tag">${K.tag}</span>${cfg.title ? `<span class="muted">${esc(cfg.title)}</span>` : ''}</div>
+      <div class="kx-ctl">${K.ctl(st)}</div><div class="kx-out" aria-live="polite">${K.out(st)}</div></figure>`;
+  }
+  function kxEvent(e) {
+    let el = e.target;
+    if (e.type === 'click') { el = el.closest && el.closest('.kx [data-kxv]'); if (!el) return; }
+    else if (!el.dataset || !el.dataset.f || !el.closest('.kx')) return;
+    const typed = /^(text|range|number)$/.test(el.type);
+    if (e.type === 'change' && el.type !== 'text') return;          // флажки и списки уже обработаны событием input
+    const fig = el.closest('.kx'), K = KX[fig.dataset.kx], st = JSON.parse(fig.dataset.st);
+    if (e.type === 'click') { const [f, ...v] = el.dataset.kxv.split(':'); K.click(st, f, v); }
+    else K.input(st, el.dataset.f, el.type === 'checkbox' ? (el.checked ? 1 : 0) : el.value, e.type);
+    fig.dataset.st = JSON.stringify(st);
+    // набор текста — только результат; после ввода (change) — ещё и поля: в списках могли смениться буквы
+    if (e.type === 'change') { $('.kx-ctl', fig).innerHTML = K.ctl(st); return; }
+    if (!typed) $('.kx-ctl', fig).innerHTML = K.ctl(st);
+    $('.kx-out', fig).innerHTML = K.out(st);
+    if (typed) { $$('[data-show]', fig).forEach(n => { n.textContent = st[n.dataset.show]; }); if (K.sync) K.sync(st, fig, el); }
+  }
+  ['input', 'change', 'click'].forEach(t => document.addEventListener(t, kxEvent));
+
+  // подробный разбор задания (поле guide): части с текстом, рисунками, решением руками, кодом и модулями
+  const gdBlock = ([k, v]) => k === 'p' ? `<div class="prose">${v}</div>`
+    : k === 'hand' ? `<div class="gd-hand"><span class="gd-lab">Руками</span><div class="prose">${v}</div></div>`
+    : k === 'code' ? `<div class="gd-code"><span class="gd-lab">Кодом</span>${codeBlock(v)}</div>`
+    : k === 'ix' ? kxHTML(v) : k === 'cards' ? ixCards(v) : '';
+  function guideHTML(t) {
+    const id = i => `gd-${t.n}-${i + 1}`;
+    return `<section class="block gd"><h2><span class="ball"></span>Подробный разбор</h2>
+        <nav class="gd-toc" aria-label="Части разбора">${t.guide.map((p, i) => `<button type="button" data-gdgo="${id(i)}"><b>${i + 1}</b>${esc(p.h)}</button>`).join('')}</nav></section>
+      ${t.guide.map((p, i) => `<section class="block gd-part" id="${id(i)}"><h2><span class="gd-n">${i + 1}</span>${esc(p.h)}</h2>${p.b.map(gdBlock).join('')}</section>`).join('')}`;
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-gdgo]'); if (!b) return;
+    const el = document.getElementById(b.dataset.gdgo); if (!el) return;
+    window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - $('.top').offsetHeight - 16, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   });
 
   // встроенный HTML методички и банка → разметка (только для своего, доверенного содержимого)
