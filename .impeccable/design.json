@@ -1,0 +1,749 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-26T21:43:56.839Z",
+  "title": "Design System: stackly",
+  "extensions": {
+    "colorMeta": {
+      "page-ground": {
+        "role": "neutral",
+        "displayName": "Page Ground",
+        "canonical": "#FAFBFD",
+        "dark": "#101217",
+        "oklch": "oklch(98.8% 0.003 264.5)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#232425",
+          "#3F4041",
+          "#5D5E5F",
+          "#7C7D7F",
+          "#9D9EA0",
+          "#C3C4C6",
+          "#EEEEEF"
+        ]
+      },
+      "grid-square": {
+        "role": "neutral",
+        "displayName": "Grid Square",
+        "canonical": "rgb(64 104 168 / .075)",
+        "dark": "rgb(140 170 230 / .06)",
+        "tonalRamp": [
+          "#000922",
+          "#001F58",
+          "#173D79",
+          "#355D9C",
+          "#547DBF",
+          "#749FE3",
+          "#99C5FF",
+          "#D9F0FF"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#FFFFFF",
+        "dark": "#171A21",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#242424",
+          "#404040",
+          "#5D5D5D",
+          "#7D7D7D",
+          "#9E9E9E",
+          "#C4C4C4",
+          "#EEEEEE"
+        ]
+      },
+      "paper-2": {
+        "role": "neutral",
+        "displayName": "Paper Shade",
+        "canonical": "#F3F5F9",
+        "dark": "#1D2129",
+        "oklch": "oklch(97.0% 0.006 264.5)",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#232427",
+          "#3E4043",
+          "#5C5E61",
+          "#7B7D81",
+          "#9D9EA2",
+          "#C2C4C8",
+          "#EDEEF0"
+        ]
+      },
+      "sunken": {
+        "role": "neutral",
+        "displayName": "Sunken",
+        "canonical": "#E9EDF3",
+        "dark": "#242933",
+        "oklch": "oklch(94.5% 0.009 258.3)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#212429",
+          "#3D4045",
+          "#5A5E63",
+          "#7A7D83",
+          "#9B9FA4",
+          "#C0C4CA",
+          "#EDEFF2"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Graphite",
+        "canonical": "#141820",
+        "dark": "#E8EBF1",
+        "oklch": "oklch(20.9% 0.017 264.1)",
+        "tonalRamp": [
+          "#090B0F",
+          "#20242D",
+          "#3B4049",
+          "#595E68",
+          "#787D88",
+          "#999FA9",
+          "#BEC4D0",
+          "#EBEEF4"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Graphite Secondary",
+        "canonical": "#3C4351",
+        "dark": "#B9C0CC",
+        "oklch": "oklch(38.2% 0.026 264.2)",
+        "tonalRamp": [
+          "#080B11",
+          "#1E2431",
+          "#39404E",
+          "#565E6D",
+          "#767D8D",
+          "#969FAF",
+          "#BCC4D5",
+          "#EAEFF7"
+        ]
+      },
+      "mute": {
+        "role": "neutral",
+        "displayName": "Pencil Grey",
+        "canonical": "#626B79",
+        "dark": "#8E96A4",
+        "oklch": "oklch(52.5% 0.025 259.2)",
+        "tonalRamp": [
+          "#080B10",
+          "#1D2430",
+          "#38404D",
+          "#555E6C",
+          "#757E8C",
+          "#959FAE",
+          "#BBC5D5",
+          "#EAEFF7"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#E1E6EE",
+        "dark": "#292E38",
+        "oklch": "oklch(92.3% 0.012 259.8)",
+        "tonalRamp": [
+          "#0A0B0E",
+          "#21242A",
+          "#3C4046",
+          "#5A5E65",
+          "#797E85",
+          "#9A9FA6",
+          "#C0C4CC",
+          "#ECEFF3"
+        ]
+      },
+      "line-2": {
+        "role": "neutral",
+        "displayName": "Hairline Strong",
+        "canonical": "#C8D0DC",
+        "dark": "#3B414D",
+        "oklch": "oklch(85.5% 0.019 258.4)",
+        "tonalRamp": [
+          "#090B0F",
+          "#1E242D",
+          "#3A404A",
+          "#575E68",
+          "#777E89",
+          "#979FAA",
+          "#BDC5D1",
+          "#EBEFF5"
+        ]
+      },
+      "margin-red": {
+        "role": "secondary",
+        "displayName": "Margin Red",
+        "canonical": "#E5544C",
+        "dark": "#E8635B",
+        "oklch": "oklch(63.9% 0.182 26.7)",
+        "tonalRamp": [
+          "#260000",
+          "#610000",
+          "#870000",
+          "#AD181C",
+          "#D4443E",
+          "#FB685E",
+          "#FF8F83",
+          "#FFD8CE"
+        ]
+      },
+      "ballpoint-blue": {
+        "role": "primary",
+        "displayName": "Ballpoint Blue",
+        "canonical": "#2346D8",
+        "dark": "#4466F0",
+        "oklch": "oklch(47.6% 0.225 266.3)",
+        "tonalRamp": [
+          "#020039",
+          "#0F008E",
+          "#101CB3",
+          "#2447D9",
+          "#3F6DFF",
+          "#5D91FF",
+          "#80B9FF",
+          "#CCEDFF"
+        ]
+      },
+      "ballpoint-blue-hover": {
+        "role": "primary",
+        "displayName": "Ballpoint Blue Pressed",
+        "canonical": "#1A37B8",
+        "dark": "#5C7BFF",
+        "oklch": "oklch(41.6% 0.204 266.3)",
+        "tonalRamp": [
+          "#010035",
+          "#0A0084",
+          "#1126A8",
+          "#294DCE",
+          "#4570F4",
+          "#6394FF",
+          "#87BCFF",
+          "#CFEEFF"
+        ]
+      },
+      "on-blue": {
+        "role": "primary",
+        "displayName": "On Blue",
+        "canonical": "#FFFFFF",
+        "dark": "#FFFFFF",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#242424",
+          "#404040",
+          "#5D5D5D",
+          "#7D7D7D",
+          "#9E9E9E",
+          "#C4C4C4",
+          "#EEEEEE"
+        ]
+      },
+      "ballpoint-blue-text": {
+        "role": "primary",
+        "displayName": "Ballpoint Blue Text",
+        "canonical": "#2346D8",
+        "dark": "#93A8FF",
+        "oklch": "oklch(47.6% 0.225 266.3)",
+        "tonalRamp": [
+          "#020039",
+          "#0F008E",
+          "#101CB3",
+          "#2447D9",
+          "#3F6DFF",
+          "#5D91FF",
+          "#80B9FF",
+          "#CCEDFF"
+        ]
+      },
+      "ballpoint-blue-ink": {
+        "role": "primary",
+        "displayName": "Ballpoint Blue Ink",
+        "canonical": "#1A32A3",
+        "dark": "#BACAFF",
+        "oklch": "oklch(38.6% 0.183 267.0)",
+        "tonalRamp": [
+          "#010231",
+          "#09007A",
+          "#172D9E",
+          "#3050C3",
+          "#4C73E8",
+          "#6B96FF",
+          "#8FBDFF",
+          "#D3EEFF"
+        ]
+      },
+      "ballpoint-blue-soft": {
+        "role": "primary",
+        "displayName": "Ballpoint Blue Wash",
+        "canonical": "#E9EEFD",
+        "dark": "#1C2546",
+        "oklch": "oklch(95.0% 0.021 271.2)",
+        "tonalRamp": [
+          "#090B10",
+          "#20242E",
+          "#3C3F4B",
+          "#595D6A",
+          "#787D8A",
+          "#999EAC",
+          "#BFC4D2",
+          "#ECEEF6"
+        ]
+      },
+      "ballpoint-blue-mid": {
+        "role": "primary",
+        "displayName": "Ballpoint Blue Mid",
+        "canonical": "#B7C5F5",
+        "dark": "#34447F",
+        "oklch": "oklch(82.9% 0.069 272.1)",
+        "tonalRamp": [
+          "#070A1A",
+          "#192045",
+          "#333D64",
+          "#505B85",
+          "#6F7BA7",
+          "#8F9CCA",
+          "#B4C2F2",
+          "#E6EEFF"
+        ]
+      },
+      "highlighter": {
+        "role": "tertiary",
+        "displayName": "Highlighter Yellow (builder decision, unconfirmed)",
+        "canonical": "#FFEB8A",
+        "dark": "#5A4C12",
+        "oklch": "oklch(93.6% 0.120 98.0)",
+        "tonalRamp": [
+          "#120A00",
+          "#342100",
+          "#513E00",
+          "#705D00",
+          "#907D09",
+          "#B29F3C",
+          "#D9C564",
+          "#F9F0C2"
+        ]
+      },
+      "highlighter-soft": {
+        "role": "tertiary",
+        "displayName": "Highlighter Wash",
+        "canonical": "#FFF8D6",
+        "dark": "#2B2611",
+        "oklch": "oklch(97.6% 0.045 97.5)",
+        "tonalRamp": [
+          "#0E0B02",
+          "#2A2407",
+          "#464024",
+          "#645E41",
+          "#847E5F",
+          "#A69F7F",
+          "#CCC5A4",
+          "#F2EFDE"
+        ]
+      },
+      "on-highlighter": {
+        "role": "tertiary",
+        "displayName": "On Highlighter",
+        "canonical": "#3F3200",
+        "dark": "#FFE58A",
+        "oklch": "oklch(32.2% 0.066 92.9)",
+        "tonalRamp": [
+          "#100B00",
+          "#2F2200",
+          "#4C3F0F",
+          "#6A5D30",
+          "#8B7D4F",
+          "#AC9E6F",
+          "#D3C493",
+          "#F6EED6"
+        ]
+      },
+      "tick-green": {
+        "role": "tertiary",
+        "displayName": "Tick Green",
+        "canonical": "#157A4B",
+        "dark": "#4CC98D",
+        "oklch": "oklch(51.3% 0.115 156.8)",
+        "tonalRamp": [
+          "#001203",
+          "#003208",
+          "#005025",
+          "#007042",
+          "#359161",
+          "#5AB481",
+          "#81DBA6",
+          "#D0FBDF"
+        ]
+      },
+      "tick-green-soft": {
+        "role": "tertiary",
+        "displayName": "Tick Green Wash",
+        "canonical": "#E4F3EB",
+        "dark": "#0F2A1D",
+        "oklch": "oklch(95.1% 0.019 162.9)",
+        "tonalRamp": [
+          "#080C0A",
+          "#1C2721",
+          "#37433D",
+          "#54615A",
+          "#74817A",
+          "#94A29B",
+          "#BAC8C0",
+          "#E9F1ED"
+        ]
+      },
+      "wrong-red": {
+        "role": "secondary",
+        "displayName": "Wrong Red",
+        "canonical": "#C52E28",
+        "dark": "#FF7C72",
+        "oklch": "oklch(54.1% 0.188 27.8)",
+        "tonalRamp": [
+          "#270000",
+          "#630000",
+          "#890000",
+          "#AF1013",
+          "#D64037",
+          "#FE6658",
+          "#FF8D7D",
+          "#FFD7CC"
+        ]
+      },
+      "wrong-red-soft": {
+        "role": "secondary",
+        "displayName": "Wrong Red Wash",
+        "canonical": "#FCEBEA",
+        "dark": "#3A1715",
+        "oklch": "oklch(95.3% 0.019 21.6)",
+        "tonalRamp": [
+          "#0F0A09",
+          "#2D2120",
+          "#493C3B",
+          "#685A59",
+          "#887978",
+          "#AA9A99",
+          "#D0C0BF",
+          "#F5ECEC"
+        ]
+      },
+      "code-ground": {
+        "role": "neutral",
+        "displayName": "Code Slab",
+        "canonical": "#11141B",
+        "dark": "#0B0D12",
+        "oklch": "oklch(19.1% 0.015 266.8)",
+        "tonalRamp": [
+          "#0A0B0E",
+          "#21242C",
+          "#3C4048",
+          "#5A5E66",
+          "#797D87",
+          "#9A9EA8",
+          "#C0C4CE",
+          "#ECEEF4"
+        ]
+      },
+      "code-text": {
+        "role": "neutral",
+        "displayName": "Code Chalk",
+        "canonical": "#E6E9F0",
+        "dark": "#E6E9F0",
+        "oklch": "oklch(93.4% 0.010 267.4)",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#222429",
+          "#3D4045",
+          "#5B5E63",
+          "#7A7D83",
+          "#9C9EA5",
+          "#C1C4CB",
+          "#EDEEF2"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Guest landing hero only."
+      },
+      "headline": {
+        "displayName": "Page Title",
+        "purpose": "Title at the top of every working page."
+      },
+      "section": {
+        "displayName": "Section Head",
+        "purpose": "Section heads inside a page; sheet heads at 17px."
+      },
+      "title": {
+        "displayName": "Row Title",
+        "purpose": "Title of a row in a margin list; 17px in the «Дальше» line."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text; intros cap at 62ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Metadata lines, hints, KPI labels in mute."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Running numbers: KPIs, prices, rates, counts. Golos Text with tabular-nums, never mono."
+      },
+      "margin-numeral": {
+        "displayName": "Margin Numeral",
+        "purpose": "Due-date day in the homework margin (22px in the «Дальше» line)."
+      },
+      "margin-index": {
+        "displayName": "Margin Index",
+        "purpose": "Task/bank index in the margin column."
+      },
+      "answer": {
+        "displayName": "Answer",
+        "purpose": "Answer inputs and boxes; group codes at +0.12em uppercase."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Code blocks on the dark code slab."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "0 1px 0 rgb(20 24 32 / .04)",
+        "purpose": "Near-invisible bottom edge; rarely used."
+      },
+      {
+        "name": "lift",
+        "value": "0 1px 2px rgb(20 24 32 / .05), 0 10px 24px -14px rgb(20 24 32 / .28)",
+        "purpose": "Objects on the desk: auth card, landing sample sheet, Telegram demo."
+      },
+      {
+        "name": "pop",
+        "value": "0 2px 6px rgb(20 24 32 / .06), 0 22px 48px -18px rgb(20 24 32 / .34)",
+        "purpose": "Menus, dialogs, tooltips, drawers."
+      },
+      {
+        "name": "segment-on",
+        "value": "0 1px 2px rgb(20 24 32 / .1), inset 0 0 0 1px var(--line)",
+        "purpose": "Selected segment in a segmented control."
+      },
+      {
+        "name": "focus",
+        "value": "outline: 2px solid var(--blue); outline-offset: 2px",
+        "purpose": "Global focus-visible ring."
+      },
+      {
+        "name": "input-focus",
+        "value": "0 0 0 1px var(--blue)",
+        "purpose": "Field focus ring with blue border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Default easing for transforms, entrances and progress growth."
+      },
+      {
+        "name": "state",
+        "value": "150ms",
+        "purpose": "Colour, background and border state changes."
+      },
+      {
+        "name": "page-in",
+        "value": "opacity 0 + translateY(6px) to rest, 300ms ease",
+        "purpose": "Page and swapped-content entrance."
+      },
+      {
+        "name": "rise",
+        "value": "opacity 0 + translateY(10px) to rest, 300ms ease",
+        "purpose": "Dialog entrance."
+      },
+      {
+        "name": "grow",
+        "value": "scaleX(0) to 1, 800ms ease",
+        "purpose": "Progress bar fill."
+      },
+      {
+        "name": "press",
+        "value": "scale(.98) buttons, scale(.94) icon buttons",
+        "purpose": "Active press feedback."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce disables entrances",
+        "purpose": "Accessibility."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "shell",
+        "value": "1000px",
+        "purpose": "Sidebar at and above, bottom tab bar below."
+      },
+      {
+        "name": "tablet",
+        "value": "860px"
+      },
+      {
+        "name": "phone",
+        "value": "560px",
+        "purpose": "Margin column narrows to 48px, row actions move under title."
+      },
+      {
+        "name": "guest-compact",
+        "value": "520px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ballpoint-blue fill for the one main action on a surface.",
+      "html": "<button class=\"ds-btn-primary\">Продолжить <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border:0;border-radius:var(--r-s,8px);background:var(--blue,#2346D8);color:var(--on-blue,#fff);font:600 15px/1 var(--f-body,'Golos Text',sans-serif);cursor:pointer;transition:background-color .15s,transform .15s cubic-bezier(.16,1,.3,1)}.ds-btn-primary svg{transition:transform .2s cubic-bezier(.16,1,.3,1)}.ds-btn-primary:hover{background:var(--blue-hover,#1A37B8)}.ds-btn-primary:hover svg{transform:translateX(2px)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:2px solid var(--blue,#2346D8);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Secondary action: paper with an inset hairline.",
+      "html": "<button class=\"ds-btn-ghost\">Выдать новый код</button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;height:42px;padding:0 18px;border:0;border-radius:var(--r-s,8px);background:var(--paper,#fff);color:var(--ink,#141820);box-shadow:inset 0 0 0 1px var(--line-2,#C8D0DC);font:600 15px/1 var(--f-body,'Golos Text',sans-serif);cursor:pointer;transition:background-color .15s,box-shadow .15s}.ds-btn-ghost:hover{background:var(--paper-2,#F3F5F9);box-shadow:inset 0 0 0 1px var(--mute,#626B79)}.ds-btn-ghost:focus-visible{outline:2px solid var(--blue,#2346D8);outline-offset:2px}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action: red outline on paper, fills red only on hover.",
+      "html": "<button class=\"ds-btn-danger\">Удалить группу</button>",
+      "css": ".ds-btn-danger{display:inline-flex;align-items:center;height:42px;padding:0 18px;border:0;border-radius:var(--r-s,8px);background:var(--paper,#fff);color:var(--bad,#C52E28);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--bad,#C52E28) 45%,transparent);font:600 15px/1 var(--f-body,'Golos Text',sans-serif);cursor:pointer;transition:background-color .15s,color .15s}.ds-btn-danger:hover{background:var(--bad,#C52E28);color:#fff;box-shadow:none}.ds-btn-danger:focus-visible{outline:2px solid var(--blue,#2346D8);outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Paper field with a strong hairline; blue border and ring on focus.",
+      "html": "<label class=\"ds-fld\"><span>Название группы</span><input value=\"Демо-группа 11А\"></label>",
+      "css": ".ds-fld{display:grid;gap:7px;max-width:360px}.ds-fld span{font:600 14px/1.3 var(--f-body,'Golos Text',sans-serif);color:var(--ink,#141820)}.ds-fld input{min-height:44px;padding:10px 13px;border:1px solid var(--line-2,#C8D0DC);border-radius:var(--r-s,8px);background:var(--paper,#fff);color:var(--ink,#141820);font:15.5px/1.4 var(--f-body,'Golos Text',sans-serif);transition:border-color .15s,box-shadow .15s}.ds-fld input:hover{border-color:var(--mute,#626B79)}.ds-fld input:focus{outline:none;border-color:var(--blue,#2346D8);box-shadow:0 0 0 1px var(--blue,#2346D8)}"
+    },
+    {
+      "name": "Answer Field",
+      "kind": "input",
+      "refersTo": "answer-field",
+      "description": "The answer box on a task, set in mono like a written answer.",
+      "html": "<input class=\"ds-answer\" value=\"1024\" aria-label=\"Ответ\">",
+      "css": ".ds-answer{width:200px;min-height:44px;padding:10px 13px;border:1px solid var(--line-2,#C8D0DC);border-radius:var(--r-s,8px);background:var(--paper,#fff);color:var(--ink,#141820);font:600 17px/1.3 var(--f-mono,'JetBrains Mono',monospace);letter-spacing:.04em}.ds-answer:hover{border-color:var(--mute,#626B79)}.ds-answer:focus{outline:none;border-color:var(--blue,#2346D8);box-shadow:0 0 0 1px var(--blue,#2346D8)}"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "Role sidebar on paper, separated from content by the red margin rule (70%).",
+      "html": "<nav class=\"ds-side\"><a class=\"on\" href=\"#\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"><rect x=\"5\" y=\"4\" width=\"14\" height=\"17\" rx=\"2\"/><path d=\"M9 12l2 2 4-4\"/></svg>Задания<span class=\"ds-n\">2</span></a><a href=\"#\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"><path d=\"M5 4h14v16H5z\"/><path d=\"M9 8h6\"/></svg>Материалы</a><a href=\"#\"><svg width=\"19\" height=\"19\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\"><path d=\"M12 3l9 5-9 5-9-5z\"/><path d=\"M3 13l9 5 9-5\"/></svg>Банк задач</a></nav>",
+      "css": ".ds-side{display:grid;gap:1px;width:236px;padding:12px;background:var(--paper,#fff);box-shadow:inset -1px 0 0 color-mix(in srgb,var(--margin,#E5544C) 70%,transparent)}.ds-side a{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:8px;color:var(--ink-2,#3C4351);font:500 15px/1 var(--f-body,'Golos Text',sans-serif);text-decoration:none;transition:background-color .15s,color .15s}.ds-side a:hover{background:var(--paper-2,#F3F5F9);color:var(--ink,#141820)}.ds-side a.on{background:var(--blue-soft,#E9EEFD);color:var(--blue-ink,#1A32A3);font-weight:600}.ds-side a:focus-visible{outline:2px solid var(--blue,#2346D8);outline-offset:2px}.ds-n{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;margin-left:auto;border-radius:999px;background:var(--margin,#E5544C);color:#fff;font:600 11.5px/1 var(--f-body,'Golos Text',sans-serif)}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Filter chip; selected state in blue wash.",
+      "html": "<div class=\"ds-chips\"><button class=\"ds-chip on\">Все</button><button class=\"ds-chip\">Не решённые</button><button class=\"ds-chip\">Решённые</button></div>",
+      "css": ".ds-chips{display:flex;gap:6px;flex-wrap:wrap}.ds-chip{display:inline-flex;align-items:center;min-height:34px;padding:0 12px;border:0;border-radius:8px;background:var(--paper,#fff);color:var(--ink-2,#3C4351);box-shadow:inset 0 0 0 1px var(--line-2,#C8D0DC);font:500 14px/1.2 var(--f-body,'Golos Text',sans-serif);cursor:pointer;transition:background-color .15s,color .15s,box-shadow .15s}.ds-chip:hover{background:var(--paper-2,#F3F5F9);color:var(--ink,#141820)}.ds-chip.on{background:var(--blue-soft,#E9EEFD);color:var(--blue-ink,#1A32A3);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--blue,#2346D8) 40%,transparent);font-weight:600}.ds-chip:focus-visible{outline:2px solid var(--blue,#2346D8);outline-offset:2px}"
+    },
+    {
+      "name": "Margin List",
+      "kind": "custom",
+      "refersTo": "margin-row",
+      "description": "Signature: one sheet of rows, date/number/tick left of a 1px red margin rule.",
+      "html": "<ul class=\"ds-ml\"><li><a href=\"#\"><span class=\"m\"><b>2</b>нояб</span><span class=\"t\"><b>Графы: длины дорог</b><small>Демо-группа 11А · 2 задачи</small></span><span class=\"go\">Начать</span></a></li><li><a href=\"#\"><span class=\"m late\"><b>21</b>окт</span><span class=\"t\"><b>Перебор и рекурсия</b><small>просрочено · 8 задач</small></span><span class=\"go\">Открыть</span></a></li><li><a href=\"#\"><span class=\"m ok\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg></span><span class=\"t\"><b>Обработка строк</b><small>сдано 2 окт</small></span><span class=\"go\">Открыть</span></a></li></ul>",
+      "css": ".ds-ml{list-style:none;margin:0;padding:0;position:relative;border:1px solid var(--line,#E1E6EE);border-radius:10px;background:var(--paper,#fff);overflow:hidden}.ds-ml::before{content:'';position:absolute;top:0;bottom:0;left:64px;width:1px;background:color-mix(in srgb,var(--margin,#E5544C) 85%,transparent);pointer-events:none;z-index:1}.ds-ml li+li{border-top:1px solid var(--line,#E1E6EE)}.ds-ml a{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:0 18px;min-height:72px;padding:14px 18px 14px 0;color:var(--ink,#141820);text-decoration:none;transition:background-color .15s}.ds-ml a:hover{background:var(--paper-2,#F3F5F9)}.ds-ml a:focus-visible{outline:2px solid var(--blue,#2346D8);outline-offset:-2px}.ds-ml .m{display:grid;justify-items:center;font:500 11.5px/1.2 var(--f-body,'Golos Text',sans-serif);color:var(--mute,#626B79)}.ds-ml .m b{font:600 19px/1.05 var(--f-mono,'JetBrains Mono',monospace);letter-spacing:-.03em;color:var(--ink,#141820)}.ds-ml .m.late,.ds-ml .m.late b{color:var(--bad,#C52E28)}.ds-ml .m.ok{color:var(--ok,#157A4B)}.ds-ml .t{display:grid;gap:4px;padding-left:4px;min-width:0}.ds-ml .t b{font:600 16px/1.3 var(--f-body,'Golos Text',sans-serif)}.ds-ml .t small{font-size:13px;color:var(--mute,#626B79)}.ds-ml .go{font:600 14px/1 var(--f-body,'Golos Text',sans-serif);color:var(--blue-fg,#2346D8);white-space:nowrap}"
+    },
+    {
+      "name": "Next Step Line",
+      "kind": "custom",
+      "refersTo": "margin-row",
+      "description": "Signature: the single «Дальше» line at the top of each role home.",
+      "html": "<div class=\"ds-next\"><span class=\"m\"><b>29</b>окт</span><span class=\"t\"><small>Дальше</small><b>Кодирование и условие Фано</b><span>Осталось 1 из 4</span><i class=\"bar\"><i style=\"width:75%\"></i></i></span><button class=\"ds-next-btn\">Продолжить</button></div>",
+      "css": ".ds-next{position:relative;display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:0 18px;padding:16px 18px 16px 0;border:1px solid var(--line,#E1E6EE);border-radius:10px;background:var(--paper,#fff);color:var(--ink,#141820);font-family:var(--f-body,'Golos Text',sans-serif)}.ds-next::before{content:'';position:absolute;top:0;bottom:0;left:64px;width:1px;background:color-mix(in srgb,var(--margin,#E5544C) 85%,transparent)}.ds-next .m{display:grid;justify-items:center;font:600 12px/1.25 var(--f-body,'Golos Text',sans-serif);color:var(--mute,#626B79)}.ds-next .m b{font:600 22px/1.05 var(--f-mono,'JetBrains Mono',monospace);letter-spacing:-.03em;color:var(--ink,#141820)}.ds-next .t{display:grid;gap:2px;padding-left:4px;min-width:0}.ds-next .t small{font-size:13px;color:var(--mute,#626B79)}.ds-next .t b{font:600 17px/1.3 var(--f-body,'Golos Text',sans-serif)}.ds-next .t span{font-size:14px;color:var(--ink-2,#3C4351)}.ds-next .bar{display:block;height:6px;max-width:320px;margin-top:8px;border-radius:999px;background:var(--sunken,#E9EDF3);overflow:hidden}.ds-next .bar i{display:block;height:100%;border-radius:999px;background:var(--blue,#2346D8)}.ds-next-btn{height:42px;padding:0 18px;border:0;border-radius:8px;background:var(--blue,#2346D8);color:#fff;font:600 15px/1 var(--f-body,'Golos Text',sans-serif);cursor:pointer;transition:background-color .15s}.ds-next-btn:hover{background:var(--blue-hover,#1A37B8)}.ds-next-btn:focus-visible{outline:2px solid var(--blue,#2346D8);outline-offset:2px}"
+    },
+    {
+      "name": "Note to Remember and New Badge",
+      "kind": "custom",
+      "refersTo": "note-to-remember",
+      "description": "Highlighter yellow (builder decision, not user-confirmed): notes to remember and «новое» only.",
+      "html": "<div class=\"ds-note\"><span class=\"ds-new\">новое</span> Запомни: ответ пишется без пробелов.</div>",
+      "css": ".ds-note{max-width:480px;padding:10px 14px;border-radius:8px;background:var(--lime-soft,#FFF8D6);color:var(--ink-2,#3C4351);font:14.5px/1.55 var(--f-body,'Golos Text',sans-serif)}.ds-new{display:inline-block;margin-right:6px;padding:3px 7px;border-radius:4px;background:var(--lime,#FFEB8A);color:var(--on-lime,#3F3200);font:600 11px/1.1 var(--f-body,'Golos Text',sans-serif)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Тетрадь (the school notebook)",
+    "overview": "stackly is a squared exercise book. Work sits on white sheets laid over a faint 24px blue-grey square grid; text is graphite; everything you can press, every link and every selection is written in ballpoint blue. The left margin of each list sits behind one thin red rule, and that margin holds what matters about each line: its number, its due date, its mark. The sidebar is the page's own margin, separated from the content by the same red rule. The world was chosen by the user on 2026-10-26 and replaces the previous indigo/Onest look, which is now an anti-reference.\n\nThe system is flat and quiet so that the content (tasks, worked solutions, code) stays louder than the frame. Depth comes from paper on ground and hairlines, not from shadows. Numbers that line things up live in the margin; numbers that are read in running UI are set in the same sans as the text with tabular figures. Each role's home opens with a single «Дальше» line naming the next step, and every list below it is one sheet with rows rather than a grid of same-size cards.\n\nDensity is working-tool density: 16px body, 60 to 72px rows, 8px controls, generous page padding (36px top, 72px bottom). Light and dark themes are both first-class; dark is the same notebook at night, with the grid and the margin rule kept and the ink inverted.",
+    "keyCharacteristics": [
+      "Squared page ground (24px cell) under white sheets with 1px hairlines.",
+      "The margin column: number or date left of a 1px red rule on every list.",
+      "Ballpoint blue is the only action colour; margin red is never an action.",
+      "Golos Text for everything; JetBrains Mono only for code, margin numerals, task numbers, answers and group codes.",
+      "Flat by default; 8px controls, 10px sheets; pills only for counters, progress and switches.",
+      "Left sidebar per role on desktop, bottom tab bar on phone, no in-page tab strips."
+    ],
+    "rules": [
+      {
+        "name": "The One Pen Per Meaning Rule",
+        "body": "Blue means you can act or it is selected; margin red means the margin or a deadline/error; green means done; yellow means remember this. A colour never borrows another's meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Red Invitations Rule",
+        "body": "Red never fills a primary action. The only red button is the destructive one, and it starts as a red outline on paper.",
+        "section": "colors"
+      },
+      {
+        "name": "The Marker Is Not A Status Rule",
+        "body": "Highlighter yellow marks notes, «новое» and the ×2 points badge. It never encodes progress, a deadline, or an item's state.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Is Handwriting Rule",
+        "body": "JetBrains Mono is limited to code, margin numerals, task numbers, answer fields and group codes. Numbers in running UI (KPIs, prices, rates, counts, tables) use Golos Text with `tabular-nums`.",
+        "section": "typography"
+      },
+      {
+        "name": "The No Kicker Rule",
+        "body": "A page title stands on its own; any metadata about it (group, teacher, subject) runs as a 500 14px `mute` line under the title, not above it.",
+        "section": "typography"
+      },
+      {
+        "name": "The Margin Column Rule",
+        "body": "Lists of things with a number, date or mark are one sheet with a margin column and a red rule, not a grid of cards. Stats are one strip divided by hairlines, not separate tiles.",
+        "section": "layout"
+      },
+      {
+        "name": "The Paper Lies Flat Rule",
+        "body": "A sheet that stays in the page never gets a shadow; only surfaces that open over the page do.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** put lists of numbered, dated or marked items in one sheet with a 64px margin column and a 1px red rule (margin red at 85%), 48px under 560px.",
+      "**Do** start every role's home with the page title and the «Дальше» line.",
+      "**Do** use ballpoint blue for every action, link, focus ring and selected state.",
+      "**Do** set running numbers in Golos Text with `tabular-nums`; keep JetBrains Mono for code, margin numerals, task numbers, answer fields and group codes.",
+      "**Do** keep sheets flat with 1px hairlines; reserve the Pop shadow for menus, dialogs, tooltips and drawers.",
+      "**Do** define every new colour in both light and dark token sets."
+    ],
+    "donts": [
+      "**Don't** return to the indigo/Onest look of the previous world.",
+      "**Don't** build grey SaaS dashboards of same-size stat cards; stats are one strip divided by hairlines.",
+      "**Don't** use margin red or wrong red for a primary action, a link or a decorative accent.",
+      "**Don't** use highlighter yellow for status, deadlines or progress.",
+      "**Don't** add in-page tab strips; navigation is the role sidebar on desktop and the bottom tab bar on phone.",
+      "**Don't** place a label line above a page title; metadata goes under it."
+    ]
+  }
+}
