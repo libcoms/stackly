@@ -339,6 +339,10 @@ class ClassroomTest(ServerCase):
         # эфир: пока не идёт — нельзя; ссылки запрещены; сообщение сразу попадает в оверлей, учитель может его снять
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет'})[1]['error'], 'not_live')
         live = t.call('POST', '/teach/live', {'live': True, 'price': 20})[1]['live']
+        self.assertEqual(t.call('POST', '/teach/live', {'rate': 5})[0], 400)
+        voice = 'Microsoft Svetlana Online (Natural) - Russian (Russia)'
+        self.assertEqual(t.call('POST', '/teach/live', {'voice': voice, 'rate': 1.15})[1]['live']['voice'], voice)
+        self.assertEqual({k: Client(self.base).call('GET', f'/live/feed?k={live["token"]}')[1][k] for k in ('voice', 'rate')}, {'voice': voice, 'rate': 1.15})
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'смотри site.ru'})[1]['error'], 'link')
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет!', 'amount': 10})[1]['error'], 'too_cheap')
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет!', 'amount': 25})[0], 200)

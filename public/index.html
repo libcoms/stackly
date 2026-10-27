@@ -1845,6 +1845,9 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 .tl-ov { display: grid; gap: 8px; align-content: start; padding-left: 22px; border-left: 1px solid var(--line); }
 .tl-ov code { display: block; padding: 8px 10px; border-radius: 6px; background: var(--paper-2); font: 12.5px/1.4 var(--f-mono); overflow-wrap: anywhere; }
 .tl-ov p { margin: 0; font-size: 13.5px; }
+.tl-vhint { margin: 0; font-size: 13.5px; }
+.tl-live select { min-height: 44px; padding: 0 12px; }
+[data-tvoice-test] svg { width: 16px; height: 16px; }
 .tl-h { font: 600 15px/1.3 var(--f-body); margin: 20px 0 10px; display: flex; gap: 8px; }
 .tr-add { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 .tr-add input[name=title] { flex: 1 1 260px; }
@@ -5167,7 +5170,10 @@ function stacklyApp() {
           <form class="ed-three" data-tliveform novalidate>
             <label class="fld"><span>Цена сообщения, баллов</span><input name="price" type="number" min="1" max="10000" value="${L.price}" inputmode="numeric"></label>
             <label class="fld" style="grid-column:span 2"><span>Ссылка на трансляцию для учеников (Kinescope и др.)</span><input name="url" type="url" maxlength="300" placeholder="https://kinescope.io/…" value="${esc(L.url)}"></label>
-            <div class="form-acts" style="grid-column:1/-1"><button class="btn small" type="submit">Сохранить</button></div>
+            <label class="fld" style="grid-column:span 2"><span>Голос</span><select name="voice" id="tvoice" data-saved="${esc(L.voice)}"><option value="">Лучший русский голос на этом устройстве</option></select></label>
+            <label class="fld"><span>Скорость</span><select name="rate">${[[0.85, 'медленнее'], [1, 'обычная'], [1.15, 'быстрее'], [1.3, 'быстро']].map(([v, n]) => `<option value="${v}" ${Math.abs(L.rate - v) < .01 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+            <p class="muted tl-vhint" id="tvhint" style="grid-column:1/-1"></p>
+            <div class="form-acts" style="grid-column:1/-1"><button class="btn small" type="submit">Сохранить</button><button type="button" class="btn small ghost" data-tvoice-test>${I.live}Прослушать</button></div>
             <p class="muted" style="grid-column:1/-1;margin:0;font-size:13.5px">Сообщения озвучиваются сразу. Если сообщение ещё не прозвучало, его можно снять кнопкой «Не озвучивать» — баллы вернутся ученику.</p>
             <div class="form-msg" role="alert" style="grid-column:1/-1"></div>
           </form>
@@ -5192,9 +5198,36 @@ function stacklyApp() {
           ${c.status === 'new' ? `<button type="button" class="btn small" data-tspend="${c.id}" data-st="done">Выдано</button><button type="button" class="btn small ghost" data-tspend="${c.id}" data-st="declined">Отклонить</button>` : ''}</div></li>`).join('')}</ul>`
           : '<p class="muted">Когда ученик обменяет баллы на награду, заявка появится здесь, а вам придёт уведомление в Telegram, если бот подключён.</p>'}</section>`;
   }
+  /* голос эфира: голоса берутся из браузера (Web Speech API). Естественно звучат нейросетевые — «Microsoft … Online (Natural)»
+     в Edge и «Google русский» в Chrome. Тот же порядок выбора — в public/live.html */
+  const voiceRank = v => /natural|online/i.test(v.name) ? 3 : /google/i.test(v.name) ? 2 : 1;
+  const ruVoices = () => (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter(v => /^ru/i.test(v.lang)).sort((a, b) => voiceRank(b) - voiceRank(a) || a.name.localeCompare(b.name));
+  const VOICE_RU = { Svetlana: 'Светлана', Dmitry: 'Дмитрий', Irina: 'Ирина', Pavel: 'Павел', Ekaterina: 'Екатерина' };
+  const voiceName = v => v.name.replace(/^Microsoft\s+/, '').replace(/\s+-\s+Russian.*$/i, '').replace(/\s*\(Natural\)/i, '').replace(/\s+Online$/i, '')
+    .replace(/^(\w+)/, w => VOICE_RU[w] || w).replace(/^Google русский$/i, 'Google, русский');
+  function fillVoices() {
+    const sel = $('#tvoice'); if (!sel) return;
+    const saved = sel.dataset.saved, list = ruVoices(), hint = $('#tvhint');
+    sel.innerHTML = `<option value="">Лучший русский голос на этом устройстве</option>`
+      + list.map(v => `<option value="${esc(v.name)}" ${v.name === saved ? 'selected' : ''}>${esc(voiceName(v))}${voiceRank(v) > 1 ? ' — естественный' : ''}</option>`).join('')
+      + (saved && !list.some(v => v.name === saved) ? `<option value="${esc(saved)}" selected>${esc(saved)} — нет на этом устройстве</option>` : '');
+    if (hint) hint.textContent = !window.speechSynthesis ? 'Этот браузер не умеет читать вслух — откройте страницу в Edge или Chrome.'
+      : !list.length ? 'Русских голосов в этом браузере не нашлось. Естественные голоса есть в Microsoft Edge (Светлана, Дмитрий) и в Chrome (Google русский).'
+      : list.some(v => voiceRank(v) === 3) ? 'Голоса с пометкой «естественный» звучат почти как живая речь. Оверлей возьмёт этот голос, если откроете его в этом же браузере.'
+      : /Edg\//.test(navigator.userAgent) ? 'Естественные голоса Edge («Светлана», «Дмитрий») приходят из интернета — если их нет в списке, проверьте подключение и обновите страницу.'
+      : 'Самые естественные голоса — «Светлана» и «Дмитрий» в Microsoft Edge. Откройте эту страницу и оверлей в Edge, чтобы выбрать их.';
+  }
+  if (window.speechSynthesis) speechSynthesis.addEventListener('voiceschanged', fillVoices);
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-tvoice-test]'); if (!b || !window.speechSynthesis) return;
+    const f = b.closest('form'), u = new SpeechSynthesisUtterance('Аня Смирнова пишет: спасибо за разбор двадцать седьмого задания!');
+    const v = ruVoices().find(x => x.name === f.elements.voice.value) || ruVoices()[0];
+    u.lang = 'ru-RU'; u.rate = +f.elements.rate.value || 1; if (v) u.voice = v;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  });
   async function reloadTShop() {
     if (!$('#tpage') || location.hash !== '#teach-shop') return;
-    try { tShop = await api('/teach/shop'); const box = $('#tpage'); if (box && location.hash === '#teach-shop' && !box.contains(document.activeElement)) box.innerHTML = tShopHTML(tShop); } catch (e) { }
+    try { tShop = await api('/teach/shop'); const box = $('#tpage'); if (box && location.hash === '#teach-shop' && !box.contains(document.activeElement)) { box.innerHTML = tShopHTML(tShop); fillVoices(); } } catch (e) { }
   }
   // пока открыта страница и идёт эфир, сообщения на проверку подтягиваются сами
   function startLivePoll() {
@@ -5230,7 +5263,7 @@ function stacklyApp() {
     e.preventDefault();
     const msg = f.matches('[data-tliveform]') ? $('.form-msg', f) : $('#trmsg');
     try {
-      if (f.matches('[data-tliveform]')) { await api('/teach/live', 'POST', { price: +f.elements.price.value, url: f.elements.url.value }); toast('Сохранено'); }
+      if (f.matches('[data-tliveform]')) { await api('/teach/live', 'POST', { price: +f.elements.price.value, url: f.elements.url.value, voice: f.elements.voice.value, rate: +f.elements.rate.value }); toast('Сохранено'); }
       else { await api('/teach/rewards', 'POST', { title: f.elements.title.value, cost: +f.elements.cost.value }); }
       await reloadTShop();
     } catch (err) { msg.textContent = err.message || 'Не получилось'; msg.className = 'form-msg bad'; }
@@ -5306,7 +5339,7 @@ function stacklyApp() {
         if (me) setUser(me.user);
         put(tGroupsHTML(gr.groups, all));
       }
-      else if (h === 'teach-shop') { tShop = await api('/teach/shop'); put(tShopHTML(tShop)); startLivePoll(); }
+      else if (h === 'teach-shop') { tShop = await api('/teach/shop'); if (put(tShopHTML(tShop))) fillVoices(); startLivePoll(); }
       else if (h === 'teach-pro') {
         if (acct.role === 'admin') return put(tMsg('У администратора ограничений нет', 'Оплачивать тариф не нужно.', '#teach', 'К группам'));
         const me = await api('/auth/me').catch(() => null); if (me) setUser(me.user);

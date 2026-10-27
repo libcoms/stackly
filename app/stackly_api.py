@@ -222,6 +222,10 @@ def migrate():
     if 'bank_open' not in [r['name'] for r in db().execute('PRAGMA table_info(study_groups)')]:
         db().execute("ALTER TABLE study_groups ADD COLUMN bank_open INTEGER NOT NULL DEFAULT 0")
     # snum — номер задания внутри предмета (1, 2, …) у задач не из ЕГЭ по информатике; 0 — без номера
+    # голос оверлея эфира: имя голоса браузера (Web Speech API) и скорость речи; пусто — оверлей выберет лучший русский сам
+    if 'voice' not in [r['name'] for r in db().execute('PRAGMA table_info(live_cfg)')]:
+        db().execute("ALTER TABLE live_cfg ADD COLUMN voice TEXT NOT NULL DEFAULT ''")
+        db().execute('ALTER TABLE live_cfg ADD COLUMN rate REAL NOT NULL DEFAULT 1')
     if 'snum' not in cols:
         db().execute("ALTER TABLE problems ADD COLUMN snum INTEGER NOT NULL DEFAULT 0")
     # тариф преподавателя: free — бесплатный, trial — пробный Про, pro — Про. plan_until — до какого момента
@@ -1244,7 +1248,7 @@ class Handler(BaseHTTPRequestHandler):
         rewards = db().execute('SELECT id, title, cost FROM rewards WHERE teacher_id = ? AND hidden = 0 ORDER BY cost, id', (u['id'],)).fetchall()
         rows = db().execute("SELECT s.id, s.kind, s.cost, s.text, s.status, s.created, s.okat, s.user_id, u.name FROM spends s JOIN users u ON u.id = s.user_id "
                             "WHERE s.teacher_id = ? AND s.kind IN ('reward', 'alert') ORDER BY s.id DESC LIMIT 120", (u['id'],)).fetchall()
-        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url')}, 'rewards': [dict(r) for r in rewards],
+        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'voice', 'rate')}, 'rewards': [dict(r) for r in rewards],
                              'claims': [dict(r) for r in rows if r['kind'] == 'reward'], 'alerts': [dict(r) for r in rows if r['kind'] == 'alert'][:60]})
 
     def t_reward_save(self):
@@ -1303,10 +1307,20 @@ class Handler(BaseHTTPRequestHandler):
             if url and (len(url) > 300 or not re.match(r'^https://[^\s<>"]+$', url)):
                 raise ApiError(400, 'bad_url', 'Ссылка на эфир должна начинаться с https://')
             db().execute('UPDATE live_cfg SET url = ? WHERE teacher_id = ?', (url, u['id']))
+        if 'voice' in d:
+            db().execute('UPDATE live_cfg SET voice = ? WHERE teacher_id = ?', (str(d.get('voice') or '').strip()[:150], u['id']))
+        if 'rate' in d:
+            try:
+                rate = float(d.get('rate'))
+            except (TypeError, ValueError):
+                rate = 0
+            if not 0.5 <= rate <= 2:
+                raise ApiError(400, 'bad_rate', 'Скорость речи — от 0,5 до 2')
+            db().execute('UPDATE live_cfg SET rate = ? WHERE teacher_id = ?', (rate, u['id']))
         if d.get('new_token'):
             db().execute('UPDATE live_cfg SET token = ? WHERE teacher_id = ?', (secrets.token_urlsafe(18), u['id']))
         c = live_cfg(u['id'])
-        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url')}})
+        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'voice', 'rate')}})
 
     def live_cfg_by_token(self, token):
         c = db().execute('SELECT c.*, t.name FROM live_cfg c JOIN users t ON t.id = c.teacher_id WHERE c.token = ?', (str(token or ''),)).fetchone()
@@ -1321,7 +1335,8 @@ class Handler(BaseHTTPRequestHandler):
         rows = db().execute("SELECT s.id, s.cost, s.text, s.okat, u.name FROM spends s JOIN users u ON u.id = s.user_id "
                             "WHERE s.teacher_id = ? AND s.kind = 'alert' AND s.status = 'ok' AND s.okat > ? ORDER BY s.okat, s.id LIMIT 20",
                             (c['teacher_id'], now - 3600)).fetchall()
-        self.send_json(200, {'teacher': c['name'], 'live': bool(c['live']), 'now': now, 'alerts': [dict(r) for r in rows]})
+        self.send_json(200, {'teacher': c['name'], 'live': bool(c['live']), 'voice': c['voice'], 'rate': c['rate'], 'now': now,
+                             'alerts': [dict(r) for r in rows]})
 
     def live_shown(self):
         """Оверлей прочитал сообщение — больше его не показываем (и после перезагрузки страницы)."""
