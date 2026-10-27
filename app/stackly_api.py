@@ -450,10 +450,11 @@ def summary(data, updated):
     """Короткая статистика ученика для таблиц учителя."""
     sets = progress_sets(data)
     att = data.get('att') if isinstance(data.get('att'), dict) else {}
-    tries = right = 0
+    tries = right = first = 0
     for a in att.values():
         if isinstance(a, dict):
             tries += int(a.get('n') or 0); right += int(a.get('c') or 0)
+            first += bool(a.get('c') and (a.get('f') or a.get('n') == 1))
     days = {k for k, v in (data.get('days') or {}).items() if v} if isinstance(data.get('days'), dict) else set()
     today = time.time()
     day = lambda back: time.strftime('%Y-%m-%d', time.localtime(today - back * 86400))
@@ -462,7 +463,13 @@ def summary(data, updated):
         streak += 1; back += 1
     return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']),
             'tries': tries, 'right': right, 'accuracy': round(right / tries * 100) if tries else None,
-            'active7': sum(day(i) in days for i in range(7)), 'streak': streak, 'updated': updated}
+            'active7': sum(day(i) in days for i in range(7)), 'streak': streak, 'updated': updated,
+            'points': points(len(sets['bank']), first, len(sets['py']) + len(sets['ege']) + len(sets['mat']), len(days))}
+
+def points(solved, first, studied, days):
+    """Очки за активность — та же формула, что pointsOf() на сайте: задача 10 (+5 с первой попытки),
+    изученная тема, разбор или материал 5, день с занятиями 5."""
+    return solved * 10 + first * 5 + studied * 5 + days * 5
 
 def hw_json(h):
     return {'id': h['id'], 'group_id': h['group_id'], 'title': h['title'], 'comment': h['comment'],

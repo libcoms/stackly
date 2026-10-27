@@ -115,11 +115,15 @@ img { max-width: 100%; }
 .hw-head > .hw-head-meta, .hw-head > .hw-comment, .hw-head > .hw-sticky { order: 2; }
 .mark-hl { background: linear-gradient(transparent 55%, var(--lime) 55% 92%, transparent 92%); padding: 0 .06em; }
 
-/* знак stackly: клетка с галочкой синей ручкой */
-.ball { --s: 18px; position: relative; display: inline-block; flex: none; width: var(--s); height: var(--s); border: 1.5px solid var(--ink); border-radius: 3px; background: var(--paper); }
-.ball::after { content: ""; position: absolute; left: 22%; top: 2%; width: 34%; height: 62%; border: solid var(--blue); border-width: 0 max(2px, calc(var(--s) * .14)) max(2px, calc(var(--s) * .14)) 0; transform: rotate(40deg); }
-.loading-row .ball, .auth-wait .ball { animation: tick 1.1s var(--ease) infinite; }
-@keyframes tick { 0%, 100% { transform: none; } 50% { transform: scale(.86); } }
+/* знак stackly: синий шар с бликом маркера */
+.ball { --s: 18px; position: relative; display: inline-block; flex: none; width: var(--s); height: var(--s); border-radius: 50%; background: var(--blue); }
+.ball::after { content: ""; position: absolute; width: 42%; height: 42%; border-radius: 50%; background: var(--lime); top: 16%; right: 14%; }
+.logo .ball { transition: transform .7s var(--ease); }
+.logo:hover .ball { transform: rotate(220deg); }
+.ball.bump { animation: bump .6s var(--ease); }
+@keyframes bump { 0% { transform: none; } 30% { transform: translateY(-5px) scale(1.12, .9); } 55% { transform: translateY(0) scale(.92, 1.08); } 100% { transform: none; } }
+.loading-row .ball, .auth-wait .ball { animation: roll 1.1s var(--ease) infinite; }
+@keyframes roll { from { transform: rotate(0); } to { transform: rotate(360deg); } }
 
 /* ═════════════ оболочка: шапка гостя, боковая панель вошедшего ═════════════ */
 .top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 50; background: color-mix(in srgb, var(--paper) 92%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
@@ -1334,8 +1338,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .res b { display: block; font-weight: 600; font-size: 14.5px; }
 .res small { color: var(--mute); font-size: 12.5px; }
 .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 90; display: flex; gap: 10px; align-items: center; padding: 10px 16px 10px 12px; border-radius: var(--r-s); background: var(--ink); color: var(--paper); font: 500 14px/1.25 var(--f-body); box-shadow: var(--shadow-pop); animation: rise .3s var(--ease) both; }
-.toast .ball { --s: 16px; border-color: var(--paper); background: transparent; }
-.toast .ball::after { border-color: #7FE3AE; }
+.toast .ball { --s: 16px; }
 .tip { position: fixed; z-index: 70; width: min(320px, calc(100vw - 24px)); pointer-events: none; background: var(--paper); color: var(--ink); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px 12px; box-shadow: var(--shadow-pop); opacity: 0; transform: translateY(6px) scale(.97); transform-origin: var(--ax, 50%) 100%; transition: opacity .18s var(--ease), transform .25s var(--ease); }
 .tip.below { transform-origin: var(--ax, 50%) 0; transform: translateY(-6px) scale(.97); }
 .tip.on { opacity: 1; transform: none; }
@@ -1657,6 +1660,102 @@ table.mapping td, table.mapping th { text-align: left; }
   .l-steps::before { left: 52px; }
   .l-steps li { grid-template-columns: 52px minmax(0, 1fr); padding-right: 16px; }
 }
+
+/* ═════════════ главная ученика: очки, «Дальше», модуль, рекомендации ═════════════ */
+.st-head h1 { font-size: clamp(26px, 3vw, 34px); }
+.st-score { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; align-items: stretch; margin-top: 22px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); position: relative; overflow: hidden; }
+.st-score::before { content: ""; position: absolute; top: 0; bottom: 0; left: 96px; width: 1px; background: color-mix(in srgb, var(--margin) 85%, transparent); }
+.st-lvl { display: grid; justify-items: center; align-content: center; gap: 2px; padding: 16px 0; }
+.st-lvl .ball { --s: 22px; margin-bottom: 6px; animation: roll-in .9s var(--ease) both; }
+.st-lvl b { font: 600 34px/1 var(--f-mono); letter-spacing: -.04em; color: var(--ink); animation: pop .5s .25s var(--ease) both; }
+.st-lvl small { font-size: 12.5px; color: var(--mute); }
+.st-cap { display: block; font: 500 13px/1.2 var(--f-body); color: var(--mute); }
+.st-pts { display: grid; align-content: center; gap: 6px; padding: 18px 22px; min-width: 0; }
+.st-pts > b { font: 600 clamp(34px, 4vw, 44px)/1 var(--f-mono); letter-spacing: -.045em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.st-bar { max-width: 360px; height: 8px; }
+.st-sub { font-size: 13.5px; color: var(--ink-2); }
+.st-side { display: grid; grid-auto-flow: column; align-items: center; border-left: 1px solid var(--line); }
+.st-side > div { display: grid; gap: 6px; align-content: center; height: 100%; padding: 16px 22px; min-width: 132px; }
+.st-side > div + div { border-left: 1px solid var(--line); }
+.st-side b { font: 600 24px/1 var(--f-mono); letter-spacing: -.03em; color: var(--ink); }
+.st-side b small { font: 500 13px var(--f-body); letter-spacing: 0; color: var(--mute); }
+.st-side b.up { color: var(--ok); }
+.st-week { width: 112px; }
+.st-week i { animation: pop .35s var(--ease) both; animation-delay: calc(300ms + var(--i) * 60ms); }
+.st-more { margin: 10px 0 0; font-size: 14.5px; }
+.st-sec .next-step { margin-top: 0; }
+.st-mod { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 0 22px; align-items: start; padding: 20px 22px 20px 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); position: relative; }
+.st-mod::before { content: ""; position: absolute; top: 0; bottom: 0; left: 96px; width: 1px; background: color-mix(in srgb, var(--margin) 85%, transparent); }
+.st-ring { position: relative; justify-self: center; width: 64px; height: 64px; }
+.st-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.st-ring circle { fill: none; stroke: var(--sunken); stroke-width: 4; }
+.st-ring circle.v { stroke: var(--blue); stroke-linecap: round; stroke-dasharray: var(--p) 100; animation: ring 1.1s .15s var(--ease) both; }
+@keyframes ring { from { stroke-dasharray: 0 100; } }
+.st-ring span { position: absolute; inset: 0; display: grid; place-items: center; font: 600 13px/1 var(--f-mono); color: var(--ink); }
+.st-mod-t { min-width: 0; }
+.st-mod-t h3 { font: 650 19px/1.3 var(--f-display); letter-spacing: -.015em; margin: 0; }
+.st-mod-t p { margin: 4px 0 0; color: var(--ink-2); font-size: 14.5px; max-width: 62ch; }
+.st-steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 2px; }
+.st-steps li { animation: rise .4s var(--ease) both; animation-delay: calc(200ms + var(--i) * 70ms); }
+.st-steps a { display: flex; gap: 12px; align-items: center; padding: 7px 10px 7px 0; border-radius: 6px; color: var(--ink); font-size: 14.5px; transition: background-color .15s, padding-left .2s var(--ease); }
+.st-steps a:hover { background: var(--paper-2); padding-left: 8px; text-decoration: none; }
+.st-steps .n { width: 26px; height: 26px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line-2); font: 600 12px/1 var(--f-mono); color: var(--ink-2); }
+.st-steps li:first-child .n { border-color: var(--blue); color: var(--blue-fg); }
+.st-mod-a { display: grid; justify-items: end; gap: 8px; }
+.st-gain { flex: none; font: 600 12.5px/1 var(--f-body); color: var(--on-lime); background: var(--lime); padding: 5px 7px; border-radius: 4px; white-space: nowrap; }
+.st-recs > li { animation: rise .4s var(--ease) both; animation-delay: calc(120ms + var(--i) * 60ms); }
+.st-recs .bk-t b { white-space: normal; overflow: visible; }
+.st-m { display: grid; place-items: center; font: 500 11.5px/1.15 var(--f-body); color: var(--mute); }
+.st-m b { display: block; font: 600 17px/1 var(--f-mono); color: var(--ink); }
+.st-m svg { width: 20px; height: 20px; }
+.st-m.bad { color: var(--bad); }
+.st-m.hot b, .st-m.hot { color: var(--margin); }
+.st-how { margin-top: 32px; color: var(--ink-2); font-size: 14.5px; }
+.st-how summary { cursor: pointer; color: var(--mute); font-weight: 500; width: fit-content; }
+.st-how summary:hover { color: var(--ink); }
+.st-how ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.st-how li { display: flex; gap: 12px; align-items: baseline; }
+.st-how li b { width: 36px; flex: none; font: 600 14px var(--f-mono); color: var(--ok); }
+.st-how p { margin: 10px 0 0; color: var(--mute); }
+@media (max-width: 760px) {
+  .st-score { grid-template-columns: 72px minmax(0, 1fr); }
+  .st-score::before, .st-mod::before { left: 72px; }
+  .st-lvl { grid-row: span 2; }
+  .st-side { grid-column: 2; border-left: 0; border-top: 1px solid var(--line); grid-auto-columns: 1fr; }
+  .st-side > div { min-width: 0; padding: 12px 16px; }
+  .st-pts { padding: 16px; }
+  .st-mod { grid-template-columns: 72px minmax(0, 1fr); padding-right: 16px; row-gap: 14px; }
+  .st-ring { width: 52px; height: 52px; }
+  .st-mod-a { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+}
+
+/* очки взлетают от кнопки, которой их заработали */
+.pts-fly { position: fixed; z-index: 95; translate: -50% -100%; pointer-events: none; font: 700 15px/1 var(--f-mono); color: var(--on-lime); background: var(--lime); padding: 5px 8px; border-radius: 5px; box-shadow: var(--shadow-lift); animation: fly 1.2s var(--ease) forwards; }
+@keyframes fly { 0% { opacity: 0; transform: translateY(8px) scale(.7); } 18% { opacity: 1; transform: translateY(-4px) scale(1.08); } 30% { transform: translateY(-8px) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-46px); } }
+@keyframes roll-in { from { opacity: 0; transform: translateX(-24px) rotate(-200deg); } to { opacity: 1; transform: none; } }
+
+/* общее движение: строки списков проявляются по очереди, верный ответ отзывается, иконки меню оживают */
+.page .bk-list > li:nth-child(-n+10), .page .hw-rows > li:nth-child(-n+10) { animation: rise .38s var(--ease) both; }
+.page .bk-list > li:nth-child(2), .page .hw-rows > li:nth-child(2) { animation-delay: 40ms; }
+.page .bk-list > li:nth-child(3), .page .hw-rows > li:nth-child(3) { animation-delay: 80ms; }
+.page .bk-list > li:nth-child(4), .page .hw-rows > li:nth-child(4) { animation-delay: 120ms; }
+.page .bk-list > li:nth-child(5), .page .hw-rows > li:nth-child(5) { animation-delay: 160ms; }
+.page .bk-list > li:nth-child(6), .page .hw-rows > li:nth-child(6) { animation-delay: 200ms; }
+.page .bk-list > li:nth-child(n+7):nth-child(-n+10), .page .hw-rows > li:nth-child(n+7):nth-child(-n+10) { animation-delay: 240ms; }
+.next-step { animation: rise .45s .05s var(--ease) both; }
+.next-step .ns-m b { animation: pop .45s .25s var(--ease) both; }
+.kpis .kpi { animation: rise .4s var(--ease) both; }
+.kpis .kpi:nth-child(2) { animation-delay: 60ms; } .kpis .kpi:nth-child(3) { animation-delay: 120ms; } .kpis .kpi:nth-child(4) { animation-delay: 180ms; }
+.answer .ok { animation: okPulse .7s var(--ease); }
+@keyframes okPulse { 0% { box-shadow: 0 0 0 1px var(--ok), 0 0 0 0 color-mix(in srgb, var(--ok) 40%, transparent); } 100% { box-shadow: 0 0 0 1px var(--ok), 0 0 0 10px transparent; } }
+.badge-ok { animation: pop .4s var(--ease) both; }
+.verdict.ok, .verdict.bad { animation: rise .3s var(--ease) both; }
+.study-btn.on { animation: pop .35s var(--ease); }
+.nav a svg, .tabbar a svg { transition: transform .35s var(--ease); }
+.nav a:hover svg { transform: translateX(2px) scale(1.06); }
+.nav a.on svg, .tabbar a.on svg { animation: pop .4s var(--ease); }
+.nav-n { animation: pop .35s var(--ease) both; }
+.bk-chev { transition: transform .25s var(--ease), color .15s; }
 
 /* ═════════════ движение ═════════════ */
 .sr { opacity: 0; transform: translateY(16px); animation: none !important; }
@@ -2684,10 +2783,10 @@ function stacklyApp() {
     ['H₂O', 'Химия'], ['ДНК', 'Биология'], ['1812', 'История'], ['§', 'Обществознание'], ['«»', 'Литература'], ['56°', 'География'], ['ОГЭ', 'Подготовка к ОГЭ'], ['5+', 'Начальная школа']];
   const mxCell = v => v > 0 ? `<span class="mx ok">${v}</span>` : v < 0 ? `<span class="mx bad">${-v}</span>` : '<span class="mx">-</span>';
   // вошедшему вместо лендинга — его рабочая страница
-  const startPage = () => acct.role === 'admin' ? '#admin-home' : isTeacher() ? '#teach' : '#hw';
+  const startPage = () => acct.role === 'admin' ? '#admin-home' : isTeacher() ? '#teach' : '#start';
   function homeCta() {
     if (acct.cloud && (acct.role === 'teacher' || acct.role === 'admin')) return `<a class="btn blue hcta" href="#teach">Мои группы <span class="arr">${I.arrow}</span></a>`;
-    if (acct.cloud) return `<a class="btn blue hcta" href="#hw">Мои задания <span class="arr">${I.arrow}</span></a>`;
+    if (acct.cloud) return `<a class="btn blue hcta" href="#start">Мой кабинет <span class="arr">${I.arrow}</span></a>`;
     return `<a class="btn blue hcta" href="#signup">Попробовать бесплатно <span class="arr">${I.arrow}</span></a>`;
   }
   /* ═════════════ ПУБЛИЧНАЯ ОФЕРТА ═════════════
@@ -4012,16 +4111,49 @@ function stacklyApp() {
   let stats = normStats(store.get('stats', null));
   const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], mats: [...matsDone], att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
   function bumpDay() { const d = DAY(Date.now()); stats.days[d] = (stats.days[d] || 0) + 1; }
+  /* ── очки за активность: считаются из прогресса по той же формуле, что и на сервере (summary в stackly_api.py) ──
+     решённая задача — 10, с первой попытки — ещё 5; изученная тема, разобранное задание, материал — 5; день с занятиями — 5 */
+  const PTS = { solve: 10, first: 5, study: 5, day: 5 };
+  const firstTry = a => !!(a && a.c && (a.f || a.n === 1));
+  function pointsOf() {
+    const att = Object.values(stats.att);
+    return solved.size * PTS.solve + att.filter(firstTry).length * PTS.first
+      + (studied.size + egeRead.size + matsDone.size) * PTS.study + Object.values(stats.days).filter(n => n > 0).length * PTS.day;
+  }
+  // уровень N начинается с 25·N·(N−1) очков: 0, 50, 150, 300, 500…
+  const lvlFrom = L => 25 * L * (L - 1);
+  function levelOf(pts) { let L = 1; while (lvlFrom(L + 1) <= pts) L++; return { L, from: lvlFrom(L), to: lvlFrom(L + 1) }; }
+  function pointsToday() {
+    const t = DAY(Date.now());
+    let n = stats.days[t] ? PTS.day : 0;
+    for (const a of Object.values(stats.att)) if (a.ok && DAY(a.ok) === t) n += PTS.solve + (firstTry(a) ? PTS.first : 0);
+    for (const e of stats.events) if (e.k !== 'a' && DAY(e.t) === t) n += e.ok ? PTS.study : -PTS.study;
+    return Math.max(0, n);
+  }
+  // «+15» взлетает от кнопки, которой ученик заработал очки, шар в логотипе подпрыгивает
+  function ptsFx(n, from) {
+    if (n <= 0 || isTeacher()) return;
+    const el = from && from.isConnected ? from : document.activeElement && document.activeElement !== document.body ? document.activeElement : null;
+    const fly = document.createElement('span'); fly.className = 'pts-fly'; fly.textContent = '+' + n;
+    const r = el ? el.getBoundingClientRect() : { left: innerWidth / 2, top: innerHeight / 2, width: 0 };
+    fly.style.left = Math.min(innerWidth - 60, Math.max(8, r.left + r.width / 2)) + 'px'; fly.style.top = Math.max(8, r.top - 6) + 'px';
+    document.body.appendChild(fly); setTimeout(() => fly.remove(), 1300);
+    $$('.logo .ball').forEach(b => { b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); });
+    $$('[data-pts-live]').forEach(x => { x.textContent = fmtN(pointsOf()); });
+  }
   function track(kind, id, ok) {
     const now = Date.now();
+    let gain = 0;
     if (kind === 'a') {
       const a = stats.att[id] || (stats.att[id] = { n: 0, c: 0, first: now, ok: 0 });
-      a.n++; if (ok) { a.c++; if (!a.ok) a.ok = now; }
-    }
+      a.n++; if (ok) { a.c++; if (!a.ok) a.ok = now; if (a.c === 1) { gain += PTS.solve; if (a.n === 1) { a.f = 1; gain += PTS.first; } } }
+    } else if (ok) gain += PTS.study;
+    if ((kind === 'a' || ok) && !stats.days[DAY(now)]) gain += PTS.day;
     if (kind === 'a' || ok) bumpDay();
     stats.events.push({ t: now, k: kind, id: String(id), ok: ok ? 1 : 0 });
     if (stats.events.length > 120) stats.events = stats.events.slice(-120);
     persist();
+    ptsFx(gain);
   }
   function persist() {
     store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]);
@@ -4061,7 +4193,7 @@ function stacklyApp() {
     const r = normStats(remote);
     for (const [k, a] of Object.entries(r.att)) {
       const l = stats.att[k];
-      stats.att[k] = l ? { n: Math.max(l.n, a.n), c: Math.max(l.c, a.c), first: Math.min(l.first || Infinity, a.first || Infinity), ok: l.ok && a.ok ? Math.min(l.ok, a.ok) : (l.ok || a.ok || 0) } : a;
+      stats.att[k] = l ? { n: Math.max(l.n, a.n), c: Math.max(l.c, a.c), first: Math.min(l.first || Infinity, a.first || Infinity), ok: l.ok && a.ok ? Math.min(l.ok, a.ok) : (l.ok || a.ok || 0), ...(l.f || a.f ? { f: 1 } : {}) } : a;
     }
     for (const [d, n] of Object.entries(r.days)) stats.days[d] = Math.max(stats.days[d] || 0, n);
     const seen = new Set(); stats.events = [...stats.events, ...r.events].sort((x, y) => x.t - y.t).filter(e => { const k = e.t + e.k + e.id; if (seen.has(k)) return false; seen.add(k); return true; }).slice(-120);
@@ -4089,7 +4221,7 @@ function stacklyApp() {
     acct.checked = true; renderAcctBtn();
     $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
-    if (/^#(login|me|teach|admin|hw|edit|mat)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
+    if (/^#(login|me|teach|admin|hw|start|edit|mat)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
   }
   // прогресс и материалы прежнего аккаунта не должны попасть в другой
   function forgetLocal() {
@@ -4197,6 +4329,7 @@ function stacklyApp() {
       { nav: 'me', href: '#me', label: 'Профиль', icon: 'tabUsers', tab: 1, side: 0 },
     ];
     return [
+      { nav: 'start', href: '#start', label: 'Главная', icon: 'tabHome', tab: 1 },
       { nav: 'hw', href: '#hw', label: 'Задания', icon: 'tabHw', tab: 1 }, M, B,
       { nav: 'me', href: '#me', label: 'Прогресс', icon: 'tabStats', tab: 1 },
     ];
@@ -4209,6 +4342,7 @@ function stacklyApp() {
   }
   // какой пункт навигации подсвечен на странице
   function navKeyOf(h) {
+    if (h === 'start') return 'start';
     if (/^(hw)(-\d+)?$/.test(h)) return 'hw';
     if (/^(materials|mat-|ege|py-|python|cheat|course)/.test(h)) return 'materials';
     if (/^(bank|p-|set-)/.test(h)) return 'bank';
@@ -4323,7 +4457,7 @@ function stacklyApp() {
       setUser(r.user); acct.resetToken = ''; acct.mode = 'login';
       await connect(true);
       // перезагрузка подтянет закрытые материалы — уже с cookie сессии
-      let next = 'me'; try { next = sessionStorage.getItem(NEXT) || 'me'; sessionStorage.removeItem(NEXT); } catch (e) { }
+      let next = startPage().slice(1); try { next = sessionStorage.getItem(NEXT) || next; sessionStorage.removeItem(NEXT); } catch (e) { }
       location.hash = next;
       location.reload();
     } catch (e) { msg.textContent = e.message; msg.className = 'form-msg bad'; btn.disabled = false; }
@@ -4697,6 +4831,109 @@ function stacklyApp() {
       ${myHW.length ? '' : `<section class="t-sec"><div class="t-empty"><b>Вы ещё не в группе</b>Попросите у учителя код группы и введите его здесь — задания появятся сразу.${join}</div></section>`}
       ${done.length ? `<section class="t-sec"><h2>Выполненные <span class="muted" style="font:500 14px var(--f-mono)">${done.length}</span></h2><ul class="hw-rows">${done.map(hwRowHTML).join('')}</ul></section>` : ''}`;
   }
+  /* ═════════════ ГЛАВНАЯ УЧЕНИКА ═════════════
+     Первая страница после входа: очки и уровень, ближайшее задание, модуль, который стоит пройти, и рекомендации */
+  let myGroups = null;
+  // модули, открытые ученику: материалы учителей, разделы методички, блоки учебника Python
+  function startModules() {
+    const out = [];
+    if (MATS.length) out.push({ kind: 'mat', title: 'Материалы преподавателя', text: 'Конспекты и разборы, которые открыл ваш учитель.',
+      steps: MATS.map(m => ({ done: matsDone.has(m.id), href: `#mat-${m.id}`, t: m.title })) });
+    if (canSee('inf-ege')) [[1, 12, 'ЕГЭ: быстрые задания 1–12', 'Кодирование, логика, таблицы и простые программы — по 2–6 минут на экзамене.'],
+      [13, 23, 'ЕГЭ: повышенный уровень 13–23', 'Перебор, рекурсия, игры, графы и обработка файлов.'],
+      [24, 27, 'ЕГЭ: высокий уровень 24–27', 'Длинные задачи на строки, последовательности и оптимизацию. 26 и 27 стоят по 2 балла.']]
+      .forEach(([a, b, title, text]) => out.push({ kind: 'ege', title, text, steps: EGE.filter(t => t.n >= a && t.n <= b).map(t => ({ done: egeRead.has(t.n), href: `#ege-${t.n}`, t: `${t.n}. ${t.title}` })) }));
+    if (canSee('inf-py')) BLOCKS.forEach(b => out.push({ kind: 'py', title: `Python, блок ${b.id}: ${b.title}`, text: 'Темы учебника с примером и выводом. Отметь тему изученной, когда разберёшься.',
+      steps: PY.filter(t => t.id >= b.from && t.id <= b.to).map(t => ({ done: studied.has(t.id), href: `#py-${t.id}`, t: t.title })) }));
+    for (const m of out) { m.done = m.steps.filter(x => x.done).length; m.total = m.steps.length; m.next = m.steps.find(x => !x.done); }
+    return out.filter(m => m.total);
+  }
+  // какой модуль предложить: начатый и самый близкий к концу, потом материалы учителя, потом первый по порядку
+  function pickModule(mods) {
+    const open = mods.filter(m => m.done < m.total);
+    return open.filter(m => m.done).sort((a, b) => b.done / b.total - a.done / a.total)[0] || open.find(m => m.kind === 'mat') || open[0] || null;
+  }
+  function startRecs(mods, mod, open) {
+    const recs = [], today = !!stats.days[DAY(Date.now())], streak = streakOf(stats.days);
+    const add = (mark, title, text, href, pts, cls = '') => recs.push({ mark, title, text, href, pts, cls });
+    if (!today && streak) add(`<b>${streak}</b>${plural(streak, 'день', 'дня', 'дней')}`, 'Не прерви серию', `Ты занимаешься ${streak} ${plural(streak, 'день', 'дня', 'дней')} подряд. Одно действие сегодня — и серия продолжится.`, open[0] ? `#hw-${open[0].h.id}` : mod && mod.next ? mod.next.href : '#bank', PTS.day, 'hot');
+    const miss = id => stats.att[id].n - stats.att[id].c;
+    BANK.filter(p => stats.att[p.id] && miss(p.id) > 0 && !solved.has(p.id)).slice(0, 2)
+      .forEach(p => add(I.cross, `Исправь ошибку: «${esc(p.title)}»`, `${miss(p.id)} ${plural(miss(p.id), 'неверный ответ', 'неверных ответа', 'неверных ответов')}. Перечитай условие и попробуй ещё раз.`, `#p-${p.id}`, PTS.solve, 'bad'));
+    // задача из следующих заданий — первое и так стоит в «Дальше»
+    open.slice(1).flatMap(x => (x.h.items.bank || []).filter(id => !solved.has(id) && pnum[id])).slice(0, 1)
+      .forEach(id => { const p = BANK.find(x => x.id === id); if (p) add(`<b>#${pnum[id]}</b>`, `Задача из задания: «${esc(p.title)}»`, 'Её ждут в одном из следующих заданий — можно решить заранее.', `#p-${id}`, PTS.solve + PTS.first); });
+    mods.filter(m => m !== mod && m.done && m.done < m.total).slice(0, 1)
+      .forEach(m => add(`<b>${m.done}/${m.total}</b>`, `Вернись к модулю «${esc(m.title)}»`, `Следующий шаг: ${esc(m.next.t)}.`, m.next.href, PTS.study));
+    if (canSee('inf-cheat') && (solved.size >= 5 || egeRead.size >= 3)) add(I.tabMaterials, 'Повтори шпаргалку', 'Все формулы и главные конструкции Python на одной странице — пять минут перед занятием.', '#cheat', 0);
+    if (myGroups && !myGroups.length) add(I.tabTeach, 'Вступи в группу учителя', 'Попроси у учителя код группы — его задания появятся здесь.', '#me', 0);
+    return recs.slice(0, 5);
+  }
+  function startHTML() {
+    const S = localSets(), list = myHW.map(h => ({ h, p: hwProg(h.items, S) }));
+    const open = list.filter(x => x.p[0] < x.p[1]).sort((a, b) => (a.h.due || 9e12) - (b.h.due || 9e12));
+    const pts = pointsOf(), lv = levelOf(pts), today = pointsToday(), streak = streakOf(stats.days);
+    const mods = startModules(), mod = pickModule(mods), recs = startRecs(mods, mod, open);
+    const name = (acct.name || '').split(' ')[0];
+    const hr = new Date().getHours(), hi = hr < 5 ? 'Доброй ночи' : hr < 12 ? 'Доброе утро' : hr < 18 ? 'Добрый день' : 'Добрый вечер';
+    const week = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return `<i class="${stats.days[DAY(d)] ? 'on' : ''}" style="--i:${i}" title="${d.toLocaleDateString('ru-RU', { weekday: 'long' })}"></i>`; }).join('');
+    const steps = mod ? mod.steps.filter(x => !x.done).slice(0, 3) : [];
+    return `<header class="t-head st-head"><div><h1>${hi}${name ? ', ' + esc(name) : ''}</h1>
+        <p>${open.length ? `На сегодня: задание «${esc(open[0].h.title)}»${mod ? ' и модуль' : ''}.` : mod ? 'Несданных заданий нет — самое время пройти модуль.' : 'Несданных заданий нет.'}</p></div></header>
+
+      <section class="st-score" aria-label="Очки за активность">
+        <div class="st-lvl"><span class="ball"></span><b>${lv.L}</b><small>уровень</small></div>
+        <div class="st-pts"><span class="st-cap">Очки за активность</span>
+          <b data-count="${pts}" data-pts-live>${fmtN(pts)}</b>
+          <span class="pbar st-bar"><i style="width:${(pts - lv.from) / (lv.to - lv.from) * 100}%"></i></span>
+          <span class="st-sub">ещё ${fmtN(lv.to - pts)} до уровня ${lv.L + 1}</span></div>
+        <div class="st-side">
+          <div><span class="st-cap">Сегодня</span><b class="${today ? 'up' : ''}">+${today}</b></div>
+          <div><span class="st-cap">Серия</span><b>${streak} <small>${plural(streak, 'день', 'дня', 'дней')}</small></b><span class="flames st-week">${week}</span></div>
+        </div>
+      </section>
+
+      ${open.length ? `<section class="t-sec st-sec"><h2 class="sec-h">Дальше</h2>${nextHWHTML(open)}${open.length > 1 ? `<p class="st-more"><a href="#hw">Ещё ${open.length - 1} ${plural(open.length - 1, 'задание', 'задания', 'заданий')} <span class="lnk-ic">${I.chev}</span></a></p>` : ''}</section>` : ''}
+
+      ${mod ? `<section class="t-sec st-sec"><h2 class="sec-h">Пройди модуль</h2>
+        <article class="st-mod">
+          <div class="st-ring" style="--p:${Math.round(mod.done / mod.total * 100)}" aria-label="Пройдено ${mod.done} из ${mod.total}"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="v" cx="22" cy="22" r="19" pathLength="100"/></svg><span>${mod.done}/${mod.total}</span></div>
+          <div class="st-mod-t"><h3>${esc(mod.title)}</h3><p>${esc(mod.text)}</p>
+            <ol class="st-steps">${steps.map((x, i) => `<li style="--i:${i}"><a href="${x.href}"><span class="n">${mod.steps.indexOf(x) + 1}</span><span>${esc(x.t)}</span></a></li>`).join('')}</ol></div>
+          <div class="st-mod-a"><a class="btn" href="${mod.next.href}">${mod.done ? 'Продолжить' : 'Начать'} <span class="arr">${I.arrow}</span></a><span class="st-gain">+${PTS.study} за каждый шаг</span></div>
+        </article></section>` : ''}
+
+      ${recs.length ? `<section class="t-sec st-sec"><h2 class="sec-h">Рекомендации</h2>
+        <ul class="bk-list st-recs">${recs.map((r, i) => `<li style="--i:${i}"><a class="bk-row" href="${r.href}"><span class="bk-i st-m ${r.cls}">${r.mark}</span>
+          <span class="bk-t"><b>${r.title}</b><span class="bk-meta"><span>${r.text}</span></span></span>${r.pts ? `<span class="st-gain">+${r.pts}</span>` : ''}<span class="bk-chev">${I.chev}</span></a></li>`).join('')}</ul></section>` : ''}
+
+      ${!open.length && !mod && !recs.length ? `<section class="t-sec"><div class="t-empty"><b>Здесь появятся задания и модули</b>Вступи в группу учителя по коду — его задания и материалы сразу окажутся на этой странице.<div class="cta-row"><a class="btn small" href="#me">Ввести код группы <span class="arr">${I.arrow}</span></a></div></div></section>` : ''}
+
+      <details class="st-how"><summary>Как начисляются очки</summary>
+        <ul><li><b>+${PTS.solve}</b>задача решена верно</li><li><b>+${PTS.first}</b>ещё, если с первой попытки</li><li><b>+${PTS.study}</b>изучена тема Python, разобрано задание методички или материал учителя</li><li><b>+${PTS.day}</b>за каждый день с занятиями</li></ul>
+        <p>Каждый следующий уровень требует больше очков. Очки видит и твой преподаватель.</p></details>`;
+  }
+  let stSeq = 0;
+  async function loadStart() {
+    const seq = ++stSeq;
+    const put = html => { const box = $('#stpage'); if (seq !== stSeq || !box) return; box.innerHTML = html; swapIn(box); countUp(box); };
+    if (!acct.checked) return;
+    if (!acct.cloud) return put(tMsg('Войдите в аккаунт', 'Задания, модули и очки видны после входа.', '#login', 'Войти'));
+    try { const [h, g] = await Promise.all([api('/me/homework'), api('/me/groups'), loadMats()]); myHW = h.homework; myGroups = g.groups; updHWBadge(); }
+    catch (e) { return put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#hw', 'К заданиям')); }
+    if (bankStale()) return;
+    put(startHTML());
+  }
+  // числа, которые набегают от нуля при появлении экрана
+  function countUp(root) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    $$('[data-count]', root).forEach(el => {
+      const to = +el.dataset.count, t0 = performance.now(), dur = Math.min(1400, 600 + to);
+      if (!to) return;
+      const step = now => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3); el.textContent = fmtN(Math.round(to * e)); if (k < 1 && el.isConnected) requestAnimationFrame(step); };
+      el.textContent = '0'; requestAnimationFrame(step);
+    });
+  }
   // разбор задания методички внутри ДЗ: суть сразу, подробности — по раскрытию
   function egeInline(t) {
     const on = egeRead.has(t.n);
@@ -4862,9 +5099,9 @@ function stacklyApp() {
 
       <section class="t-sec"><h2>Ученики</h2>
         ${acct.role === 'admin' ? `<div class="t-add"><div class="t-create"><input id="addq" type="search" maxlength="80" autocomplete="off" placeholder="Добавить ученика: имя или почта" aria-label="Найти ученика, чтобы добавить в группу"></div><div id="addres" aria-live="polite"></div></div>` : ''}
-        ${ms.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ученик</th><th class="num">Решено</th><th class="num">Точность</th><th class="num">Серия</th><th class="num">За 7 дней</th><th>Заходил</th><th class="num">ДЗ</th><th></th></tr></thead><tbody>
+        ${ms.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ученик</th><th class="num">Очки</th><th class="num">Решено</th><th class="num">Точность</th><th class="num">Серия</th><th class="num">За 7 дней</th><th>Заходил</th><th class="num">ДЗ</th><th></th></tr></thead><tbody>
           ${ms.map(m => { const s = m.stats, [hd, ht] = hwOf(m.id); return `<tr><td class="name"><a href="#teach-s-${m.id}">${esc(m.name)}</a><small>${esc(m.email)}</small></td>
-            <td class="num">${s.solved}</td><td class="num"><span class="acc ${accCls(s.accuracy)}">${s.accuracy === null ? '—' : s.accuracy + '%'}</span></td>
+            <td class="num">${fmtN(s.points || 0)}</td><td class="num">${s.solved}</td><td class="num"><span class="acc ${accCls(s.accuracy)}">${s.accuracy === null ? '—' : s.accuracy + '%'}</span></td>
             <td class="num">${s.streak} ${plural(s.streak, 'день', 'дня', 'дней')}</td><td class="num">${s.active7} ${plural(s.active7, 'день', 'дня', 'дней')}</td><td>${fmtAgo(s.updated)}</td>
             <td class="num">${ht ? `${hd} / ${ht}` : '—'}</td><td><button type="button" class="icon-x" data-tact="rm-member" data-id="${m.id}" data-name="${esc(m.name)}" aria-label="Убрать ${esc(m.name)} из группы" title="Убрать из группы">${I.cross}</button></td></tr>`; }).join('')}
           </tbody></table></div>`
@@ -4964,7 +5201,7 @@ function stacklyApp() {
     const blocks = BLOCKS.map(b => { const ts = PY.filter(t => t.id >= b.from && t.id <= b.to); return { b, total: ts.length, done: ts.filter(t => S.py.has(t.id)).length }; });
     return `<a class="t-back" href="${back}">${I.chevL}${r.groups.length ? esc(r.groups[0].name) : 'Все группы'}</a>
       <header class="t-head"><div><span class="eyebrow">Ученик${r.groups.length ? ' · ' + r.groups.map(g => esc(g.name)).join(', ') : ''}</span><h1>${esc(u.name)}</h1>
-        <p>${esc(u.email)} · на stackly с ${fmtDate(u.created * 1000)}</p></div></header>
+        <p>${esc(u.email)} · на stackly с ${fmtDate(u.created * 1000)} · ${fmtN(s.points || 0)} ${plural(s.points || 0, 'очко', 'очка', 'очков')}, уровень ${levelOf(s.points || 0).L}</p></div></header>
       <section class="kpis">
         <div class="kpi"><span class="k-l">Решено задач</span><b>${s.solved}</b><span class="k-s">Python: ${s.studied} из ${PY.length} тем · разборов: ${s.ege} из 27</span></div>
         <div class="kpi"><span class="k-l">Точность ответов</span><b>${s.accuracy === null ? '—' : s.accuracy + '<small>%</small>'}</b>${barHTML(s.right, s.tries || 1)}<span class="k-s">${s.tries ? `${s.right} верных из ${s.tries} ${plural(s.tries, 'попытки', 'попыток', 'попыток')}` : 'ещё нет попыток'}</span></div>
@@ -5877,7 +6114,7 @@ function stacklyApp() {
     }
     btn.disabled = true;
     try {
-      if (kind === 'join') { const r = await api('/me/groups/join', 'POST', { code: f.elements.code.value }); f.reset(); toast(`Вы в группе «${r.group.name}»`); await loadMyClass(); if ($('#hwpage')) loadHW('hw'); }
+      if (kind === 'join') { const r = await api('/me/groups/join', 'POST', { code: f.elements.code.value }); f.reset(); toast(`Вы в группе «${r.group.name}»`); await loadMyClass(); if ($('#hwpage')) loadHW('hw'); if ($('#stpage')) loadStart(); }
       else if (kind === 'group-new') { const r = await api('/teach/groups', 'POST', { name: f.elements.name.value }); location.hash = 'teach-g-' + r.group.id; }
       else if (kind === 'group-rename') { await api('/teach/groups/update', 'POST', { id: +f.dataset.id, name: f.elements.name.value }); toast('Группа переименована'); route(); }
       else if (kind === 'hw') { await api('/teach/homework', 'POST', body); toast(body.id ? 'Задание сохранено' : 'Задание выдано'); location.hash = 'teach-g-' + body.group_id; }
@@ -6092,6 +6329,10 @@ function stacklyApp() {
       nav = 'bank';
     }
     else if (/^(teach|admin|edit)/.test(h)) { html = teachShell(); nav = 'teach'; }
+    else if (h === 'start') {
+      if (isTeacher()) { location.replace(startPage()); return; }
+      html = `<div class="page wrap t-page st" id="stpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'start';
+    }
     else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
     else if (h === 'login' || h === 'signup') {
@@ -6177,8 +6418,9 @@ function stacklyApp() {
     $('footer.foot').hidden = nav !== 'home';
     if (nav === 'teach') loadTeach(h);
     if (nav === 'hw') loadHW(h); else curHW = 0;
+    if (nav === 'start') loadStart();
     if (nav === 'me') { loadMyClass(); loadTg(); }
-    document.title = { home: 'stackly · платформа для репетиторов', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
+    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', (nav === 'me' && acct.role !== 'student') || nav === 'login');
   }
 

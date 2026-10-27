@@ -274,6 +274,7 @@ class ClassroomTest(ServerCase):
         self.assertIsNone(status[str(sid1)][2])
         m1 = next(m for m in grp['members'] if m['id'] == sid1)
         self.assertEqual((m1['stats']['solved'], m1['stats']['accuracy']), (1, 50))
+        self.assertEqual(m1['stats']['points'], 10 + 5)          # задача со второй попытки и одна тема, дней нет
         s1.call('PUT', '/progress', {'data': {'solved': ['b1', 'b2'], 'studied': [3], 'ege': [1]}})
         mine = {h['id']: h for h in s1.call('GET', '/me/homework')[1]['homework']}
         self.assertIsNotNone(mine[hid]['done_at'])
