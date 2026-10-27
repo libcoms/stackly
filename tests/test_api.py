@@ -411,6 +411,46 @@ class ClassroomTest(ServerCase):
         self.assertEqual(s2.call('POST', '/polls/vote', {'id': r['id'], 'choice': 0})[1]['error'], 'closed')
         self.assertEqual(s1.call('GET', '/shop')[1]['balance'], 35)
 
+    def test_group_rating(self):
+        t, _ = self.teacher()
+        g = t.call('POST', '/teach/groups', {'name': 'Рейтинг'})[1]['group']
+        other = t.call('POST', '/teach/groups', {'name': 'Чужая'})[1]['group']
+        s1, e1 = self.register(); s2, _ = self.register(); s3, _ = self.register()
+        for s in (s1, s2):
+            s.call('POST', '/me/groups/join', {'code': g['code']})
+        s3.call('POST', '/me/groups/join', {'code': other['code']})
+        now = int(time.time() * 1000)
+        today, old = time.strftime('%Y-%m-%d'), time.strftime('%Y-%m-%d', time.localtime(time.time() - 30 * 86400))
+        # s1: две задачи сегодня (одна с первой попытки) и одна месяц назад; 12 попыток — попадает в рейтинг точности
+        s1.call('PUT', '/progress', {'data': {'solved': ['a', 'b', 'c'], 'days': {today: 2, old: 1},
+                                              'att': {'a': {'n': 1, 'c': 1, 'ok': now}, 'b': {'n': 3, 'c': 1, 'ok': now},
+                                                      'c': {'n': 8, 'c': 1, 'ok': now - 30 * 86400000}},
+                                              'events': [{'t': now, 'k': 'p', 'id': '3', 'ok': 1}], 'studied': [3]}})
+        s2.call('PUT', '/progress', {'data': {'solved': ['a'], 'att': {'a': {'n': 1, 'c': 1, 'ok': now}}, 'days': {today: 1}}})
+        r = s1.call('GET', '/me/rating')[1]
+        self.assertEqual((r['group'], r['me'], [x['name'] for x in r['groups']]), (g['id'], r['me'], ['Рейтинг']))
+        rows = {x['id']: x for x in r['rows']}
+        me = rows[r['me']]
+        # неделя: 10+5 и 10 за задачи, 5 за тему, 5 за день; всего ещё задача месяц назад и тот день
+        self.assertEqual((me['week'], me['points'], me['solved'], me['accuracy']), (35, 50, 3, 25))
+        self.assertEqual(len(rows), 2)
+        self.assertNotIn('email', me)
+        self.assertNotIn(s3.call('GET', '/auth/me')[1]['user']['id'], rows)
+        self.assertIsNone([x for x in r['rows'] if x['id'] != r['me']][0]['accuracy'])     # 1 попытка — мало для точности
+        # опрос эфира добавляет баллы и в неделю, и во всего
+        p = t.call('POST', '/teach/polls', {'question': 'Q', 'options': ['a', 'b'], 'reward': 7})[1]['poll']
+        s2.call('POST', '/polls/vote', {'id': p['id'], 'choice': 0})
+        r2 = {x['id']: x for x in s2.call('GET', '/me/rating')[1]['rows']}
+        s2id = s2.call('GET', '/auth/me')[1]['user']['id']
+        self.assertEqual((r2[s2id]['week'], r2[s2id]['points']), (15 + 5 + 7, 15 + 5 + 7))
+        # учитель видит рейтинг на странице группы и может скрыть его от учеников
+        self.assertEqual(len(t.call('GET', f'/teach/group?id={g["id"]}')[1]['rating']), 2)
+        self.assertEqual(s1.call('GET', f'/me/rating?group={other["id"]}')[0], 404)            # не своя группа
+        t.call('POST', '/teach/groups/update', {'id': g['id'], 'rating_open': False})
+        r = s1.call('GET', '/me/rating')[1]
+        self.assertEqual((r['group'], r['rows'], r['groups'][0]['rating_open']), (None, [], 0))
+        self.assertEqual(s1.call('GET', f'/me/rating?group={g["id"]}')[0], 404)
+
     def test_homework_validation(self):
         t, _ = self.teacher()
         g = t.call('POST', '/teach/groups', {'name': 'Пн 18:00'})[1]['group']

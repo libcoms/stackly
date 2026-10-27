@@ -231,6 +231,9 @@ def migrate():
     # по его предметам и его задачи, а не только выданные в ДЗ
     if 'bank_open' not in [r['name'] for r in db().execute('PRAGMA table_info(study_groups)')]:
         db().execute("ALTER TABLE study_groups ADD COLUMN bank_open INTEGER NOT NULL DEFAULT 0")
+    # rating_open = 1 — ученики группы видят рейтинг группы (имена и оформление одногруппников, без почты)
+    if 'rating_open' not in [r['name'] for r in db().execute('PRAGMA table_info(study_groups)')]:
+        db().execute("ALTER TABLE study_groups ADD COLUMN rating_open INTEGER NOT NULL DEFAULT 1")
     # snum — номер задания внутри предмета (1, 2, …) у задач не из ЕГЭ по информатике; 0 — без номера
     # голос оверлея эфира: имя голоса браузера (Web Speech API) и скорость речи; пусто — оверлей выберет лучший русский сам
     if 'voice' not in [r['name'] for r in db().execute('PRAGMA table_info(live_cfg)')]:
@@ -512,6 +515,38 @@ def points(solved, first, studied, days):
     """Очки за активность — та же формула, что pointsOf() на сайте: задача 10 (+5 с первой попытки),
     изученная тема, разбор или материал 5, день с занятиями 5."""
     return solved * 10 + first * 5 + studied * 5 + days * 5
+
+RATING_DAYS, RATING_MIN_TRIES = 7, 10      # окно «баллы за неделю»; в рейтинге точности — только сделавшие столько попыток
+
+def recent_points(data, uid, days=RATING_DAYS):
+    """Баллы за последние days дней по той же формуле: задачи — по времени верного ответа (att.ok, мс),
+    темы и разборы — по журналу событий (отметка +5, снятие отметки −5), дни занятий, плюс опросы эфира и начисления."""
+    since = time.time() - days * 86400
+    first_day = time.strftime('%Y-%m-%d', time.localtime(time.time() - (days - 1) * 86400))
+    pts = 0
+    for a in (data.get('att') or {}).values() if isinstance(data.get('att'), dict) else ():
+        if isinstance(a, dict) and a.get('c') and isinstance(a.get('ok'), (int, float)) and a['ok'] / 1000 >= since:
+            pts += 10 + (5 if a.get('f') or a.get('n') == 1 else 0)
+    for e in data.get('events') or [] if isinstance(data.get('events'), list) else ():
+        if isinstance(e, dict) and e.get('k') != 'a' and isinstance(e.get('t'), (int, float)) and e['t'] / 1000 >= since:
+            pts += 5 if e.get('ok') else -5
+    if isinstance(data.get('days'), dict):
+        pts += 5 * sum(1 for k, v in data['days'].items() if v and isinstance(k, str) and k >= first_day)
+    pts -= db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ('grant', 'poll') AND created >= ?",
+                        (uid, int(since))).fetchone()[0]
+    return max(0, pts)
+
+def group_rating(gid):
+    """Строки рейтинга группы: имя и оформление (без почты — рейтинг видят одногруппники) и показатели, по которым сортирует сайт."""
+    out = []
+    for r in db().execute('SELECT u.id, u.name FROM group_members m JOIN users u ON u.id = m.user_id WHERE m.group_id = ?', (gid,)).fetchall():
+        data, updated = load_progress(r['id'])
+        s = summary(data, updated, r['id'])
+        bonus = -db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ('grant', 'poll')", (r['id'],)).fetchone()[0]
+        out.append({'id': r['id'], 'name': r['name'], 'look': look_of(r['id']), 'week': recent_points(data, r['id']),
+                    'points': s['points'] + bonus, 'streak': s['streak'], 'solved': s['solved'],
+                    'accuracy': s['accuracy'] if s['tries'] >= RATING_MIN_TRIES else None, 'tries': s['tries']})
+    return out
 
 # ---------------------------------------------------------------- магазин баллов
 # оформление профиля: id → (слот, название, цена). Цвета и значки рисует сайт по id
@@ -957,6 +992,7 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/me/groups/join'): self.join_group,
             ('POST', '/api/me/groups/leave'): self.leave_group,
             ('GET', '/api/me/homework'): self.my_homework,
+            ('GET', '/api/me/rating'): self.my_rating,
             # учитель
             ('GET', '/api/teach/groups'): self.t_groups,
             ('POST', '/api/teach/groups'): self.t_group_create,
@@ -1513,6 +1549,24 @@ class Handler(BaseHTTPRequestHandler):
                             'WHERE m.user_id = ? ORDER BY m.joined', (u['id'],)).fetchall()
         self.send_json(200, {'groups': [dict(r) for r in rows]})
 
+    def my_rating(self):
+        """Рейтинг одной из групп ученика (по умолчанию — первой, где учитель его открыл)."""
+        u = self.current_user()
+        groups = [dict(r) for r in db().execute('SELECT g.id, g.name, g.rating_open, t.name AS teacher FROM group_members m '
+                                                'JOIN study_groups g ON g.id = m.group_id JOIN users t ON t.id = g.teacher_id '
+                                                'WHERE m.user_id = ? ORDER BY m.joined', (u['id'],))]
+        open_ = [g for g in groups if g['rating_open']]
+        gid = self.query.get('group')
+        if gid is None:
+            g = open_[0] if open_ else None
+        else:
+            g = next((x for x in open_ if str(x['id']) == gid), None)
+            if not g:
+                raise ApiError(404, 'not_found', 'Рейтинг этой группы недоступен')
+        self.send_json(200, {'groups': [{k: x[k] for k in ('id', 'name', 'teacher', 'rating_open')} for x in groups],
+                             'group': g and g['id'], 'rows': group_rating(g['id']) if g else [], 'me': u['id'],
+                             'days': RATING_DAYS, 'min_tries': RATING_MIN_TRIES})
+
     def join_group(self):
         u = self.current_user()
         key = f'join:{u["id"]}'
@@ -1644,6 +1698,8 @@ class Handler(BaseHTTPRequestHandler):
             db().execute('UPDATE study_groups SET code = ? WHERE id = ?', (new_group_code(), g['id']))
         if 'bank_open' in d:
             db().execute('UPDATE study_groups SET bank_open = ? WHERE id = ?', (1 if d['bank_open'] else 0, g['id']))
+        if 'rating_open' in d:
+            db().execute('UPDATE study_groups SET rating_open = ? WHERE id = ?', (1 if d['rating_open'] else 0, g['id']))
         self.send_json(200, {'group': dict(db().execute('SELECT * FROM study_groups WHERE id = ?', (g['id'],)).fetchone())})
 
     def t_group_delete(self):
@@ -1691,7 +1747,7 @@ class Handler(BaseHTTPRequestHandler):
                            (g['id'],)).fetchall()
         status = self.hw_status(hws, sets)
         teacher = db().execute('SELECT name FROM users WHERE id = ?', (g['teacher_id'],)).fetchone()['name']
-        self.send_json(200, {'group': dict(g, teacher=teacher), 'members': members,
+        self.send_json(200, {'group': dict(g, teacher=teacher), 'members': members, 'rating': group_rating(g['id']),
                              'homework': [dict(hw_json(h), status=status[h['id']]) for h in hws]})
 
     def t_student(self):

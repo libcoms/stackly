@@ -213,6 +213,9 @@ img { max-width: 100%; }
   .tabbar a { position: relative; flex: 1 1 0; min-width: 0; height: 62px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: 500 11px/1.15 var(--f-body); color: var(--mute); text-decoration: none; transition: color .2s; }
   .tabbar a::before { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 2px; border-radius: 0 0 2px 2px; background: var(--blue); opacity: 0; transform: scaleX(.4); transition: opacity .2s, transform .3s var(--ease); }
   .tabbar a.on { color: var(--blue-fg); font-weight: 600; }
+  /* у ученика шесть вкладок — подписи помещаются целиком */
+  .tabbar:has(> a:nth-child(6)) a { font-size: 10.5px; letter-spacing: -.03em; }
+  .tabbar:has(> a:nth-child(6)) span { padding: 0; }
   .tabbar a.on::before { opacity: 1; transform: none; }
   .tabbar a:hover { text-decoration: none; }
   .tabbar svg { width: 22px; height: 22px; }
@@ -1841,6 +1844,39 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
   .sh-bal > .sh-me { margin-left: 0; }
 }
 
+/* рейтинг группы: место на полях, аватар, имя, показатель */
+.rt-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.rt-g { font-size: 14.5px; color: var(--mute); }
+.rt-g b { color: var(--ink); }
+.rt-me { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 18px; align-items: center; padding: 16px 20px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
+.rt-me > b { grid-column: 1 / -1; font-size: 15.5px; }
+.rt-me span, .rt-me div > span { display: block; font-size: 14px; color: var(--ink-2); }
+.rt-me div > b { display: block; font: 650 17px/1.3 var(--f-display); margin-bottom: 3px; }
+.rt-me .rt-place { display: grid; justify-items: center; gap: 4px; padding-right: 18px; border-right: 1px solid var(--margin); color: var(--mute); font-size: 12.5px !important; }
+.rt-me .rt-place b { font: 700 34px/1 var(--f-mono); color: var(--ink); }
+.rt-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); overflow: hidden; }
+.rt-list li { position: relative; display: grid; grid-template-columns: 52px auto minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 56px; padding: 8px 18px 8px 0; border-top: 1px solid var(--line); animation: rise .38s var(--ease) both; animation-delay: calc(var(--i) * 30ms); }
+.rt-list li:first-child { border-top: 0; }
+.rt-list li::before { content: ""; position: absolute; top: 0; bottom: 0; left: 52px; width: 1px; background: rgb(229 84 76 / .55); }
+.rt-n { justify-self: center; display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 6px; border-radius: 999px; font: 600 14px/1 var(--f-mono); color: var(--mute); }
+.rt-list li.rt-p1 .rt-n { background: var(--lime); color: var(--on-lime); box-shadow: inset 0 0 0 1.5px currentColor; }
+.rt-list li.rt-p2 .rt-n { background: var(--blue-soft); color: var(--blue-ink); }
+.rt-list li.rt-p3 .rt-n { background: var(--paper-2); box-shadow: inset 0 0 0 1px var(--line-2); }
+.rt-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rt-name b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-name small { flex: none; padding: 3px 7px; border-radius: 5px; background: var(--blue); color: var(--on-blue); font: 600 11.5px/1 var(--f-body); }
+.rt-v { font: 600 15px/1.2 var(--f-mono); white-space: nowrap; }
+.rt-list li.me { background: var(--blue-soft); }
+.rt-note { font-size: 13.5px; margin: 10px 0 0; }
+.page .live-upd .rt-list li { animation: none; }
+@media (max-width: 560px) {
+  .rt-list li { grid-template-columns: 40px auto minmax(0, 1fr) auto; gap: 10px; padding-right: 12px; }
+  .rt-list li::before { left: 40px; }
+  .rt-bar .seg { width: 100%; grid-auto-columns: 1fr; }
+  .rt-bar .seg button { padding-inline: 4px; font-size: 13px; }
+  .rt-v { font-size: 13.5px; }
+}
+
 /* учитель: эфир и награды */
 .tl-live { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 22px; }
 .tl-ov { display: grid; gap: 8px; align-content: start; padding-left: 22px; border-left: 1px solid var(--line); }
@@ -2705,6 +2741,7 @@ function stacklyApp() {
     chevL: svg('<path d="m14.5 6-6 6 6 6"/>', 2),
     tabTeach: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c1.9.7 3.1 2.5 3.5 5.2"/>'),
     tabStats: svg('<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>'),
+    tabRating: svg('<path d="M8 4h8v5a4 4 0 0 1-8 0V4z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20h7M10 17h4"/>'),
     tabEdit: svg('<path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14.5 7.5 3 3"/>'),
     tabPro: svg('<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3.5z"/>'),
     tabHome: svg('<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>'),
@@ -4381,7 +4418,7 @@ function stacklyApp() {
     acct.checked = true; renderAcctBtn(); loadPolls();
     $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
-    if (/^#(login|me|teach|admin|hw|start|shop|edit|mat)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
+    if (/^#(login|me|teach|admin|hw|start|shop|rating|edit|mat)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
   }
   // прогресс и материалы прежнего аккаунта не должны попасть в другой
   function forgetLocal() {
@@ -4494,6 +4531,7 @@ function stacklyApp() {
     return [
       { nav: 'start', href: '#start', label: 'Главная', icon: 'tabHome', tab: 1 },
       { nav: 'hw', href: '#hw', label: 'Задания', icon: 'tabHw', tab: 1 }, M, B,
+      { nav: 'rating', href: '#rating', label: 'Рейтинг', icon: 'tabRating', tab: 1 },
       { nav: 'me', href: '#me', label: 'Прогресс', icon: 'tabStats', tab: 1 },
     ];
   }
@@ -4507,6 +4545,7 @@ function stacklyApp() {
   function navKeyOf(h) {
     if (h === 'start') return 'start';
     if (h === 'shop') return 'shop';
+    if (h === 'rating') return 'rating';
     if (h === 'teach-shop') return 'tshop';
     if (/^(hw)(-\d+)?$/.test(h)) return 'hw';
     if (/^(materials|mat-|ege|py-|python|cheat|course)/.test(h)) return 'materials';
@@ -5218,6 +5257,79 @@ function stacklyApp() {
     } catch (err) { msg.textContent = err.message || 'Не получилось отправить'; msg.className = 'form-msg bad'; btn.disabled = false; }
   });
 
+  /* ═════════════ РЕЙТИНГ ГРУППЫ ═════════════
+     Строки считает сервер (group_rating): баллы за 7 дней и за всё время, серия, решённые задачи, точность
+     (только у сделавших достаточно попыток — иначе одна верная попытка давала бы 100%). Сортирует сайт */
+  const RATING_BY = [['week', 'За 7 дней'], ['points', 'Баллы'], ['streak', 'Серия'], ['solved', 'Решено'], ['accuracy', 'Точность']];
+  const RATING_MIN_TRIES = 10;          // как RATING_MIN_TRIES на сервере
+  let ratingBy = RATING_BY.some(x => x[0] === store.get('ratingBy')) ? store.get('ratingBy') : 'week';
+  const ratingVal = (x, k) => k === 'accuracy' ? x.accuracy : x[k] || 0;
+  const ratingFmt = (v, k) => k === 'accuracy' ? `${v}%` : k === 'streak' ? `${v} ${plural(v, 'день', 'дня', 'дней')}`
+    : k === 'solved' ? `${v} ${plural(v, 'задача', 'задачи', 'задач')}` : `${fmtN(v)} ${ballsWord(v)}`;
+  // одинаковый показатель — одно место; при равенстве выше тот, у кого больше баллов за всё время
+  function ratingRank(rows, k) {
+    const list = rows.filter(x => ratingVal(x, k) !== null)
+      .sort((a, b) => ratingVal(b, k) - ratingVal(a, k) || b.points - a.points || a.name.localeCompare(b.name, 'ru'));
+    let place = 0, prev;
+    return list.map((x, i) => { const v = ratingVal(x, k); if (v !== prev) { place = i + 1; prev = v; } return { ...x, place }; });
+  }
+  const ratingSeg = () => `<div class="seg" role="group" aria-label="По какому показателю">${RATING_BY.map(([k, n]) => `<button type="button" class="${ratingBy === k ? 'on' : ''}" data-rby="${k}" aria-pressed="${ratingBy === k}">${n}</button>`).join('')}</div>`;
+  function ratingListHTML(rows, me, minTries) {
+    const k = ratingBy, list = ratingRank(rows, k), rest = rows.length - list.length;
+    if (!rows.length) return '<p class="muted">В группе пока нет учеников.</p>';
+    return `<ol class="rt-list">${list.map((x, i) => {
+        const v = ratingVal(x, k), medal = x.place <= 3 && v > 0 ? ` rt-p${x.place}` : '';
+        return `<li class="${x.id === me ? 'me' : ''}${medal}" style="--i:${Math.min(i, 12)}"><span class="rt-n">${x.place}</span><span class="ava${lookCls(x.look)}" aria-hidden="true">${esc(initialsOf(x.name))}</span>
+          <span class="rt-name"><b>${esc(x.name)}</b>${lookBadge(x.look)}${x.id === me ? '<small>это вы</small>' : ''}</span><span class="rt-v">${ratingFmt(v, k)}</span></li>`;
+      }).join('')}</ol>
+      ${rest ? `<p class="muted rt-note">${rest} ${plural(rest, 'ученик', 'ученика', 'учеников')} пока не в рейтинге точности: нужно от ${minTries} попыток.</p>` : ''}`;
+  }
+  // строка «где я и что дальше» над списком у ученика
+  function ratingMeHTML(rows, me, minTries) {
+    const k = ratingBy, list = ratingRank(rows, k), mine = list.find(x => x.id === me), all = rows.find(x => x.id === me);
+    if (!all) return '';
+    if (!mine) return `<div class="rt-me"><b>Вас пока нет в рейтинге точности</b><span>Сделайте ещё ${minTries - all.tries} ${plural(minTries - all.tries, 'попытку', 'попытки', 'попыток')} в задачах — и место появится.</span></div>`;
+    const v = ratingVal(mine, k), ahead = list.filter(x => ratingVal(x, k) > v), gap = ahead.length ? ratingVal(ahead[ahead.length - 1], k) - v : 0;
+    const next = { week: `Решённая задача — 10 баллов, с первой попытки — 15.`, points: `Решённая задача — 10 баллов, с первой попытки — 15.`,
+      streak: 'Занимайтесь каждый день — серия растёт. Пропуск закроет заморозка из магазина.', solved: 'Каждая решённая задача из банка или задания — +1.',
+      accuracy: 'Проверяйте ответ перед отправкой: точность — доля верных попыток.' }[k];
+    return `<div class="rt-me"><span class="rt-place"><b>${mine.place}</b>место из ${list.length}</span>
+      <div><b>${mine.place === 1 ? (list.length > 1 ? 'Вы первые в группе' : 'Вы в рейтинге первым') : `До ${mine.place - 1 === 1 ? 'первого' : (mine.place - 1) + '-го'} места — ${ratingFmt(gap, k)}`}</b><span>${next}</span></div></div>`;
+  }
+
+  let ratingData = null, ratingSeq = 0, ratingGroup = null;
+  async function loadRating() {
+    const seq = ++ratingSeq;
+    const put = html => { const box = $('#ratingpage'); if (seq !== ratingSeq || !box) return; box.innerHTML = html; swapIn(box); };
+    if (!acct.checked) return;
+    if (!acct.cloud) return put(tMsg('Войдите в аккаунт', 'Рейтинг группы виден после входа.', '#login', 'Войти'));
+    if (isTeacher()) { location.replace('#teach'); return; }
+    try { ratingData = await api('/me/rating' + (ratingGroup ? '?group=' + ratingGroup : '')); }
+    catch (e) {
+      if (ratingGroup) { ratingGroup = null; return loadRating(); }          // группу закрыли или из неё вышли — показываем другую
+      return put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#start', 'На главную'));
+    }
+    put(ratingPageHTML(ratingData));
+  }
+  function ratingPageHTML(d) {
+    const open = d.groups.filter(g => g.rating_open), g = d.groups.find(x => x.id === d.group);
+    const head = `<header class="t-head"><div><h1>Рейтинг группы</h1><p>Места по баллам, серии и решённым задачам. Рейтинг видят только ученики группы и учитель.</p></div></header>`;
+    if (!d.groups.length) return head + `<section class="t-sec"><div class="t-empty"><b>Вы пока не в группе</b>Попросите у учителя код группы — после вступления здесь появится рейтинг одногруппников.<div class="cta-row"><a class="btn small" href="#me">Ввести код группы <span class="arr">${I.arrow}</span></a></div></div></section>`;
+    if (!g) return head + `<section class="t-sec"><div class="t-empty"><b>Рейтинг скрыт</b>Учитель ${d.groups.length > 1 ? 'ваших групп' : 'группы'} не показывает рейтинг ученикам.</div></section>`;
+    return head + `<div class="rt-bar">${open.length > 1 ? `<div class="seg" role="group" aria-label="Группа">${open.map(x => `<button type="button" class="${x.id === g.id ? 'on' : ''}" data-rgroup="${x.id}" aria-pressed="${x.id === g.id}">${esc(x.name)}</button>`).join('')}</div>` : `<span class="rt-g"><b>${esc(g.name)}</b> · учитель ${esc(g.teacher)}</span>`}
+        ${ratingSeg()}</div>
+      <div id="rtbody">${ratingMeHTML(d.rows, d.me, d.min_tries)}${ratingListHTML(d.rows, d.me, d.min_tries)}</div>
+      <p class="muted rt-note">${ratingBy === 'week' ? `Баллы за последние ${d.days} дней: задачи, темы, разборы, дни занятий и ответы в опросах эфира.` : ratingBy === 'points' ? 'Все заработанные баллы — потраченные в магазине тоже считаются.' : ratingBy === 'streak' ? 'Дней подряд с занятиями.' : ratingBy === 'accuracy' ? `Доля верных попыток, у кого от ${d.min_tries} попыток.` : 'Задачи, решённые верно.'}</p>`;
+  }
+  document.addEventListener('click', e => {
+    const by = e.target.closest('[data-rby]'), gr = e.target.closest('[data-rgroup]');
+    if (by) {
+      ratingBy = by.dataset.rby; store.set('ratingBy', ratingBy);
+      if ($('#ratingpage') && ratingData) { $('#ratingpage').innerHTML = ratingPageHTML(ratingData); }
+      const tg = $('#grating'); if (tg && tGroup) { tg.innerHTML = ratingListHTML(tGroup.rating, null, RATING_MIN_TRIES); $$('[data-rby]').forEach(b => { b.classList.toggle('on', b.dataset.rby === ratingBy); b.setAttribute('aria-pressed', b.dataset.rby === ratingBy); }); }
+    } else if (gr) { ratingGroup = +gr.dataset.rgroup; loadRating(); }
+  });
+
   /* ── учитель: награды, заявки и эфир ── */
   let tShop = null, livePollT = 0;
   const TSHOP_ST = { new: 'ждёт', done: 'выдано', declined: 'отклонено, баллы вернулись', ok: 'ждёт очереди в оверлее', shown: 'прозвучало' };
@@ -5704,6 +5816,9 @@ function stacklyApp() {
       <section class="t-sec"><h2>Домашние задания <a class="btn small blue" href="#teach-hw-${g.id}-new">Новое задание <span class="arr">${I.arrow}</span></a></h2>
         ${hws.length ? hws.map(hwRow).join('') : `<div class="t-empty"><b>Заданий пока нет</b>Соберите задание из задач банка, тем Python и разборов методички — ученики увидят его в личном кабинете.</div>`}</section>
 
+      ${ms.length ? `<section class="t-sec"><h2>Рейтинг ${ratingSeg()}</h2><div id="grating">${ratingListHTML(r.rating, null, RATING_MIN_TRIES)}</div>
+        <p class="auth-note">${g.rating_open ? 'Ученики группы видят этот рейтинг в разделе «Рейтинг» — имена и оформление одногруппников, без почты.' : 'Рейтинг скрыт от учеников — его видите только вы. Включить можно в настройках группы ниже.'}</p></section>` : ''}
+
       <section class="t-sec"><h2>Ученики</h2>
         ${acct.role === 'admin' ? `<div class="t-add"><div class="t-create"><input id="addq" type="search" maxlength="80" autocomplete="off" placeholder="Добавить ученика: имя или почта" aria-label="Найти ученика, чтобы добавить в группу"></div><div id="addres" aria-live="polite"></div></div>` : ''}
         ${ms.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Ученик</th><th class="num">Баллы</th><th class="num">Решено</th><th class="num">Точность</th><th class="num">Серия</th><th class="num">За 7 дней</th><th>Заходил</th><th class="num">ДЗ</th><th></th></tr></thead><tbody>
@@ -5717,6 +5832,8 @@ function stacklyApp() {
       <section class="t-sec"><h2>Настройки группы</h2><div class="panel" style="display:grid;gap:14px">
         <div><label class="sw"><input type="checkbox" data-gbank="${g.id}" ${g.bank_open ? 'checked' : ''}><i></i><span>Открыть ученикам банк задач</span></label>
           <p class="auth-note">${g.bank_open ? 'Ученики группы видят в банке те же задачи, что и вы: общий банк по вашим предметам и ваши задачи.' : 'Сейчас ученики видят в банке только задачи из выданных им заданий.'}</p></div>
+        <div><label class="sw"><input type="checkbox" data-grating="${g.id}" ${g.rating_open ? 'checked' : ''}><i></i><span>Показывать рейтинг ученикам</span></label>
+          <p class="auth-note">${g.rating_open ? 'Ученики видят места одногруппников по баллам, серии и решённым задачам.' : 'Рейтинг видите только вы.'}</p></div>
         <form class="t-create" data-tform="group-rename" data-id="${g.id}" novalidate><input name="name" maxlength="60" value="${esc(g.name)}" aria-label="Название группы"><button class="btn small" type="submit">Переименовать</button><div class="form-msg" role="alert"></div></form>
         <div class="form-acts"><button type="button" class="btn small ghost" data-tact="new-code" data-id="${g.id}">Выдать новый код</button><button type="button" class="btn small danger-btn" data-tact="del-group" data-id="${g.id}" data-name="${esc(g.name)}">Удалить группу</button></div>
         <p class="auth-note">Новый код нужен, если старый попал не к тем людям: уже вступившие ученики останутся в группе. Удаление группы удалит и все её задания.</p></div></section>`;
@@ -6785,6 +6902,10 @@ function stacklyApp() {
       try { await api('/teach/groups/update', 'POST', { id: +t.dataset.gbank, bank_open: t.checked }); toast(t.checked ? 'Банк открыт ученикам группы' : 'Банк закрыт: ученики видят только задачи из заданий'); route(); }
       catch (err) { t.checked = !t.checked; toast(err.message || 'Ошибка'); }
     }
+    else if (t.dataset.grating) {
+      try { await api('/teach/groups/update', 'POST', { id: +t.dataset.grating, rating_open: t.checked }); toast(t.checked ? 'Ученики видят рейтинг группы' : 'Рейтинг скрыт от учеников'); route(); }
+      catch (err) { t.checked = !t.checked; toast(err.message || 'Ошибка'); }
+    }
     else if (t.dataset.urole) {
       const prev = [...t.options].find(o => o.defaultSelected);
       try { await api('/admin/role', 'POST', { user_id: +t.dataset.urole, role: t.value }); [...t.options].forEach(o => o.defaultSelected = o.selected); toast('Роль изменена'); }
@@ -6942,6 +7063,7 @@ function stacklyApp() {
     }
     else if (/^(teach|admin|edit)/.test(h)) { html = teachShell(); nav = 'teach'; }
     else if (h === 'shop') { html = `<div class="page wrap t-page sh" id="shoppage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'shop'; }
+    else if (h === 'rating') { html = `<div class="page wrap t-page rt" id="ratingpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'rating'; }
     else if (h === 'start') {
       if (isTeacher()) { location.replace(startPage()); return; }
       html = `<div class="page wrap t-page st" id="stpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'start';
@@ -7033,8 +7155,9 @@ function stacklyApp() {
     if (nav === 'hw') loadHW(h); else curHW = 0;
     if (nav === 'start') loadStart();
     if (nav === 'shop') loadShop();
+    if (nav === 'rating') loadRating();
     if (nav === 'me') { loadMyClass(); loadTg(); }
-    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', shop: 'Магазин баллов · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
+    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', (nav === 'me' && acct.role !== 'student') || nav === 'login');
   }
 
