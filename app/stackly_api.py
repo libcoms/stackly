@@ -172,7 +172,8 @@ def migrate():
 
       -- магазин баллов. Баллы зарабатываются (points() из прогресса), здесь — на что потрачены.
       -- kind: style — оформление профиля, freeze — заморозка серии, reward — награда учителя, alert — сообщение в эфир,
-      -- grant — баллы, начисленные администратором, poll — баллы за ответ в опросе эфира (у обоих cost отрицательный: «трата наоборот»).
+      -- начисления (cost отрицательный: «трата наоборот»): grant — администратором, poll — за ответ в опросе эфира,
+      -- hw — за задание в срок, ach — за достижение, goal — за цель группы на неделю.
       -- status: '' — куплено; у наград new → done (выдано); у сообщений ok (сразу в эфир) → shown (прозвучало);
       -- declined — учитель отклонил, баллы вернулись (такие траты не считаются)
       CREATE TABLE IF NOT EXISTS spends (
@@ -181,6 +182,13 @@ def migrate():
         text TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, okat INTEGER);
       CREATE INDEX IF NOT EXISTS spends_user ON spends(user_id);
       CREATE INDEX IF NOT EXISTS spends_teacher ON spends(teacher_id, kind);
+      -- разовые начисления не повторяются, даже если прогресс сохранили одновременно с двух вкладок:
+      -- hw — бонус за задание (item — «id:время создания» задания), ach — достижение (item — код), goal — цель группы (item — «группа:неделя»)
+      CREATE UNIQUE INDEX IF NOT EXISTS spends_once ON spends(user_id, kind, item) WHERE kind IN ('hw', 'ach', 'goal');
+      -- цель группы на неделю достигнута: week — понедельник недели (ГГГГ-ММ-ДД)
+      CREATE TABLE IF NOT EXISTS group_goals (
+        group_id INTEGER NOT NULL REFERENCES study_groups(id) ON DELETE CASCADE, week TEXT NOT NULL, reached INTEGER NOT NULL,
+        PRIMARY KEY (group_id, week));
       -- что ученик надел из купленного оформления: {"ball": …, "frame": …, "badge": …}
       CREATE TABLE IF NOT EXISTS looks (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL DEFAULT '{}');
       -- дни, которые закрыла заморозка: серия через них не прерывается
@@ -507,7 +515,7 @@ def summary(data, updated, uid=None):
     while day(back) in days or day(back) in frozen:
         streak += day(back) in days; back += 1
     return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']),
-            'tries': tries, 'right': right, 'accuracy': round(right / tries * 100) if tries else None,
+            'tries': tries, 'right': right, 'first': first, 'accuracy': round(right / tries * 100) if tries else None,
             'active7': sum(day(i) in days for i in range(7)), 'streak': streak, 'updated': updated,
             'points': points(len(sets['bank']), first, len(sets['py']) + len(sets['ege']) + len(sets['mat']), len(days))}
 
@@ -516,11 +524,99 @@ def points(solved, first, studied, days):
     изученная тема, разбор или материал 5, день с занятиями 5."""
     return solved * 10 + first * 5 + studied * 5 + days * 5
 
+# ---------------------------------------------------------------- мотивация: начисления, достижения, цель группы
+# Начисления хранятся в spends с отрицательной ценой. Достижения не входят в «баллы за 7 дней»: при запуске механики
+# ученик с историей получил бы их разом, и недельный рейтинг перекосило бы
+BONUS_KINDS = ('grant', 'poll', 'hw', 'ach', 'goal')
+WEEK_KINDS = ('grant', 'poll', 'hw', 'goal')
+HW_BONUS, HW_EARLY_BONUS, HW_EARLY_SEC = 20, 10, 86400      # задание в срок; ещё, если сдано хотя бы за сутки до срока
+GOAL_PER_STUDENT, GOAL_BONUS = 10, 30                       # цель группы: задач на ученика за неделю; награда каждому, кто внёс вклад
+# достижения: код, название, условие, показатель (ach_metrics), порог, баллы
+ACHIEVEMENTS = [
+    ('solve1', 'Первая задача', 'Решить первую задачу', 'solved', 1, 10),
+    ('solve10', 'Разогрев', 'Решить 10 задач', 'solved', 10, 20),
+    ('solve50', 'Полсотни', 'Решить 50 задач', 'solved', 50, 50),
+    ('solve100', 'Сотня', 'Решить 100 задач', 'solved', 100, 100),
+    ('solve250', 'Марафонец', 'Решить 250 задач', 'solved', 250, 200),
+    ('first10', 'Снайпер', '10 задач с первой попытки', 'first', 10, 30),
+    ('first50', 'Без промаха', '50 задач с первой попытки', 'first', 50, 80),
+    ('streak3', 'Три дня подряд', 'Серия 3 дня', 'streak', 3, 15),
+    ('streak7', 'Неделя без пропусков', 'Серия 7 дней', 'streak', 7, 40),
+    ('streak30', 'Месяц в строю', 'Серия 30 дней', 'streak', 30, 150),
+    ('hw1', 'Первое задание', 'Сдать задание в срок', 'hw', 1, 10),
+    ('hw5', 'Пять в срок', 'Сдать в срок 5 заданий', 'hw', 5, 40),
+    ('study10', 'Теоретик', 'Изучить 10 тем, разборов или материалов', 'studied', 10, 30),
+    ('poll5', 'На связи', 'Ответить в 5 опросах эфира', 'polls', 5, 20),
+]
+
+
+def bonus_points(uid, kinds=BONUS_KINDS):
+    return -db().execute(f'SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ({",".join("?" * len(kinds))})',
+                         (uid, *kinds)).fetchone()[0]
+
+def award_once(uid, kind, item, points, text, teacher_id=None):
+    """Разовое начисление. True — начислено сейчас, False — уже было (уникальный индекс spends_once)."""
+    return bool(db().execute('INSERT OR IGNORE INTO spends (user_id, kind, item, cost, teacher_id, text, created) VALUES (?,?,?,?,?,?,?)',
+                             (uid, kind, item, -points, teacher_id, text[:120], int(time.time()))).rowcount)
+
+def ach_metrics(uid, data):
+    sets, s = progress_sets(data), summary(data, None, uid)
+    on_time = db().execute('SELECT COUNT(*) FROM homework_done d JOIN homework h ON h.id = d.hw_id '
+                           'WHERE d.user_id = ? AND (h.due IS NULL OR d.done_at <= h.due)', (uid,)).fetchone()[0]
+    return {'solved': s['solved'], 'first': s['first'], 'streak': s['streak'], 'hw': on_time,
+            'studied': len(sets['py']) + len(sets['ege']) + len(sets['mat']),
+            'polls': db().execute('SELECT COUNT(*) FROM poll_votes WHERE user_id = ?', (uid,)).fetchone()[0]}
+
+def achievements(uid, data, award=True):
+    """Достижения с прогрессом; award — начислить новые. Возвращает (список, только что полученные)."""
+    have = {r['item']: r['created'] for r in db().execute("SELECT item, created FROM spends WHERE user_id = ? AND kind = 'ach'", (uid,))}
+    m, out, new = ach_metrics(uid, data), [], []
+    for code, title, desc, metric, need, pts in ACHIEVEMENTS:
+        if code not in have and m[metric] >= need and award and award_once(uid, 'ach', code, pts, title):
+            have[code] = int(time.time())
+            new.append({'kind': 'ach', 'code': code, 'title': title, 'points': pts})
+        out.append({'code': code, 'title': title, 'desc': desc, 'points': pts, 'need': need, 'have': min(m[metric], need), 'got': have.get(code)})
+    return out, new
+
+def week_start(now=None):
+    t = time.localtime(now or time.time())
+    return int(time.mktime((t.tm_year, t.tm_mon, t.tm_mday, 0, 0, 0, 0, 0, -1))) - t.tm_wday * 86400
+
+def week_solved(data, since):
+    att = data.get('att') if isinstance(data.get('att'), dict) else {}
+    return sum(1 for a in att.values() if isinstance(a, dict) and a.get('c') and isinstance(a.get('ok'), (int, float)) and a['ok'] / 1000 >= since)
+
+def group_goal(gid, award=True):
+    """Цель группы на неделю (с понедельника): вместе решить GOAL_PER_STUDENT задач на ученика. Когда цель достигнута,
+    каждому, кто решил за неделю хотя бы одну задачу, — GOAL_BONUS (и тем, кто внесёт вклад позже на той же неделе).
+    Возвращает (цель, кому начислено сейчас)."""
+    since = week_start()
+    week = time.strftime('%Y-%m-%d', time.localtime(since))
+    g = db().execute('SELECT teacher_id FROM study_groups WHERE id = ?', (gid,)).fetchone()
+    counts = {r['user_id']: week_solved(load_progress(r['user_id'])[0], since)
+              for r in db().execute('SELECT user_id FROM group_members WHERE group_id = ?', (gid,)).fetchall()}
+    target, done = GOAL_PER_STUDENT * max(1, len(counts)), sum(counts.values())
+    paid = []
+    if done >= target and award:
+        db().execute('INSERT OR IGNORE INTO group_goals VALUES (?,?,?)', (gid, week, int(time.time())))
+        paid = [uid for uid, n in counts.items() if n and award_once(uid, 'goal', f'{gid}:{week}', GOAL_BONUS, 'Цель группы на неделю', g['teacher_id'])]
+    reached = db().execute('SELECT reached FROM group_goals WHERE group_id = ? AND week = ?', (gid, week)).fetchone()
+    return {'group_id': gid, 'target': target, 'done': done, 'bonus': GOAL_BONUS, 'ends': since + 7 * 86400, 'members': len(counts),
+            'reached': reached['reached'] if reached else None, 'counts': counts}, paid
+
+def goal_public(goal, uid=None):
+    """Цель для сайта: ученику — только его вклад, без чужих чисел."""
+    out = {k: v for k, v in goal.items() if k != 'counts'}
+    out['contributors'] = sum(1 for n in goal['counts'].values() if n)
+    if uid is not None:
+        out['mine'] = goal['counts'].get(uid, 0)
+    return out
+
 RATING_DAYS, RATING_MIN_TRIES = 7, 10      # окно «баллы за неделю»; в рейтинге точности — только сделавшие столько попыток
 
 def recent_points(data, uid, days=RATING_DAYS):
     """Баллы за последние days дней по той же формуле: задачи — по времени верного ответа (att.ok, мс),
-    темы и разборы — по журналу событий (отметка +5, снятие отметки −5), дни занятий, плюс опросы эфира и начисления."""
+    темы и разборы — по журналу событий (отметка +5, снятие отметки −5), дни занятий, плюс начисления кроме достижений."""
     since = time.time() - days * 86400
     first_day = time.strftime('%Y-%m-%d', time.localtime(time.time() - (days - 1) * 86400))
     pts = 0
@@ -532,8 +628,8 @@ def recent_points(data, uid, days=RATING_DAYS):
             pts += 5 if e.get('ok') else -5
     if isinstance(data.get('days'), dict):
         pts += 5 * sum(1 for k, v in data['days'].items() if v and isinstance(k, str) and k >= first_day)
-    pts -= db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ('grant', 'poll') AND created >= ?",
-                        (uid, int(since))).fetchone()[0]
+    pts -= db().execute(f'SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ({",".join("?" * len(WEEK_KINDS))}) AND created >= ?',
+                        (uid, *WEEK_KINDS, int(since))).fetchone()[0]
     return max(0, pts)
 
 def group_rating(gid):
@@ -542,7 +638,7 @@ def group_rating(gid):
     for r in db().execute('SELECT u.id, u.name FROM group_members m JOIN users u ON u.id = m.user_id WHERE m.group_id = ?', (gid,)).fetchall():
         data, updated = load_progress(r['id'])
         s = summary(data, updated, r['id'])
-        bonus = -db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ('grant', 'poll')", (r['id'],)).fetchone()[0]
+        bonus = bonus_points(r['id'])
         out.append({'id': r['id'], 'name': r['name'], 'look': look_of(r['id']), 'week': recent_points(data, r['id']),
                     'points': s['points'] + bonus, 'streak': s['streak'], 'solved': s['solved'],
                     'accuracy': s['accuracy'] if s['tries'] >= RATING_MIN_TRIES else None, 'tries': s['tries']})
@@ -571,7 +667,7 @@ def spent_net(uid):
 def balance(uid):
     """(заработано, потрачено) баллов: заработано — за учёбу плюс начисленное администратором и за опросы эфира."""
     data, updated = load_progress(uid)
-    bonus = -db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ('grant', 'poll')", (uid,)).fetchone()[0]
+    bonus = bonus_points(uid)
     return summary(data, updated, uid)['points'] + bonus, spent_net(uid) + bonus
 
 ADMIN_RESET_HOURS = 24
@@ -699,7 +795,8 @@ def assigned_homework(user_id):
     return [h for h in rows if not json.loads(h['students']) or user_id in json.loads(h['students'])]
 
 def record_homework_done(user_id, data):
-    sets, now = progress_sets(data), int(time.time())
+    """Отмечает выполненные задания и начисляет бонус за срок. Возвращает начисления — сайт поздравляет с ними."""
+    sets, now, out = progress_sets(data), int(time.time()), []
     done = {r['hw_id'] for r in db().execute('SELECT hw_id FROM homework_done WHERE user_id = ?', (user_id,))}
     for h in assigned_homework(user_id):
         if h['id'] in done:
@@ -709,6 +806,13 @@ def record_homework_done(user_id, data):
             if db().execute('INSERT OR IGNORE INTO homework_done VALUES (?,?,?)', (h['id'], user_id, now)).rowcount:
                 name = db().execute('SELECT name FROM users WHERE id = ?', (user_id,)).fetchone()['name']
                 tg_teacher(h['teacher_id'], 'done', f'✅ <b>{tg_esc(name)}</b>: выполнено задание «{tg_esc(h["title"])}» · {tg_esc(h["group_name"])}')
+                if not h['due'] or now <= h['due']:
+                    early = bool(h['due']) and h['due'] - now >= HW_EARLY_SEC
+                    pts = HW_BONUS + (HW_EARLY_BONUS if early else 0)
+                    # номер удалённого задания SQLite может выдать новому — ключ бонуса включает и время создания
+                    if award_once(user_id, 'hw', f"{h['id']}:{h['created']}", pts, h['title'], h['teacher_id']):
+                        out.append({'kind': 'hw', 'title': h['title'], 'points': pts, 'early': early})
+    return out
 
 # ---------------------------------------------------------------- оплата Про через ЮKassa
 # Платёж создаётся на сервере ЮKassa, человек платит на её странице и возвращается на сайт.
@@ -993,6 +1097,7 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/me/groups/leave'): self.leave_group,
             ('GET', '/api/me/homework'): self.my_homework,
             ('GET', '/api/me/rating'): self.my_rating,
+            ('GET', '/api/me/motivation'): self.my_motivation,
             # учитель
             ('GET', '/api/teach/groups'): self.t_groups,
             ('POST', '/api/teach/groups'): self.t_group_create,
@@ -1257,8 +1362,14 @@ class Handler(BaseHTTPRequestHandler):
         now = int(time.time())
         db().execute('INSERT INTO progress VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated = excluded.updated',
                      (u['id'], raw, now))
-        record_homework_done(u['id'], data)
-        self.send_json(200, {'ok': True, 'updated': now})
+        rewards = record_homework_done(u['id'], data)
+        if u['role'] == 'student':
+            rewards += achievements(u['id'], data)[1]
+            for r in db().execute('SELECT group_id FROM group_members WHERE user_id = ?', (u['id'],)).fetchall():
+                goal, paid = group_goal(r['group_id'])
+                if u['id'] in paid:
+                    rewards.append({'kind': 'goal', 'title': 'Цель группы на неделю', 'points': GOAL_BONUS, 'group_id': goal['group_id'], 'ends': goal['ends']})
+        self.send_json(200, {'ok': True, 'updated': now, 'rewards': rewards})
 
     # --- магазин баллов: ученик
     def shop(self):
@@ -1549,6 +1660,19 @@ class Handler(BaseHTTPRequestHandler):
                             'WHERE m.user_id = ? ORDER BY m.joined', (u['id'],)).fetchall()
         self.send_json(200, {'groups': [dict(r) for r in rows]})
 
+    def my_motivation(self):
+        """Главная ученика: достижения с прогрессом, цели его групп на неделю и правила бонуса за задания."""
+        u = self.current_user()
+        data, _ = load_progress(u['id'])
+        ach, new = achievements(u['id'], data)
+        goals = []
+        for r in db().execute('SELECT g.id, g.name FROM group_members m JOIN study_groups g ON g.id = m.group_id WHERE m.user_id = ? ORDER BY m.joined',
+                              (u['id'],)).fetchall():
+            goal, _ = group_goal(r['id'])
+            goals.append(goal_public(goal, u['id']) | {'name': r['name']})
+        self.send_json(200, {'achievements': ach, 'new': new, 'goals': goals, 'now': int(time.time()),
+                             'hw_bonus': HW_BONUS, 'hw_early': HW_EARLY_BONUS, 'goal_per_student': GOAL_PER_STUDENT})
+
     def my_rating(self):
         """Рейтинг одной из групп ученика (по умолчанию — первой, где учитель его открыл)."""
         u = self.current_user()
@@ -1565,6 +1689,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise ApiError(404, 'not_found', 'Рейтинг этой группы недоступен')
         self.send_json(200, {'groups': [{k: x[k] for k in ('id', 'name', 'teacher', 'rating_open')} for x in groups],
                              'group': g and g['id'], 'rows': group_rating(g['id']) if g else [], 'me': u['id'],
+                             'goal': goal_public(group_goal(g['id'])[0], u['id']) if g else None,
                              'days': RATING_DAYS, 'min_tries': RATING_MIN_TRIES})
 
     def join_group(self):
@@ -1747,7 +1872,7 @@ class Handler(BaseHTTPRequestHandler):
                            (g['id'],)).fetchall()
         status = self.hw_status(hws, sets)
         teacher = db().execute('SELECT name FROM users WHERE id = ?', (g['teacher_id'],)).fetchone()['name']
-        self.send_json(200, {'group': dict(g, teacher=teacher), 'members': members, 'rating': group_rating(g['id']),
+        self.send_json(200, {'group': dict(g, teacher=teacher), 'members': members, 'rating': group_rating(g['id']), 'goal': goal_public(group_goal(g['id'])[0]),
                              'homework': [dict(hw_json(h), status=status[h['id']]) for h in hws]})
 
     def t_student(self):

@@ -1844,6 +1844,49 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
   .sh-bal > .sh-me { margin-left: 0; }
 }
 
+/* мотивация: бонус за задание, цель группы, достижения, поздравление */
+.hw-bonus { display: inline-block; margin-top: 4px; font: 600 12px/1.3 var(--f-body); color: var(--on-lime); background: var(--lime-soft); padding: 3px 7px; border-radius: 4px; width: fit-content; }
+.ns-t .hw-bonus { margin-top: 8px; }
+.goal { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; padding: 16px 20px; margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
+.goal-i { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--blue-soft); color: var(--blue-ink); }
+.goal-i svg { width: 24px; height: 24px; }
+.goal.done .goal-i { background: var(--ok-soft); color: var(--ok); }
+.goal-t { display: grid; gap: 8px; min-width: 0; }
+.goal-h { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; }
+.goal-h b { font-weight: 650; }
+.goal-bar { height: 8px; }
+.goal.done .goal-bar i { background: var(--ok); }
+.goal-n { display: flex; flex-wrap: wrap; gap: 4px 14px; justify-content: space-between; font-size: 13.5px; color: var(--ink-2); }
+.goal-n > span:last-child { font-family: var(--f-mono); color: var(--mute); white-space: nowrap; }
+.goal-g { margin: 0 0 6px; font-size: 13.5px; font-weight: 600; color: var(--mute); }
+.ach-c { font: 500 14px/1 var(--f-body); }
+.ach-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.ach { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); animation: rise .38s var(--ease) both; animation-delay: calc(var(--i) * 40ms); }
+.ach-i { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--paper-2); color: var(--mute); }
+.ach-i svg { width: 24px; height: 24px; }
+.ach.got .ach-i { background: var(--lime); color: var(--on-lime); box-shadow: inset 0 0 0 1.5px currentColor; }
+.ach-t { display: grid; gap: 4px; min-width: 0; }
+.ach-t b { font-weight: 650; font-size: 14.5px; }
+.ach-t small { color: var(--mute); font-size: 12.5px; }
+.ach-t .pbar { height: 5px; margin-top: 2px; }
+.ach:not(.got) .st-gain { background: var(--paper-2); color: var(--mute); }
+.ach-all { margin-top: 14px; }
+.ach-all .ach-list { margin-top: 12px; }
+.ach-all li { display: grid; }
+.cele { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 92; width: min(440px, calc(100vw - 32px)); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 18px 14px 14px; border-radius: var(--r); background: var(--ink); color: var(--paper); box-shadow: var(--shadow-pop); animation: celeIn .5s var(--ease) both; }
+.cele.out { animation: celeOut .4s var(--ease) both; }
+.cele-i { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--lime); color: var(--on-lime); animation: celeSpin .8s var(--ease) both .1s; }
+.cele-i svg { width: 26px; height: 26px; }
+.cele-t { display: grid; gap: 3px; min-width: 0; }
+.cele-t b { font: 650 15px/1.3 var(--f-body); }
+.cele-t small { font-size: 13px; opacity: .75; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cele-p { font: 700 17px/1 var(--f-mono); color: var(--lime); }
+@keyframes celeIn { from { opacity: 0; transform: translateY(24px) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes celeOut { to { opacity: 0; transform: translateY(16px) scale(.97); } }
+@keyframes celeSpin { from { transform: rotate(-120deg) scale(.4); } 70% { transform: rotate(10deg) scale(1.08); } to { transform: none; } }
+@media (max-width: 999px) { html:not(.guest) .cele { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); } }
+@media (max-width: 560px) { .goal { grid-template-columns: minmax(0, 1fr); } .goal-i { display: none; } }
+
 /* рейтинг группы: место на полях, аватар, имя, показатель */
 .rt-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .rt-g { font-size: 14.5px; color: var(--mute); }
@@ -4369,7 +4412,7 @@ function stacklyApp() {
     return data;
   }
   async function writeCloud() {
-    try { await api('/progress', 'PUT', { data: snapshot() }); setSync('ok'); }
+    try { const r = await api('/progress', 'PUT', { data: snapshot() }); setSync('ok'); celebrate(r.rewards); }
     catch (e) {
       if (e.status === 401) { acct.cloud = false; renderAcctBtn(); setSync('err'); toast('Сессия истекла — войдите снова'); return; }
       setSync('err'); clearTimeout(acct.saveT); acct.saveT = setTimeout(writeCloud, 15000);
@@ -4406,7 +4449,7 @@ function stacklyApp() {
       acct.cloud = true;
       await loadMats(true);                                  // свои материалы учителей: нужны страницам материалов и ДЗ
       store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]);
-      await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok';
+      const saved = await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok'; celebrate(saved.rewards);
       renderAcctBtn(); refreshHW();
       if (!silent) { toast(`Вы вошли как ${acct.name}`); loadPolls(); }
       return true;
@@ -4974,7 +5017,7 @@ function stacklyApp() {
     const done = p[0] >= p[1];
     const when = done ? (h.done_at ? `сдано ${fmtDue(h.done_at * 1000)}` : 'выполнено') : h.due ? (h.due * 1000 < Date.now() ? 'срок прошёл ' : 'до ') + fmtDue(h.due * 1000) : 'без срока';
     return `<li><a class="hw-row ${done ? 'done' : ''}" href="#hw-${h.id}">${dueMargin(h.due, done)}
-      <span class="hm-t"><b>${esc(h.title)}</b><small>${esc(h.group)} · ${esc(h.teacher)} · ${itemsText(h.items)} · ${when}</small>
+      <span class="hm-t"><b>${esc(h.title)}</b><small>${esc(h.group)} · ${esc(h.teacher)} · ${itemsText(h.items)} · ${when}</small>${hwBonusHTML(h, done)}
         <span class="hm-p">${barHTML(p[0], p[1], done ? 'lime' : '')}<span>${p[0]} из ${p[1]}</span></span></span>
       <span class="go">${done ? 'Открыть' : p[0] ? 'Продолжить' : 'Начать'} ${I.arrow}</span></a></li>`;
   }
@@ -4984,7 +5027,7 @@ function stacklyApp() {
     const { h, p } = open[0], late = h.due && h.due * 1000 < Date.now(), d = h.due && new Date(h.due * 1000);
     return `<section class="next-step"><span class="ns-m ${late ? 'late' : ''}">${d ? `<b>${d.getDate()}</b>${d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')}` : '<b>—</b>без срока'}</span>
       <span class="ns-t"><b>${esc(h.title)}</b>
-        <span>${late ? 'Срок прошёл — сдайте как можно скорее. ' : ''}Осталось ${p[1] - p[0]} из ${p[1]} · ${esc(h.teacher)}</span>${barHTML(p[0], p[1])}</span>
+        <span>${late ? 'Срок прошёл — сдайте как можно скорее. ' : ''}Осталось ${p[1] - p[0]} из ${p[1]} · ${esc(h.teacher)}</span>${barHTML(p[0], p[1])}${hwBonusHTML(h, false)}</span>
       <a class="btn" href="#hw-${h.id}">${p[0] ? 'Продолжить' : 'Начать'} <span class="arr">${I.arrow}</span></a></section>`;
   }
   // новые данные раздела: снимаем приглушение и мягко проявляем экран (анимация перезапускается на каждой смене)
@@ -5099,6 +5142,8 @@ function stacklyApp() {
 
       ${open.length ? `<section class="t-sec st-sec"><h2 class="sec-h">Дальше</h2>${nextHWHTML(open)}${open.length > 1 ? `<p class="st-more"><a href="#hw">Ещё ${open.length - 1} ${plural(open.length - 1, 'задание', 'задания', 'заданий')} <span class="lnk-ic">${I.chev}</span></a></p>` : ''}</section>` : ''}
 
+      ${motiv ? goalsHTML(motiv.goals.filter(x => x.members > 0)) : ''}
+
       ${mod ? `<section class="t-sec st-sec"><h2 class="sec-h">Пройди модуль</h2>
         <article class="st-mod">
           <div class="st-ring" style="--p:${Math.round(mod.done / mod.total * 100)}" aria-label="Пройдено ${mod.done} из ${mod.total}"><svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="19"/><circle class="v" cx="22" cy="22" r="19" pathLength="100"/></svg><span>${mod.done}/${mod.total}</span></div>
@@ -5111,10 +5156,12 @@ function stacklyApp() {
         <ul class="bk-list st-recs">${recs.map((r, i) => `<li style="--i:${i}"><a class="bk-row" href="${r.href}"><span class="bk-i st-m ${r.cls}">${r.mark}</span>
           <span class="bk-t"><b>${r.title}</b><span class="bk-meta"><span>${r.text}</span></span></span>${r.pts ? `<span class="st-gain">+${r.pts}</span>` : ''}<span class="bk-chev">${I.chev}</span></a></li>`).join('')}</ul></section>` : ''}
 
+      ${motiv ? achHTML(motiv.achievements) : ''}
+
       ${!open.length && !mod && !recs.length ? `<section class="t-sec"><div class="t-empty"><b>Здесь появятся задания и модули</b>Вступи в группу учителя по коду — его задания и материалы сразу окажутся на этой странице.<div class="cta-row"><a class="btn small" href="#me">Ввести код группы <span class="arr">${I.arrow}</span></a></div></div></section>` : ''}
 
       <details class="st-how"><summary>Как начисляются баллы</summary>
-        <ul><li><b>+${PTS.solve}</b>задача решена верно</li><li><b>+${PTS.first}</b>ещё, если с первой попытки</li><li><b>+${PTS.study}</b>изучена тема Python, разобрано задание методички или материал учителя</li><li><b>+${PTS.day}</b>за каждый день с занятиями</li></ul>
+        <ul><li><b>+${PTS.solve}</b>задача решена верно</li><li><b>+${PTS.first}</b>ещё, если с первой попытки</li><li><b>+${PTS.study}</b>изучена тема Python, разобрано задание методички или материал учителя</li><li><b>+${PTS.day}</b>за каждый день с занятиями</li><li><b>+${HWB.base}</b>за задание, сданное в срок, <b style="width:auto">+${HWB.base + HWB.early}</b> — если за сутки до срока</li><li><b>+${GOAL.bonus}</b>каждому, кто решал задачи, когда группа выполнила цель недели</li><li><b>+10…200</b>за достижения</li></ul>
         <p>Каждый следующий уровень требует больше баллов. Баллы видит и твой преподаватель, а потратить их можно в <a href="#shop">магазине</a>.</p></details>`;
   }
   let stSeq = 0;
@@ -5123,10 +5170,14 @@ function stacklyApp() {
     const put = html => { const box = $('#stpage'); if (seq !== stSeq || !box) return; box.innerHTML = html; swapIn(box); countUp(box); };
     if (!acct.checked) return;
     if (!acct.cloud) return put(tMsg('Войдите в аккаунт', 'Задания, модули и баллы видны после входа.', '#login', 'Войти'));
-    try { const [h, g] = await Promise.all([api('/me/homework'), api('/me/groups'), loadMats()]); myHW = h.homework; myGroups = g.groups; updHWBadge(); }
+    try {
+      const [h, g, m] = await Promise.all([api('/me/homework'), api('/me/groups'), api('/me/motivation').catch(() => null), loadMats()]);
+      myHW = h.homework; myGroups = g.groups; motiv = m; updHWBadge();
+    }
     catch (e) { return put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#hw', 'К заданиям')); }
     if (bankStale()) return;
     put(startHTML());
+    if (motiv) { celebrate(motiv.new); goalNews(motiv.goals); }
   }
   // числа, которые набегают от нуля при появлении экрана
   function countUp(root) {
@@ -5195,7 +5246,8 @@ function stacklyApp() {
       }).join('')}</div></div>`;
     };
     const st = { new: 'ждёт учителя', done: 'выдано', declined: 'отклонено, баллы вернулись', ok: 'в очереди эфира', shown: 'прозвучало в эфире', '': '' };
-    const histText = h => h.kind === 'grant' ? `Начислено: ${esc(h.text)}` : h.kind === 'poll' ? `Опрос в эфире: «${esc(h.text)}» · ${esc(h.teacher || '')}` : h.kind === 'style' ? `Оформление: ${esc((d.styles[h.item] || {}).title || h.item)}` : h.kind === 'freeze' ? 'Заморозка серии'
+    const histText = h => h.kind === 'grant' ? `Начислено: ${esc(h.text)}` : h.kind === 'poll' ? `Опрос в эфире: «${esc(h.text)}» · ${esc(h.teacher || '')}`
+      : h.kind === 'hw' ? `Задание в срок: «${esc(h.text)}»` : h.kind === 'ach' ? `Достижение «${esc(h.text)}»` : h.kind === 'goal' ? 'Цель группы на неделю выполнена' : h.kind === 'style' ? `Оформление: ${esc((d.styles[h.item] || {}).title || h.item)}` : h.kind === 'freeze' ? 'Заморозка серии'
       : h.kind === 'reward' ? `Награда «${esc(h.text)}» · ${esc(h.teacher || '')}` : `Сообщение в эфир: «${esc(h.text)}»`;
     return `<header class="t-head"><div><h1>Магазин баллов</h1>
         <p>Баллы начисляются за решённые задачи, изученные темы и дни занятий. Здесь их можно потратить.</p></div></header>
@@ -5256,6 +5308,84 @@ function stacklyApp() {
       toast('Сообщение отправлено в эфир'); loadShop();
     } catch (err) { msg.textContent = err.message || 'Не получилось отправить'; msg.className = 'form-msg bad'; btn.disabled = false; }
   });
+
+  /* ═════════════ МОТИВАЦИЯ ═════════════
+     Бонус за задание в срок, достижения и цель группы на неделю. Начисляет сервер (record_homework_done, achievements,
+     group_goal в stackly_api.py) при сохранении прогресса и присылает начисления в ответе — здесь мы с ними поздравляем */
+  const HWB = { base: 20, early: 10 }, GOAL = { bonus: 30 };          // как HW_BONUS, HW_EARLY_BONUS и GOAL_BONUS на сервере
+  let motiv = null;
+  I.medal = svg('<circle cx="12" cy="14.5" r="5.5"/><path d="M8.5 9.8 6 3.5h4l2 4 2-4h4l-2.5 6.3"/><path d="m12 12 .9 1.8 2 .3-1.5 1.4.4 2-1.8-1-1.8 1 .4-2-1.5-1.4 2-.3z"/>');
+  I.team = svg('<circle cx="9" cy="8" r="3.2"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M3.5 19.5c.6-3.3 2.8-5.2 5.5-5.2s4.9 1.9 5.5 5.2M14.6 14.6c.6-.2 1.2-.3 1.9-.3 2.2 0 3.8 1.5 4.3 4.2"/>');
+  // подсказка на карточке задания: сколько баллов даст сдача в срок
+  function hwBonusHTML(h, done) {
+    if (done || isTeacher() || (h.due && h.due * 1000 < Date.now())) return '';
+    const early = h.due && h.due * 1000 - Date.now() >= 86400000;
+    return `<span class="hw-bonus">${early ? `+${HWB.base + HWB.early} баллов, если сдать за сутки до срока` : `+${HWB.base} баллов, если сдать ${h.due ? 'в срок' : ''}`.trim()}</span>`;
+  }
+  // поздравление: карточка по центру снизу, несколько начислений сразу — одной карточкой
+  let celeT = 0;
+  function celebrate(list) {
+    list = (list || []).filter(x => x && x.points > 0);
+    if (!list.length || isTeacher()) return;
+    const sum = list.reduce((a, x) => a + x.points, 0);
+    acct.spent = (acct.spent || 0) - sum;
+    // с целью группы уже поздравили — goalNews() не повторит
+    const goals = list.filter(x => x.kind === 'goal');
+    if (goals.length) store.set('goalSeen', [...store.get('goalSeen', []), ...goals.map(x => `${x.group_id}:${x.ends}`)].slice(-30));
+    // главное — сданное задание или цель группы, остальное (обычно достижения) — подписью
+    const ach = list.filter(x => x.kind === 'ach');
+    const main = list.find(x => x.kind === 'hw') || list.find(x => x.kind === 'goal') || (ach.length === 1 ? ach[0] : null);
+    const rest = list.filter(x => x !== main), nameOf = x => x.kind === 'ach' ? `«${esc(x.title)}»` : x.kind === 'hw' ? `задание «${esc(x.title)}»` : 'цель группы';
+    const icon = main && main.kind === 'hw' ? I.check : main && main.kind === 'goal' ? I.team : I.medal;
+    const title = !main ? `Новые достижения: ${ach.length}` : main.kind === 'ach' ? `Достижение «${esc(main.title)}»`
+      : main.kind === 'hw' ? (main.early ? 'Задание сдано досрочно' : 'Задание сдано в срок') : 'Группа выполнила цель недели';
+    const head = !main ? '' : main.kind === 'hw' ? esc(main.title) : main.kind === 'goal' ? 'Вы решали задачи — награда и вам' : esc(ach[0] ? 'Все достижения — на главной' : '');
+    const sub = !main ? rest.map(nameOf).join(', ') : rest.length ? `${head} · и ${rest.length === 1 && rest[0].kind === 'ach' ? 'достижение ' : ''}${rest.map(nameOf).join(', ')}` : head;
+    $$('.cele').forEach(x => x.remove());
+    const el = document.createElement('div'); el.className = 'cele'; el.setAttribute('role', 'status');
+    el.innerHTML = `<span class="cele-i">${icon}</span><span class="cele-t"><b>${title}</b><small>${sub}</small></span><span class="cele-p">+${fmtN(sum)}</span>`;
+    document.body.appendChild(el);
+    ptsFx(sum, $('.cele-p', el));
+    clearTimeout(celeT); celeT = setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 4200);
+  }
+  // цель выполнил кто-то другой — награда начислена всем участникам; поздравляем один раз при следующем заходе
+  function goalNews(goals) {
+    const seen = new Set(store.get('goalSeen', []));
+    const fresh = (goals || []).filter(g => g.reached && g.mine > 0 && !seen.has(`${g.group_id}:${g.ends}`));
+    if (!fresh.length) return;
+    fresh.forEach(g => seen.add(`${g.group_id}:${g.ends}`)); store.set('goalSeen', [...seen].slice(-30));
+    // баллы уже на счёте (сервер начислил раньше) — только поздравление, без повторного списания из acct.spent
+    const el = document.createElement('div'); el.className = 'cele'; el.setAttribute('role', 'status');
+    el.innerHTML = `<span class="cele-i">${I.team}</span><span class="cele-t"><b>Группа выполнила цель недели</b><small>${esc(fresh.map(g => g.name).join(', '))} · вы решали задачи — награда и вам</small></span><span class="cele-p">+${GOAL.bonus * fresh.length}</span>`;
+    $$('.cele').forEach(x => x.remove()); document.body.appendChild(el);
+    clearTimeout(celeT); celeT = setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 4200);
+  }
+  // цель группы: общая полоса, мой вклад, сколько осталось до конца недели
+  function goalCardHTML(g, student) {
+    const left = Math.max(0, g.ends * 1000 - Date.now()), days = Math.ceil(left / 86400000), pc = Math.min(100, Math.round(g.done / g.target * 100));
+    const rest = Math.max(0, g.target - g.done);
+    const note = g.reached ? (student ? (g.mine ? `Цель выполнена — вам +${g.bonus} баллов.` : `Цель выполнена. Решите задачу на этой неделе — тоже получите +${g.bonus}.`) : `Цель выполнена: +${g.bonus} баллов получили ${g.contributors} ${plural(g.contributors, 'ученик', 'ученика', 'учеников')}.`)
+      : student ? `Осталось ${rest} ${plural(rest, 'задача', 'задачи', 'задач')}${g.mine ? ` · ваш вклад — ${g.mine}` : ' · решите хотя бы одну, чтобы получить награду'}.`
+      : `Осталось ${rest} ${plural(rest, 'задача', 'задачи', 'задач')} · решают ${g.contributors} из ${g.members}.`;
+    return `<div class="goal ${g.reached ? 'done' : ''}"><span class="goal-i">${g.reached ? I.check : I.team}</span>
+      <div class="goal-t"><div class="goal-h"><b>Цель группы: ${g.target} ${plural(g.target, 'задача', 'задачи', 'задач')} за неделю</b><span class="st-gain">+${g.bonus} каждому</span></div>
+        <span class="pbar goal-bar"><i style="width:${pc}%"></i></span>
+        <span class="goal-n"><span>${note}</span><span>${g.done} / ${g.target}${g.reached ? '' : ` · ${days ? `ещё ${days} ${plural(days, 'день', 'дня', 'дней')}` : 'последний день'}`}</span></span></div></div>`;
+  }
+  function goalsHTML(goals) {
+    if (!goals.length) return '';
+    return `<section class="t-sec st-sec"><h2 class="sec-h">Цель недели <a class="st-more" href="#rating">Рейтинг <span class="lnk-ic">${I.chev}</span></a></h2>
+      ${goals.map(g => `${goals.length > 1 ? `<p class="goal-g">${esc(g.name)}</p>` : ''}${goalCardHTML(g, true)}`).join('')}</section>`;
+  }
+  // достижения: три ближайших с прогрессом, все — по раскрытию
+  function achHTML(list) {
+    const got = list.filter(a => a.got), next = list.filter(a => !a.got).sort((a, b) => b.have / b.need - a.have / a.need || a.need - b.need).slice(0, 3);
+    const card = (a, i) => `<li class="ach ${a.got ? 'got' : ''}" style="--i:${i}"><span class="ach-i">${I.medal}</span><span class="ach-t"><b>${esc(a.title)}</b><small>${esc(a.desc)}</small>
+        ${a.got ? `<small class="ach-d">получено ${fmtDate(a.got * 1000)}</small>` : `<span class="pbar"><i style="width:${Math.round(a.have / a.need * 100)}%"></i></span><small>${a.have} из ${a.need}</small>`}</span><span class="st-gain">+${a.points}</span></li>`;
+    return `<section class="t-sec st-sec"><h2 class="sec-h">Достижения <span class="muted ach-c">${got.length} из ${list.length}</span></h2>
+      ${next.length ? `<ul class="ach-list">${next.map(card).join('')}</ul>` : '<p class="muted">Все достижения получены.</p>'}
+      <details class="st-how ach-all"><summary>Все достижения</summary><ul class="ach-list">${[...got, ...list.filter(a => !a.got)].map(card).join('')}</ul></details></section>`;
+  }
 
   /* ═════════════ РЕЙТИНГ ГРУППЫ ═════════════
      Строки считает сервер (group_rating): баллы за 7 дней и за всё время, серия, решённые задачи, точность
@@ -5318,6 +5448,7 @@ function stacklyApp() {
     if (!g) return head + `<section class="t-sec"><div class="t-empty"><b>Рейтинг скрыт</b>Учитель ${d.groups.length > 1 ? 'ваших групп' : 'группы'} не показывает рейтинг ученикам.</div></section>`;
     return head + `<div class="rt-bar">${open.length > 1 ? `<div class="seg" role="group" aria-label="Группа">${open.map(x => `<button type="button" class="${x.id === g.id ? 'on' : ''}" data-rgroup="${x.id}" aria-pressed="${x.id === g.id}">${esc(x.name)}</button>`).join('')}</div>` : `<span class="rt-g"><b>${esc(g.name)}</b> · учитель ${esc(g.teacher)}</span>`}
         ${ratingSeg()}</div>
+      ${d.goal ? goalCardHTML(d.goal, true) : ''}
       <div id="rtbody">${ratingMeHTML(d.rows, d.me, d.min_tries)}${ratingListHTML(d.rows, d.me, d.min_tries)}</div>
       <p class="muted rt-note">${ratingBy === 'week' ? `Баллы за последние ${d.days} дней: задачи, темы, разборы, дни занятий и ответы в опросах эфира.` : ratingBy === 'points' ? 'Все заработанные баллы — потраченные в магазине тоже считаются.' : ratingBy === 'streak' ? 'Дней подряд с занятиями.' : ratingBy === 'accuracy' ? `Доля верных попыток, у кого от ${d.min_tries} попыток.` : 'Задачи, решённые верно.'}</p>`;
   }
@@ -5816,7 +5947,7 @@ function stacklyApp() {
       <section class="t-sec"><h2>Домашние задания <a class="btn small blue" href="#teach-hw-${g.id}-new">Новое задание <span class="arr">${I.arrow}</span></a></h2>
         ${hws.length ? hws.map(hwRow).join('') : `<div class="t-empty"><b>Заданий пока нет</b>Соберите задание из задач банка, тем Python и разборов методички — ученики увидят его в личном кабинете.</div>`}</section>
 
-      ${ms.length ? `<section class="t-sec"><h2>Рейтинг ${ratingSeg()}</h2><div id="grating">${ratingListHTML(r.rating, null, RATING_MIN_TRIES)}</div>
+      ${ms.length ? `<section class="t-sec"><h2>Рейтинг ${ratingSeg()}</h2>${r.goal ? goalCardHTML(r.goal, false) : ''}<div id="grating">${ratingListHTML(r.rating, null, RATING_MIN_TRIES)}</div>
         <p class="auth-note">${g.rating_open ? 'Ученики группы видят этот рейтинг в разделе «Рейтинг» — имена и оформление одногруппников, без почты.' : 'Рейтинг скрыт от учеников — его видите только вы. Включить можно в настройках группы ниже.'}</p></section>` : ''}
 
       <section class="t-sec"><h2>Ученики</h2>

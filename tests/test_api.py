@@ -310,10 +310,10 @@ class ClassroomTest(ServerCase):
         g = t.call('POST', '/teach/groups', {'name': 'Магазин'})[1]['group']
         s, _ = self.register()
         s.call('POST', '/me/groups/join', {'code': g['code']})
-        # 20 задач с первой попытки = 300 баллов
+        # 20 задач с первой попытки = 300 баллов, плюс достижения «Первая задача», «Разогрев» и «Снайпер» = 60
         s.call('PUT', '/progress', {'data': {'solved': [f'x{i}' for i in range(20)], 'att': {f'x{i}': {'n': 1, 'c': 1} for i in range(20)}}})
         shop = s.call('GET', '/shop')[1]
-        self.assertEqual((shop['earned'], shop['balance']), (300, 300))
+        self.assertEqual((shop['earned'], shop['balance']), (360, 360))
 
         # оформление: покупается один раз, сразу надевается, чужое не надеть
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'style', 'item': 'ball-mint'})[0], 200)
@@ -325,7 +325,7 @@ class ClassroomTest(ServerCase):
         # заморозки: не больше двух
         for code in (200, 200, 400):
             self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'freeze'})[0], code)
-        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 300 - 100 - 100)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 360 - 100 - 100)
 
         # награда учителя: заявку можно отклонить — баллы вернутся
         self.assertEqual(t.call('POST', '/teach/rewards', {'title': '+1 балл к контрольной', 'cost': 50})[0], 200)
@@ -334,7 +334,7 @@ class ClassroomTest(ServerCase):
         claim = t.call('GET', '/teach/shop')[1]['claims'][0]
         self.assertEqual(t.call('POST', '/teach/spends', {'id': claim['id'], 'status': 'declined'})[0], 200)
         self.assertEqual(t.call('POST', '/teach/spends', {'id': claim['id'], 'status': 'done'})[0], 400)
-        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 100)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 160)
 
         # эфир: пока не идёт — нельзя; ссылки запрещены; сообщение сразу попадает в оверлей, учитель может его снять
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет'})[1]['error'], 'not_live')
@@ -354,7 +354,7 @@ class ClassroomTest(ServerCase):
         self.assertEqual(anon.call('POST', '/live/shown', {'k': live['token'], 'id': feed['alerts'][0]['id']})[0], 200)
         self.assertEqual(anon.call('GET', f'/live/feed?k={live["token"]}')[1]['alerts'], [])
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Ещё'})[0], 429)
-        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 75)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 135)
 
     def test_live_polls(self):
         t, _ = self.teacher()
@@ -432,7 +432,8 @@ class ClassroomTest(ServerCase):
         rows = {x['id']: x for x in r['rows']}
         me = rows[r['me']]
         # неделя: 10+5 и 10 за задачи, 5 за тему, 5 за день; всего ещё задача месяц назад и тот день
-        self.assertEqual((me['week'], me['points'], me['solved'], me['accuracy']), (35, 50, 3, 25))
+        # +10 во «всего» — достижение «Первая задача»; в неделю достижения не входят
+        self.assertEqual((me['week'], me['points'], me['solved'], me['accuracy']), (35, 60, 3, 25))
         self.assertEqual(len(rows), 2)
         self.assertNotIn('email', me)
         self.assertNotIn(s3.call('GET', '/auth/me')[1]['user']['id'], rows)
@@ -442,7 +443,7 @@ class ClassroomTest(ServerCase):
         s2.call('POST', '/polls/vote', {'id': p['id'], 'choice': 0})
         r2 = {x['id']: x for x in s2.call('GET', '/me/rating')[1]['rows']}
         s2id = s2.call('GET', '/auth/me')[1]['user']['id']
-        self.assertEqual((r2[s2id]['week'], r2[s2id]['points']), (15 + 5 + 7, 15 + 5 + 7))
+        self.assertEqual((r2[s2id]['week'], r2[s2id]['points']), (15 + 5 + 7, 15 + 5 + 7 + 10))     # +10 — «Первая задача»
         # учитель видит рейтинг на странице группы и может скрыть его от учеников
         self.assertEqual(len(t.call('GET', f'/teach/group?id={g["id"]}')[1]['rating']), 2)
         self.assertEqual(s1.call('GET', f'/me/rating?group={other["id"]}')[0], 404)            # не своя группа
@@ -450,6 +451,59 @@ class ClassroomTest(ServerCase):
         r = s1.call('GET', '/me/rating')[1]
         self.assertEqual((r['group'], r['rows'], r['groups'][0]['rating_open']), (None, [], 0))
         self.assertEqual(s1.call('GET', f'/me/rating?group={g["id"]}')[0], 404)
+
+    def test_motivation(self):
+        t, _ = self.teacher()
+        g = t.call('POST', '/teach/groups', {'name': 'Мотивация'})[1]['group']
+        s1, _ = self.register(); s2, _ = self.register()
+        for s in (s1, s2):
+            s.call('POST', '/me/groups/join', {'code': g['code']})
+        now = int(time.time())
+        hw_early = t.call('POST', '/teach/homework', {'group_id': g['id'], 'title': 'Досрочно', 'due': now + 3 * 86400, 'items': {'bank': ['m1']}})[1]['homework']
+        t.call('POST', '/teach/homework', {'group_id': g['id'], 'title': 'Просрочено', 'due': now - 3600, 'items': {'bank': ['m2']}})
+        att = lambda ids: {i: {'n': 1, 'c': 1, 'ok': now * 1000} for i in ids}
+
+        # задание сдано за трое суток до срока: 20 + 10; просроченное — без бонуса; первое достижение — тоже сразу
+        d1 = {'solved': ['m1', 'm2'], 'att': att(['m1', 'm2']), 'days': {time.strftime('%Y-%m-%d'): 1}}
+        r = s1.call('PUT', '/progress', {'data': d1})[1]
+        kinds = {(x['kind'], x.get('code') or x['title']): x['points'] for x in r['rewards']}
+        self.assertEqual(kinds[('hw', 'Досрочно')], 30)
+        self.assertNotIn(('hw', 'Просрочено'), kinds)
+        self.assertEqual(kinds[('ach', 'solve1')], 10)
+        self.assertEqual(kinds[('ach', 'hw1')], 10)
+        # повторное сохранение ничего не начисляет
+        self.assertEqual(s1.call('PUT', '/progress', {'data': d1})[1]['rewards'], [])
+        hist = s1.call('GET', '/shop')[1]
+        # 2 задачи с первой попытки (30) + день (5) + бонус ДЗ (30) + достижения solve1 и hw1 (20)
+        self.assertEqual(hist['balance'], 30 + 5 + 30 + 20)
+
+        m = s1.call('GET', '/me/motivation')[1]
+        a = {x['code']: x for x in m['achievements']}
+        self.assertTrue(a['solve1']['got'])
+        self.assertEqual((a['solve10']['have'], a['solve10']['need'], a['solve10']['got']), (2, 10, None))
+        goal = m['goals'][0]
+        self.assertEqual((goal['target'], goal['done'], goal['mine'], goal['reached']), (20, 2, 2, None))
+        self.assertNotIn('counts', goal)
+        # недельный рейтинг: бонус за ДЗ входит, достижения — нет (35 за учёбу + 30)
+        me = s1.call('GET', '/me/rating')[1]
+        self.assertEqual({x['id']: x['week'] for x in me['rows']}[me['me']], 65)
+
+        # цель группы: вместе 20 задач за неделю — каждому, кто решал, +30; кто не решал — без награды
+        # цель достигнута на сохранении s2 — награду в этот момент получают все, кто решал (s1 узнает о ней из /me/motivation)
+        r = s2.call('PUT', '/progress', {'data': {'solved': [f'x{i}' for i in range(18)], 'att': att([f'x{i}' for i in range(18)])}})[1]
+        self.assertIn(('goal', 30), [(x['kind'], x['points']) for x in r['rewards']])
+        self.assertEqual(s1.call('PUT', '/progress', {'data': d1})[1]['rewards'], [])
+        self.assertEqual(len([h for h in s1.call('GET', '/shop')[1]['history'] if h['kind'] == 'goal']), 1)
+        goal = s2.call('GET', '/me/motivation')[1]['goals'][0]
+        self.assertEqual((goal['done'], goal['contributors']), (20, 2))
+        self.assertIsNotNone(goal['reached'])
+        self.assertEqual(len([h for h in s2.call('GET', '/shop')[1]['history'] if h['kind'] == 'goal']), 1)
+        self.assertEqual(t.call('GET', f'/teach/group?id={g["id"]}')[1]['goal']['done'], 20)
+        # бонус за задание — один раз на ученика
+        con = sqlite3.connect(self.db)
+        self.assertEqual(con.execute("SELECT COUNT(*) FROM spends WHERE kind = 'hw' AND item = ?",
+                                     (f"{hw_early['id']}:{hw_early['created']}",)).fetchone()[0], 1)
+        con.close()
 
     def test_homework_validation(self):
         t, _ = self.teacher()
