@@ -169,6 +169,30 @@ def migrate():
       CREATE INDEX IF NOT EXISTS hits_day ON hits(day);
       CREATE INDEX IF NOT EXISTS hits_ts ON hits(ts);
       CREATE TABLE IF NOT EXISTS metric_salt (day TEXT PRIMARY KEY, salt TEXT NOT NULL);
+
+      -- магазин баллов. Баллы зарабатываются (points() из прогресса), здесь — на что потрачены.
+      -- kind: style — оформление профиля, freeze — заморозка серии, reward — награда учителя, alert — сообщение в эфир.
+      -- status: '' — куплено; у наград new → done (выдано); у сообщений pending (ждёт учителя) → ok (в эфир) → shown;
+      -- declined — учитель отклонил, баллы вернулись (такие траты не считаются)
+      CREATE TABLE IF NOT EXISTS spends (
+        id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL, item TEXT NOT NULL DEFAULT '', cost INTEGER NOT NULL, teacher_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL, okat INTEGER);
+      CREATE INDEX IF NOT EXISTS spends_user ON spends(user_id);
+      CREATE INDEX IF NOT EXISTS spends_teacher ON spends(teacher_id, kind);
+      -- что ученик надел из купленного оформления: {"ball": …, "frame": …, "badge": …}
+      CREATE TABLE IF NOT EXISTS looks (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, data TEXT NOT NULL DEFAULT '{}');
+      -- дни, которые закрыла заморозка: серия через них не прерывается
+      CREATE TABLE IF NOT EXISTS frozen_days (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, day TEXT NOT NULL, PRIMARY KEY (user_id, day));
+      -- награды, которые учитель предлагает ученикам всех своих групп
+      CREATE TABLE IF NOT EXISTS rewards (
+        id INTEGER PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL, cost INTEGER NOT NULL, hidden INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL);
+      -- эфир учителя: token — секрет ссылки на оверлей, live — эфир идёт и сообщения принимаются,
+      -- price — минимальная цена сообщения, url — ссылка на трансляцию для учеников, premod — сообщения сначала смотрит учитель
+      CREATE TABLE IF NOT EXISTS live_cfg (
+        teacher_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL UNIQUE,
+        live INTEGER NOT NULL DEFAULT 0, price INTEGER NOT NULL DEFAULT 30, url TEXT NOT NULL DEFAULT '', premod INTEGER NOT NULL DEFAULT 1);
     ''')
     # номера задач учителей — с 1001 (до 1000 — встроенный банк); старые 101… сдвигаем один раз
     db().execute('UPDATE problems SET num = num + 900 WHERE builtin = 0 AND num BETWEEN 101 AND 1000')
@@ -446,8 +470,8 @@ def hw_progress(items, sets):
             done += (str(x) if k == 'bank' else x) in sets[k]
     return done, total
 
-def summary(data, updated):
-    """Короткая статистика ученика для таблиц учителя."""
+def summary(data, updated, uid=None):
+    """Короткая статистика ученика для таблиц учителя. uid — чтобы учесть дни, закрытые заморозкой."""
     sets = progress_sets(data)
     att = data.get('att') if isinstance(data.get('att'), dict) else {}
     tries = right = first = 0
@@ -456,11 +480,12 @@ def summary(data, updated):
             tries += int(a.get('n') or 0); right += int(a.get('c') or 0)
             first += bool(a.get('c') and (a.get('f') or a.get('n') == 1))
     days = {k for k, v in (data.get('days') or {}).items() if v} if isinstance(data.get('days'), dict) else set()
+    frozen = {r['day'] for r in db().execute('SELECT day FROM frozen_days WHERE user_id = ?', (uid,))} if uid else set()
     today = time.time()
     day = lambda back: time.strftime('%Y-%m-%d', time.localtime(today - back * 86400))
     streak, back = 0, (0 if day(0) in days else 1)        # сегодня ещё не занимался — серия считается со вчера
-    while day(back) in days:
-        streak += 1; back += 1
+    while day(back) in days or day(back) in frozen:
+        streak += day(back) in days; back += 1
     return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']),
             'tries': tries, 'right': right, 'accuracy': round(right / tries * 100) if tries else None,
             'active7': sum(day(i) in days for i in range(7)), 'streak': streak, 'updated': updated,
@@ -470,6 +495,74 @@ def points(solved, first, studied, days):
     """Очки за активность — та же формула, что pointsOf() на сайте: задача 10 (+5 с первой попытки),
     изученная тема, разбор или материал 5, день с занятиями 5."""
     return solved * 10 + first * 5 + studied * 5 + days * 5
+
+# ---------------------------------------------------------------- магазин баллов
+# оформление профиля: id → (слот, название, цена). Цвета и значки рисует сайт по id
+STYLES = {
+    'ball-mint': ('ball', 'Мятный шар', 100), 'ball-sky': ('ball', 'Небесный шар', 100), 'ball-coral': ('ball', 'Коралловый шар', 150),
+    'ball-violet': ('ball', 'Фиолетовый шар', 150), 'ball-ink': ('ball', 'Графитовый шар', 200), 'ball-gold': ('ball', 'Золотой шар', 400),
+    'frame-dash': ('frame', 'Пунктирная рамка', 150), 'frame-margin': ('frame', 'Красная рамка полей', 200), 'frame-double': ('frame', 'Двойная рамка', 300),
+    'frame-gold': ('frame', 'Золотая рамка', 500),
+    'badge-star': ('badge', 'Звезда', 200), 'badge-bolt': ('badge', 'Молния', 200), 'badge-heart': ('badge', 'Сердце', 200),
+    'badge-owl': ('badge', 'Сова', 300), 'badge-rocket': ('badge', 'Ракета', 300), 'badge-crown': ('badge', 'Корона', 600),
+}
+FREEZE_COST, FREEZE_MAX = 50, 2
+ALERT_MAX, ALERT_GAP = 200, 20          # длина сообщения в эфир и пауза между сообщениями одного ученика, с
+URL_RE = re.compile(r'(https?://|www\.|\b[\w-]+\.(ru|com|net|org|su|io|me|рф)\b)', re.I)
+
+def balance(uid):
+    """(заработано, потрачено) баллов. Отклонённые учителем траты вернулись и не считаются."""
+    data, updated = load_progress(uid)
+    earned = summary(data, updated, uid)['points']
+    spent = db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND status != 'declined'", (uid,)).fetchone()[0]
+    return earned, spent
+
+def look_of(uid):
+    r = db().execute('SELECT data FROM looks WHERE user_id = ?', (uid,)).fetchone()
+    try:
+        d = json.loads(r['data']) if r else {}
+    except ValueError:
+        d = {}
+    return {k: v for k, v in d.items() if v in STYLES and STYLES[v][0] == k} if isinstance(d, dict) else {}
+
+def freezes_left(uid):
+    bought = db().execute("SELECT COUNT(*) FROM spends WHERE user_id = ? AND kind = 'freeze'", (uid,)).fetchone()[0]
+    used = db().execute('SELECT COUNT(*) FROM frozen_days WHERE user_id = ?', (uid,)).fetchone()[0]
+    return max(0, bought - used)
+
+def apply_freezes(uid):
+    """Пропущенные дни между последним днём занятий и вчера закрываются заморозками, купленными до этих дней.
+    Если заморозок не хватает на весь пропуск, серия всё равно прервалась — их не тратим."""
+    left = freezes_left(uid)
+    if not left:
+        return
+    data, _ = load_progress(uid)
+    days = {k for k, v in (data.get('days') or {}).items() if v} if isinstance(data.get('days'), dict) else set()
+    frozen = {r['day'] for r in db().execute('SELECT day FROM frozen_days WHERE user_id = ?', (uid,))}
+    now = time.time()
+    day = lambda back: time.strftime('%Y-%m-%d', time.localtime(now - back * 86400))
+    gap, back = [], 1
+    while back <= FREEZE_MAX + 1 and day(back) not in days and day(back) not in frozen:
+        gap.append(day(back)); back += 1
+    if not gap or len(gap) > left or (day(back) not in days and day(back) not in frozen):
+        return
+    first_buy = db().execute("SELECT MIN(created) FROM spends WHERE user_id = ? AND kind = 'freeze'", (uid,)).fetchone()[0]
+    start = time.mktime(time.strptime(gap[-1], '%Y-%m-%d'))
+    if first_buy is None or first_buy > start + 86400:
+        return                  # заморозку купили уже после пропуска — она защищает следующие дни, не прошлые
+    for d in gap:
+        db().execute('INSERT OR IGNORE INTO frozen_days VALUES (?,?)', (uid, d))
+
+def live_cfg(teacher_id, create=False):
+    r = db().execute('SELECT * FROM live_cfg WHERE teacher_id = ?', (teacher_id,)).fetchone()
+    if r is None and create:
+        db().execute('INSERT INTO live_cfg (teacher_id, token) VALUES (?,?)', (teacher_id, secrets.token_urlsafe(18)))
+        r = db().execute('SELECT * FROM live_cfg WHERE teacher_id = ?', (teacher_id,)).fetchone()
+    return r
+
+def my_teachers(uid):
+    return [r['teacher_id'] for r in db().execute('SELECT DISTINCT g.teacher_id FROM group_members m JOIN study_groups g ON g.id = m.group_id '
+                                                   'WHERE m.user_id = ?', (uid,))]
 
 def hw_json(h):
     return {'id': h['id'], 'group_id': h['group_id'], 'title': h['title'], 'comment': h['comment'],
@@ -817,6 +910,17 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/content/lesson'): self.c_lesson_save,
             ('POST', '/api/content/lesson/reset'): self.c_lesson_reset,
             ('POST', '/api/media'): self.c_media_upload,
+            # магазин баллов: ученик тратит, учитель настраивает награды и эфир, оверлей эфира читает ленту по секретной ссылке
+            ('GET', '/api/shop'): self.shop,
+            ('POST', '/api/shop/buy'): self.shop_buy,
+            ('POST', '/api/shop/look'): self.shop_look,
+            ('GET', '/api/teach/shop'): self.t_shop,
+            ('POST', '/api/teach/rewards'): self.t_reward_save,
+            ('POST', '/api/teach/rewards/delete'): self.t_reward_delete,
+            ('POST', '/api/teach/spends'): self.t_spend_set,
+            ('POST', '/api/teach/live'): self.t_live_set,
+            ('GET', '/api/live/feed'): self.live_feed,
+            ('POST', '/api/live/shown'): self.live_shown,
             # свои материалы учителей
             ('GET', '/api/materials'): self.materials,
             ('POST', '/api/materials'): self.material_save,
@@ -853,6 +957,8 @@ class Handler(BaseHTTPRequestHandler):
                 if plan_of(r)['active']:
                     mats.update(json.loads(r['materials'] or '[]'))
             j['materials'] = sorted(mats)
+            j['spent'] = db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND status != 'declined'", (u['id'],)).fetchone()[0]
+            j['look'] = look_of(u['id'])
         else:
             j['plan'] = plan_of(u)
             j['usage'] = teacher_usage(u['id'])
@@ -1024,6 +1130,195 @@ class Handler(BaseHTTPRequestHandler):
                      (u['id'], raw, now))
         record_homework_done(u['id'], data)
         self.send_json(200, {'ok': True, 'updated': now})
+
+    # --- магазин баллов: ученик
+    def shop(self):
+        u = self.current_user()
+        apply_freezes(u['id'])
+        earned, spent = balance(u['id'])
+        tids = my_teachers(u['id'])
+        q = ','.join('?' * len(tids))
+        rewards = db().execute(f'SELECT r.id, r.title, r.cost, r.teacher_id, t.name AS teacher FROM rewards r JOIN users t ON t.id = r.teacher_id '
+                               f'WHERE r.hidden = 0 AND r.teacher_id IN ({q}) ORDER BY r.cost, r.id', tids).fetchall() if tids else []
+        lives = db().execute(f'SELECT c.teacher_id, c.price, c.url, t.name FROM live_cfg c JOIN users t ON t.id = c.teacher_id '
+                             f'WHERE c.live = 1 AND c.teacher_id IN ({q})', tids).fetchall() if tids else []
+        hist = db().execute('SELECT s.id, s.kind, s.item, s.cost, s.text, s.status, s.created, t.name AS teacher FROM spends s '
+                            'LEFT JOIN users t ON t.id = s.teacher_id WHERE s.user_id = ? ORDER BY s.id DESC LIMIT 40', (u['id'],)).fetchall()
+        owned = sorted({r['item'] for r in db().execute("SELECT item FROM spends WHERE user_id = ? AND kind = 'style'", (u['id'],))})
+        frozen = [r['day'] for r in db().execute('SELECT day FROM frozen_days WHERE user_id = ? ORDER BY day', (u['id'],))]
+        self.send_json(200, {'earned': earned, 'spent': spent, 'balance': earned - spent, 'owned': owned, 'look': look_of(u['id']),
+                             'freezes': freezes_left(u['id']), 'freeze_cost': FREEZE_COST, 'freeze_max': FREEZE_MAX, 'frozen': frozen,
+                             'styles': {k: {'slot': v[0], 'title': v[1], 'cost': v[2]} for k, v in STYLES.items()},
+                             'rewards': [dict(r) for r in rewards], 'live': [dict(r) for r in lives], 'history': [dict(r) for r in hist]})
+
+    def shop_buy(self):
+        u = self.current_user()
+        d = self.body()
+        kind, now = d.get('kind'), int(time.time())
+        earned, spent = balance(u['id'])
+        left = earned - spent
+        def take(cost, **kw):
+            if cost > left:
+                raise ApiError(400, 'no_points', f'Не хватает баллов: нужно {cost}, у вас {left}')
+            cols = {'user_id': u['id'], 'kind': kind, 'cost': cost, 'created': now} | kw
+            return db().execute(f'INSERT INTO spends ({",".join(cols)}) VALUES ({",".join("?" * len(cols))})', tuple(cols.values())).lastrowid
+        if kind == 'style':
+            item = d.get('item')
+            if item not in STYLES:
+                raise ApiError(400, 'bad_item', 'Нет такого оформления')
+            if db().execute("SELECT 1 FROM spends WHERE user_id = ? AND kind = 'style' AND item = ?", (u['id'], item)).fetchone():
+                raise ApiError(400, 'owned', 'Уже куплено')
+            take(STYLES[item][2], item=item)
+            look = look_of(u['id']) | {STYLES[item][0]: item}          # купленное сразу надеваем
+            db().execute('INSERT INTO looks VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data', (u['id'], json.dumps(look)))
+        elif kind == 'freeze':
+            if freezes_left(u['id']) >= FREEZE_MAX:
+                raise ApiError(400, 'too_many', f'Больше {FREEZE_MAX} заморозок держать нельзя')
+            take(FREEZE_COST)
+        elif kind == 'reward':
+            r = db().execute('SELECT * FROM rewards WHERE id = ? AND hidden = 0', (self.int_arg(d, 'id'),)).fetchone()
+            if not r or r['teacher_id'] not in my_teachers(u['id']):
+                raise ApiError(404, 'not_found', 'Награда недоступна')
+            take(r['cost'], item=str(r['id']), teacher_id=r['teacher_id'], text=r['title'], status='new')
+            tg_teacher(r['teacher_id'], 'done', f'🎁 <b>{tg_esc(u["name"])}</b> обменял {r["cost"]} баллов на награду «{tg_esc(r["title"])}»')
+        elif kind == 'alert':
+            tid = self.int_arg(d, 'teacher_id')
+            c = live_cfg(tid)
+            if not c or not c['live'] or tid not in my_teachers(u['id']):
+                raise ApiError(400, 'not_live', 'Эфир сейчас не идёт')
+            text = re.sub(r'\s+', ' ', str(d.get('text') or '')).strip()
+            if not text:
+                raise ApiError(400, 'empty', 'Напишите сообщение')
+            if len(text) > ALERT_MAX:
+                raise ApiError(400, 'too_long', f'Сообщение — до {ALERT_MAX} символов')
+            if URL_RE.search(text):
+                raise ApiError(400, 'link', 'Ссылки в сообщениях эфира запрещены')
+            try:
+                amount = int(d.get('amount') or c['price'])
+            except (TypeError, ValueError):
+                raise ApiError(400, 'bad_request', 'Некорректная сумма')
+            if amount < c['price']:
+                raise ApiError(400, 'too_cheap', f'Минимум {c["price"]} баллов')
+            last = db().execute("SELECT MAX(created) FROM spends WHERE user_id = ? AND kind = 'alert'", (u['id'],)).fetchone()[0]
+            if last and now - last < ALERT_GAP:
+                raise ApiError(429, 'slow_down', 'Подождите немного перед следующим сообщением')
+            take(amount, teacher_id=tid, text=text, status='pending' if c['premod'] else 'ok', okat=None if c['premod'] else now)
+        else:
+            raise ApiError(400, 'bad_request', 'Некорректный запрос')
+        self.send_json(200, {'ok': True, 'balance': left - db().execute('SELECT cost FROM spends WHERE user_id = ? ORDER BY id DESC LIMIT 1', (u['id'],)).fetchone()[0]})
+
+    def shop_look(self):
+        u = self.current_user()
+        d = self.body()
+        owned = {r['item'] for r in db().execute("SELECT item FROM spends WHERE user_id = ? AND kind = 'style'", (u['id'],))}
+        look = look_of(u['id'])
+        for slot in ('ball', 'frame', 'badge'):
+            if slot in d:
+                v = d[slot] or ''
+                if v and (v not in owned or STYLES[v][0] != slot):
+                    raise ApiError(400, 'not_owned', 'Сначала купите это оформление')
+                if v:
+                    look[slot] = v
+                else:
+                    look.pop(slot, None)
+        db().execute('INSERT INTO looks VALUES (?,?) ON CONFLICT(user_id) DO UPDATE SET data = excluded.data', (u['id'], json.dumps(look)))
+        self.send_json(200, {'look': look})
+
+    # --- магазин баллов: учитель
+    def t_shop(self):
+        u = self.teacher()
+        c = live_cfg(u['id'], create=True)
+        rewards = db().execute('SELECT id, title, cost FROM rewards WHERE teacher_id = ? AND hidden = 0 ORDER BY cost, id', (u['id'],)).fetchall()
+        rows = db().execute("SELECT s.id, s.kind, s.cost, s.text, s.status, s.created, s.okat, s.user_id, u.name FROM spends s JOIN users u ON u.id = s.user_id "
+                            "WHERE s.teacher_id = ? AND s.kind IN ('reward', 'alert') ORDER BY s.id DESC LIMIT 120", (u['id'],)).fetchall()
+        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'premod')}, 'rewards': [dict(r) for r in rewards],
+                             'claims': [dict(r) for r in rows if r['kind'] == 'reward'], 'alerts': [dict(r) for r in rows if r['kind'] == 'alert'][:60]})
+
+    def t_reward_save(self):
+        u = self.teacher()
+        d = self.body()
+        title = re.sub(r'\s+', ' ', str(d.get('title') or '')).strip()
+        if not title or len(title) > 80:
+            raise ApiError(400, 'bad_title', 'Название награды — от 1 до 80 символов')
+        cost = self.int_arg(d, 'cost')
+        if not 10 <= cost <= 100000:
+            raise ApiError(400, 'bad_cost', 'Цена — от 10 до 100 000 баллов')
+        if d.get('id'):
+            n = db().execute('UPDATE rewards SET title = ?, cost = ? WHERE id = ? AND teacher_id = ? AND hidden = 0',
+                             (title, cost, self.int_arg(d, 'id'), u['id'])).rowcount
+            if not n:
+                raise ApiError(404, 'not_found', 'Награда не найдена')
+        else:
+            if db().execute('SELECT COUNT(*) FROM rewards WHERE teacher_id = ? AND hidden = 0', (u['id'],)).fetchone()[0] >= 30:
+                raise ApiError(400, 'too_many', 'Не больше 30 наград')
+            db().execute('INSERT INTO rewards (teacher_id, title, cost, created) VALUES (?,?,?,?)', (u['id'], title, cost, int(time.time())))
+        self.send_json(200, {'ok': True})
+
+    def t_reward_delete(self):
+        u = self.teacher()
+        # не стираем: на награду ссылаются заявки учеников
+        db().execute('UPDATE rewards SET hidden = 1 WHERE id = ? AND teacher_id = ?', (self.int_arg(self.body(), 'id'), u['id']))
+        self.send_json(200, {'ok': True})
+
+    def t_spend_set(self):
+        """Заявка на награду: done — выдано, declined — отклонить и вернуть баллы.
+        Сообщение в эфир: ok — пустить в эфир, declined — не показывать и вернуть баллы, shown — уже прозвучало."""
+        u = self.teacher()
+        d = self.body()
+        s = db().execute('SELECT * FROM spends WHERE id = ? AND teacher_id = ?', (self.int_arg(d, 'id'), u['id'])).fetchone()
+        st = d.get('status')
+        ok = {'reward': {'new': ('done', 'declined')}, 'alert': {'pending': ('ok', 'declined'), 'ok': ('declined', 'shown')}}
+        if not s or st not in ok.get(s['kind'], {}).get(s['status'], ()):
+            raise ApiError(400, 'bad_status', 'Это действие уже недоступно')
+        db().execute('UPDATE spends SET status = ?, okat = COALESCE(okat, ?) WHERE id = ?',
+                     (st, int(time.time()) if st == 'ok' else None, s['id']))
+        self.send_json(200, {'ok': True})
+
+    def t_live_set(self):
+        u = self.teacher()
+        d = self.body()
+        live_cfg(u['id'], create=True)
+        if 'live' in d:
+            db().execute('UPDATE live_cfg SET live = ? WHERE teacher_id = ?', (1 if d['live'] else 0, u['id']))
+        if 'premod' in d:
+            db().execute('UPDATE live_cfg SET premod = ? WHERE teacher_id = ?', (1 if d['premod'] else 0, u['id']))
+        if 'price' in d:
+            price = self.int_arg(d, 'price')
+            if not 1 <= price <= 10000:
+                raise ApiError(400, 'bad_price', 'Цена сообщения — от 1 до 10 000 баллов')
+            db().execute('UPDATE live_cfg SET price = ? WHERE teacher_id = ?', (price, u['id']))
+        if 'url' in d:
+            url = str(d.get('url') or '').strip()
+            if url and (len(url) > 300 or not re.match(r'^https://[^\s<>"]+$', url)):
+                raise ApiError(400, 'bad_url', 'Ссылка на эфир должна начинаться с https://')
+            db().execute('UPDATE live_cfg SET url = ? WHERE teacher_id = ?', (url, u['id']))
+        if d.get('new_token'):
+            db().execute('UPDATE live_cfg SET token = ? WHERE teacher_id = ?', (secrets.token_urlsafe(18), u['id']))
+        c = live_cfg(u['id'])
+        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'premod')}})
+
+    def live_cfg_by_token(self, token):
+        c = db().execute('SELECT c.*, t.name FROM live_cfg c JOIN users t ON t.id = c.teacher_id WHERE c.token = ?', (str(token or ''),)).fetchone()
+        if not c:
+            raise ApiError(404, 'not_found', 'Ссылка устарела — скопируйте новую в кабинете учителя')
+        return c
+
+    def live_feed(self):
+        """Лента оверлея эфира: без входа, по секретной ссылке учителя. Отдаёт одобренные и ещё не прозвучавшие сообщения за час."""
+        c = self.live_cfg_by_token(self.query.get('k'))
+        now = int(time.time())
+        rows = db().execute("SELECT s.id, s.cost, s.text, s.okat, u.name FROM spends s JOIN users u ON u.id = s.user_id "
+                            "WHERE s.teacher_id = ? AND s.kind = 'alert' AND s.status = 'ok' AND s.okat > ? ORDER BY s.okat, s.id LIMIT 20",
+                            (c['teacher_id'], now - 3600)).fetchall()
+        self.send_json(200, {'teacher': c['name'], 'live': bool(c['live']), 'now': now, 'alerts': [dict(r) for r in rows]})
+
+    def live_shown(self):
+        """Оверлей прочитал сообщение — больше его не показываем (и после перезагрузки страницы)."""
+        d = self.body()
+        c = self.live_cfg_by_token(d.get('k'))
+        db().execute("UPDATE spends SET status = 'shown' WHERE id = ? AND teacher_id = ? AND kind = 'alert' AND status = 'ok'",
+                     (self.int_arg(d, 'id'), c['teacher_id']))
+        self.send_json(200, {'ok': True})
 
     # --- ученик: группы и домашние задания
     def my_groups(self):
@@ -1206,7 +1501,7 @@ class Handler(BaseHTTPRequestHandler):
         for r in rows:
             data, updated = load_progress(r['id'])
             sets[r['id']] = progress_sets(data)
-            members.append(dict(r, stats=summary(data, updated)))
+            members.append(dict(r, stats=summary(data, updated, r['id']), look=look_of(r['id'])))
         hws = db().execute('SELECT * FROM homework WHERE group_id = ? ORDER BY COALESCE(due, created + 315360000) DESC, id DESC',
                            (g['id'],)).fetchall()
         status = self.hw_status(hws, sets)
@@ -1230,7 +1525,7 @@ class Handler(BaseHTTPRequestHandler):
         hws = [h for h in hws if not json.loads(h['students']) or sid in json.loads(h['students'])]
         status = self.hw_status(hws, {sid: progress_sets(data)})
         self.send_json(200, {'student': dict(st), 'groups': [dict(g) for g in groups], 'progress': data,
-                             'stats': summary(data, updated),
+                             'stats': summary(data, updated, sid), 'look': look_of(sid),
                              'homework': [dict(hw_json(h), status=status[h['id']].get(sid)) for h in hws]})
 
     def t_hw_save(self):
@@ -1757,7 +2052,7 @@ class Handler(BaseHTTPRequestHandler):
             data, updated = load_progress(u['id'])
             hws = assigned_homework(u['id'])
             done = {r['hw_id'] for r in db().execute('SELECT hw_id FROM homework_done WHERE user_id = ?', (u['id'],))}
-            out['stats'] = summary(data, updated)
+            out['stats'] = summary(data, updated, u['id'])
             out['groups'] = [dict(r) for r in db().execute(
                 'SELECT g.id, g.name, t.id AS teacher_id, t.name AS teacher, m.joined FROM group_members m JOIN study_groups g ON g.id = m.group_id '
                 'JOIN users t ON t.id = g.teacher_id WHERE m.user_id = ? ORDER BY m.joined DESC', (u['id'],))]

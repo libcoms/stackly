@@ -305,6 +305,55 @@ class ClassroomTest(ServerCase):
         t.call('POST', '/teach/groups/delete', {'id': g['id']})
         self.assertEqual(s1.call('GET', '/me/homework')[1]['homework'], [])
 
+    def test_points_shop(self):
+        t, _ = self.teacher()
+        g = t.call('POST', '/teach/groups', {'name': 'Магазин'})[1]['group']
+        s, _ = self.register()
+        s.call('POST', '/me/groups/join', {'code': g['code']})
+        # 20 задач с первой попытки = 300 баллов
+        s.call('PUT', '/progress', {'data': {'solved': [f'x{i}' for i in range(20)], 'att': {f'x{i}': {'n': 1, 'c': 1} for i in range(20)}}})
+        shop = s.call('GET', '/shop')[1]
+        self.assertEqual((shop['earned'], shop['balance']), (300, 300))
+
+        # оформление: покупается один раз, сразу надевается, чужое не надеть
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'style', 'item': 'ball-mint'})[0], 200)
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'style', 'item': 'ball-mint'})[0], 400)
+        self.assertEqual(s.call('GET', '/auth/me')[1]['user']['look'], {'ball': 'ball-mint'})
+        self.assertEqual(s.call('POST', '/shop/look', {'badge': 'badge-crown'})[0], 400)
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'style', 'item': 'badge-crown'})[1]['error'], 'no_points')
+
+        # заморозки: не больше двух
+        for code in (200, 200, 400):
+            self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'freeze'})[0], code)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 300 - 100 - 100)
+
+        # награда учителя: заявку можно отклонить — баллы вернутся
+        self.assertEqual(t.call('POST', '/teach/rewards', {'title': '+1 балл к контрольной', 'cost': 50})[0], 200)
+        rid = s.call('GET', '/shop')[1]['rewards'][0]['id']
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'reward', 'id': rid})[0], 200)
+        claim = t.call('GET', '/teach/shop')[1]['claims'][0]
+        self.assertEqual(t.call('POST', '/teach/spends', {'id': claim['id'], 'status': 'declined'})[0], 200)
+        self.assertEqual(t.call('POST', '/teach/spends', {'id': claim['id'], 'status': 'done'})[0], 400)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 100)
+
+        # эфир: пока не идёт — нельзя; ссылки запрещены; с премодерацией оверлей видит сообщение только после одобрения
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет'})[1]['error'], 'not_live')
+        live = t.call('POST', '/teach/live', {'live': True, 'price': 20})[1]['live']
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'смотри site.ru'})[1]['error'], 'link')
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет!', 'amount': 10})[1]['error'], 'too_cheap')
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет!', 'amount': 25})[0], 200)
+        anon = Client(self.base)
+        self.assertEqual(anon.call('GET', '/live/feed?k=wrong')[0], 404)
+        self.assertEqual(anon.call('GET', f'/live/feed?k={live["token"]}')[1]['alerts'], [])
+        a = t.call('GET', '/teach/shop')[1]['alerts'][0]
+        t.call('POST', '/teach/spends', {'id': a['id'], 'status': 'ok'})
+        feed = anon.call('GET', f'/live/feed?k={live["token"]}')[1]
+        self.assertEqual([x['text'] for x in feed['alerts']], ['Привет!'])
+        self.assertEqual(anon.call('POST', '/live/shown', {'k': live['token'], 'id': feed['alerts'][0]['id']})[0], 200)
+        self.assertEqual(anon.call('GET', f'/live/feed?k={live["token"]}')[1]['alerts'], [])
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Ещё'})[0], 429)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 75)
+
     def test_homework_validation(self):
         t, _ = self.teacher()
         g = t.call('POST', '/teach/groups', {'name': 'Пн 18:00'})[1]['group']
