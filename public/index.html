@@ -1742,6 +1742,7 @@ table.mapping td, table.mapping th { text-align: left; }
 .page .bk-list > li:nth-child(5), .page .hw-rows > li:nth-child(5) { animation-delay: 160ms; }
 .page .bk-list > li:nth-child(6), .page .hw-rows > li:nth-child(6) { animation-delay: 200ms; }
 .page .bk-list > li:nth-child(n+7):nth-child(-n+10), .page .hw-rows > li:nth-child(n+7):nth-child(-n+10) { animation-delay: 240ms; }
+.page .live-upd .bk-list > li, .live-upd .nav-n { animation: none; }     /* автообновление эфира: строки не появляются заново */
 .next-step { animation: rise .45s .05s var(--ease) both; }
 .next-step .ns-m b { animation: pop .45s .25s var(--ease) both; }
 .kpis .kpi { animation: rise .4s var(--ease) both; }
@@ -5260,7 +5261,7 @@ function stacklyApp() {
     const pastHTML = past.length ? `<div class="tp-past"><h3 class="tl-h">Прошедшие опросы</h3>${past.map((p, i) => `<details ${i === 0 && !cur ? 'open' : ''}><summary><span>${esc(p.question)}</span><span>${p.votes} ${plural(p.votes, 'ответ', 'ответа', 'ответов')} · ${fmtTime(p.created * 1000)}</span></summary>${pollBars(p)}</details>`).join('')}</div>` : '';
     if (cur) return `<div class="panel tp-cur">
         <div class="tp-cur-h"><span class="sh-onair">${I.live}Идёт опрос</span>${cur.reward ? `<span class="pl-chip">+${cur.reward} ${cur.quiz ? 'за верный' : 'за ответ'}</span>` : ''}
-          <span class="pl-left">${cur.ends_at ? `<span data-pl-ends="${cur.ends_at}">${mmss(pollLeft(cur))}</span>` : 'без таймера'}</span><b>${esc(cur.question)}</b></div>
+          <span class="pl-left">${cur.ends_at ? `<span data-pl-ends="${cur.ends_at}"></span>` : 'без таймера'}</span><b>${esc(cur.question)}</b></div>
         ${pollBars(cur)}
         <div class="form-acts"><button type="button" class="btn small" data-tp-close="${cur.id}">Закрыть и подвести итог</button>
           <span class="muted" style="font-size:14px">${cur.votes} ${plural(cur.votes, 'ответ', 'ответа', 'ответов')} · обновляется само${cur.quiz ? ' · ученики увидят верный ответ после закрытия' : ''}</span></div>
@@ -5353,6 +5354,14 @@ function stacklyApp() {
     else StacklyVoice.speak(`${(acct.name || 'Ученик').split(' ')[0]} пишет: ${text}`, f.elements.voice.value, 1, '');
   });
   // pollOnly — автообновление во время эфира: только списки сообщений и заявок, форма с выбором не перерисовывается
+  // автообновление во время эфира: блок перерисовывается, только если в нём что-то изменилось, и без анимации
+  // появления строк — иначе списки каждые несколько секунд проигрывали её заново и страница дёргалась
+  function patchLive(el, html) {
+    if (!el) return;
+    if (el._html === undefined) el._html = el.innerHTML;
+    if (el._html === html) return;
+    el._html = html; el.classList.add('live-upd'); el.innerHTML = html; tickPolls();
+  }
   // опрос перерисовывается, только пока он идёт (или только что закончился): форму нового опроса автообновление не трогает
   const pollActive = d => !!(d && d.polls && d.polls.some(p => !p.closed));
   async function reloadTShop(pollOnly) {
@@ -5362,12 +5371,11 @@ function stacklyApp() {
       tShop = await api('/teach/shop'); pollSkew = tShop.now * 1000 - Date.now();
       if (location.hash !== '#teach-shop') return;
       if (pollOnly) {
-        const al = $('#tlalerts'), cl = $('#tlclaims'), pl = $('#tlpoll');
-        if (al) al.innerHTML = tAlertsHTML(tShop); if (cl) cl.innerHTML = tClaimsHTML(tShop);
-        if (pl && (was || pollActive(tShop))) pl.innerHTML = tPollHTML(tShop);
+        patchLive($('#tlalerts'), tAlertsHTML(tShop)); patchLive($('#tlclaims'), tClaimsHTML(tShop));
+        if (was || pollActive(tShop)) patchLive($('#tlpoll'), tPollHTML(tShop));
         return;
       }
-      const box = $('#tpage'); if (box) { box.innerHTML = tShopHTML(tShop); fillVoices(); }
+      const box = $('#tpage'); if (box) { box.innerHTML = tShopHTML(tShop); fillVoices(); tickPolls(); }
     } catch (e) { }
   }
   // пока открыта страница и идёт эфир, сообщения на проверку подтягиваются сами
@@ -5407,11 +5415,13 @@ function stacklyApp() {
       await reloadTShop(); startLivePoll(); toast('Опрос запущен');
     } catch (err) { msg.textContent = err.message || 'Не получилось запустить'; msg.className = 'form-msg bad'; btn.disabled = false; }
   });
-  // секундомер опросов: у учителя и в карточке ученика
-  setInterval(() => {
+  // секундомер опросов: у учителя и в карточке ученика. Время в разметку не пишется — его ставит только он,
+  // поэтому разметка опроса не меняется каждую секунду и автообновление её не перерисовывает
+  function tickPolls() {
     $$('[data-pl-ends]').forEach(el => { const s = pollLeft({ ends_at: +el.dataset.plEnds }); el.textContent = s ? mmss(s) : 'время вышло'; });
     $$('[data-pb-bar]').forEach(el => { const p = { ends_at: +el.dataset.pbBar }; el.style.transform = `scaleX(${pollLeft(p) / +el.dataset.len})`; });
-  }, 1000);
+  }
+  setInterval(tickPolls, 1000);
 
   /* ── ученик: карточка опроса поверх любой страницы. Опросы спрашиваются раз в 4 секунды, пока вкладка видна;
      у ученика без групп — раз в минуту (вдруг вступит) ── */
@@ -5601,7 +5611,7 @@ function stacklyApp() {
         if (me) setUser(me.user);
         put(tGroupsHTML(gr.groups, all));
       }
-      else if (h === 'teach-shop') { tShop = await api('/teach/shop'); pollSkew = tShop.now * 1000 - Date.now(); if (put(tShopHTML(tShop))) fillVoices(); startLivePoll(); }
+      else if (h === 'teach-shop') { tShop = await api('/teach/shop'); pollSkew = tShop.now * 1000 - Date.now(); if (put(tShopHTML(tShop))) { fillVoices(); tickPolls(); } startLivePoll(); }
       else if (h === 'teach-pro') {
         if (acct.role === 'admin') return put(tMsg('У администратора ограничений нет', 'Оплачивать тариф не нужно.', '#teach', 'К группам'));
         const me = await api('/auth/me').catch(() => null); if (me) setUser(me.user);
