@@ -1846,6 +1846,9 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 .tl-ov code { display: block; padding: 8px 10px; border-radius: 6px; background: var(--paper-2); font: 12.5px/1.4 var(--f-mono); overflow-wrap: anywhere; }
 .tl-ov p { margin: 0; font-size: 13.5px; }
 .tl-vhint { margin: 0; font-size: 13.5px; }
+.areset { display: grid; gap: 10px; margin-top: 18px; }
+.areset code { display: block; padding: 8px 10px; border-radius: 6px; background: var(--paper-2); font: 12.5px/1.4 var(--f-mono); overflow-wrap: anywhere; }
+.areset p { margin: 0; font-size: 13.5px; }
 .sh-voice { width: 270px; }
 .sh-voice select { min-height: 44px; padding: 0 12px; }
 .sh-vnote { margin: 0; font-size: 13px; }
@@ -5284,6 +5287,18 @@ function stacklyApp() {
     try { tShop.live = (await api('/teach/live', 'POST', { [t.dataset.tlive]: t.checked })).live; reloadTShop(); }
     catch (err) { t.checked = !t.checked; toast(err.message || 'Не получилось сохранить'); }
   });
+  // ссылка сброса пароля — администратор сам передаёт её человеку, если письмо не доходит
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-areset]'); if (!b) return;
+    b.disabled = true;
+    try {
+      const r = await api('/admin/reset-link', 'POST', { user_id: +b.dataset.areset });
+      $('#aresetbox').innerHTML = `<div class="panel areset"><b>Ссылка для сброса пароля</b><code>${esc(r.link)}</code>
+        <div class="form-acts"><button type="button" class="btn small" data-tact="copy-code" data-code="${esc(r.link)}">Копировать</button></div>
+        <p class="muted">Действует ${r.hours} ч и один раз. Отправьте её только владельцу аккаунта: по ней можно задать новый пароль без старого. Старый пароль работает, пока не задан новый.</p></div>`;
+    } catch (err) { toast(err.message || 'Не получилось'); }
+    b.disabled = false;
+  });
   document.addEventListener('submit', async e => {
     const f = e.target.closest('[data-apoints]'); if (!f) return;
     e.preventDefault();
@@ -5839,7 +5854,8 @@ function stacklyApp() {
     const u = r.user, teacher = u.role !== 'student';
     const head = `<a class="t-back" href="#admin">${I.chevL}Пользователи</a>
       <header class="t-head"><div><span class="eyebrow">${roleName[u.role]} · на stackly с ${fmtDate(u.created * 1000)}</span><h1>${esc(u.name)}</h1>
-        <p>${esc(u.email)} · заходил ${fmtAgo(u.seen)}</p></div>${teacher ? '' : `<a class="btn ghost" href="#teach-s-${u.id}">Подробный прогресс</a>`}</header>`;
+        <p>${esc(u.email)} · заходил ${fmtAgo(u.seen)}</p></div><div class="form-acts">${u.role === 'admin' ? '' : `<button type="button" class="btn ghost" data-areset="${u.id}">Ссылка для сброса пароля</button>`}${teacher ? '' : `<a class="btn ghost" href="#teach-s-${u.id}">Подробный прогресс</a>`}</div></header>
+      <div id="aresetbox"></div>`;
     if (!teacher) {
       const s = r.stats;
       return head + `<section class="kpis">

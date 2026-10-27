@@ -529,6 +529,14 @@ def balance(uid):
     bonus = -db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind = 'grant'", (uid,)).fetchone()[0]
     return summary(data, updated, uid)['points'] + bonus, spent_net(uid) + bonus
 
+ADMIN_RESET_HOURS = 24
+def reset_link(uid, base):
+    """Одноразовая ссылка сброса пароля на сутки — та же, что приходит в письме «Забыли пароль?»."""
+    tok = secrets.token_urlsafe(32)
+    db().execute('INSERT INTO resets VALUES (?,?,?,0)', (sha(tok), uid, int(time.time()) + ADMIN_RESET_HOURS * 3600))
+    log.info('администратор выдал ссылку сброса пароля пользователю %s', uid)
+    return f'{base}/#reset-{tok}'
+
 def grant_points(uid, amount, reason):
     if not 1 <= amount <= 100000:
         raise ApiError(400, 'bad_amount', 'Начислить можно от 1 до 100 000 баллов')
@@ -908,6 +916,7 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/admin/groups/add'): self.a_group_add,
             ('GET', '/api/admin/user'): self.a_user,
             ('POST', '/api/admin/points'): self.a_points,
+            ('POST', '/api/admin/reset-link'): self.a_reset_link,
             ('GET', '/api/admin/bank'): self.a_bank,
             ('POST', '/api/admin/bank'): self.a_bank_set,
             # оплата Про через ЮKassa
@@ -2058,6 +2067,18 @@ class Handler(BaseHTTPRequestHandler):
             start_trial(uid)
         self.send_json(200, {'ok': True})
 
+    def a_reset_link(self):
+        """Ссылка для сброса пароля, которую администратор передаёт человеку сам (когда письмо не доходит).
+        Действует сутки и один раз; ссылки для других администраторов не выдаются."""
+        self.admin()
+        u = db().execute('SELECT * FROM users WHERE id = ?', (self.int_arg(self.body(), 'user_id'),)).fetchone()
+        if not u:
+            raise ApiError(404, 'not_found', 'Пользователь не найден')
+        if u['role'] == 'admin':
+            raise ApiError(403, 'forbidden', 'Администратор восстанавливает пароль сам — через «Забыли пароль?»')
+        base = ORIGIN or ('https://' + (self.headers.get('Host') or 'localhost'))
+        self.send_json(200, {'link': reset_link(u['id'], base), 'hours': ADMIN_RESET_HOURS})
+
     def a_points(self):
         """Начислить ученику баллы (например, тестовые или за олимпиаду) — тратятся в магазине, как заработанные."""
         self.admin()
@@ -2266,6 +2287,14 @@ def cli_set_role(email, role):
     print(f'{email}: роль {role}')
 
 
+def cli_reset_link(email):
+    migrate()
+    u = db().execute('SELECT id FROM users WHERE email = ?', (email.strip().lower(),)).fetchone()
+    if not u:
+        sys.exit(f'Пользователь {email} не найден')
+    print(reset_link(u['id'], ORIGIN or 'https://stackly.su'))
+
+
 def cli_grant_points(email, amount, reason=''):
     migrate()
     u = db().execute('SELECT id FROM users WHERE email = ?', (email.strip().lower(),)).fetchone()
@@ -2305,6 +2334,8 @@ def cli_set_password(email):
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == 'set-role':
         return cli_set_role(sys.argv[2], sys.argv[3])
+    if len(sys.argv) == 3 and sys.argv[1] == 'reset-link':
+        return cli_reset_link(sys.argv[2])
     if len(sys.argv) in (4, 5) and sys.argv[1] == 'grant-points':
         return cli_grant_points(*sys.argv[2:])
     if len(sys.argv) == 3 and sys.argv[1] == 'set-password':

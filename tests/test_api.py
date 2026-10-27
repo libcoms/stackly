@@ -368,6 +368,20 @@ class ClassroomTest(ServerCase):
                                                       'items': {'ege': [1, 99, 'a'], 'bank': ['ok-1', '<script>'], 'py': [0, 5]}})
         self.assertEqual(body['homework']['items'], {'bank': ['ok-1'], 'py': [5], 'ege': [1]})
 
+    def test_admin_reset_link(self):
+        a, email = self.register()
+        self.set_role(email, 'admin')
+        s, semail = self.register()
+        sid = s.call('GET', '/auth/me')[1]['user']['id']
+        aid = a.call('GET', '/auth/me')[1]['user']['id']
+        self.assertEqual(s.call('POST', '/admin/reset-link', {'user_id': sid})[0], 403)
+        self.assertEqual(a.call('POST', '/admin/reset-link', {'user_id': aid})[0], 403)     # другому администратору — нельзя
+        link = a.call('POST', '/admin/reset-link', {'user_id': sid})[1]['link']
+        tok = link.split('#reset-')[1]
+        self.assertEqual(Client(self.base).call('POST', '/auth/reset', {'token': tok, 'password': 'Novyi-parol-2026'})[0], 200)
+        self.assertEqual(Client(self.base).call('POST', '/auth/reset', {'token': tok, 'password': 'Esche-odin-2026'})[0], 400)   # один раз
+        self.assertEqual(Client(self.base).call('POST', '/auth/login', {'email': semail, 'password': 'Novyi-parol-2026'})[0], 200)
+
     def test_admin_grants_points(self):
         a, email = self.register()
         self.set_role(email, 'admin')
