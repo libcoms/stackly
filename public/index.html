@@ -1846,8 +1846,11 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 .tl-ov code { display: block; padding: 8px 10px; border-radius: 6px; background: var(--paper-2); font: 12.5px/1.4 var(--f-mono); overflow-wrap: anywhere; }
 .tl-ov p { margin: 0; font-size: 13.5px; }
 .tl-vhint { margin: 0; font-size: 13.5px; }
+.sh-voice { width: 270px; }
+.sh-voice select { min-height: 44px; padding: 0 12px; }
+.sh-vnote { margin: 0; font-size: 13px; }
+[data-voice-test] svg { width: 16px; height: 16px; }
 .tl-live select { min-height: 44px; padding: 0 12px; }
-[data-tvoice-test] svg { width: 16px; height: 16px; }
 .tl-h { font: 600 15px/1.3 var(--f-body); margin: 20px 0 10px; display: flex; gap: 8px; }
 .tr-add { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 .tr-add input[name=title] { flex: 1 1 260px; }
@@ -1888,6 +1891,7 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 <main id="app"></main>
 <!-- на телефоне разделы из шапки переезжают сюда, под большой палец; пункты собирает syncTabbar() -->
 <nav class="tabbar" id="tabbar" aria-label="Разделы сайта"></nav>
+<script src="/voice.js?v=1"></script>
 <footer class="foot" hidden><div class="wrap">
   <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
   <span class="foot-links"><a href="#pricing">Тарифы и оплата</a> · <a href="#offer">Публичная оферта</a> · <a href="#privacy">Политика обработки персональных данных</a></span>
@@ -5070,6 +5074,7 @@ function stacklyApp() {
   }
 
   let shopData = null, shopSeq = 0;
+  function fillStudentVoices() { }          // стили фиксированные (StacklyVoice.STYLES) — от устройства ученика не зависят
   async function loadShop() {
     const seq = ++shopSeq;
     const put = html => { const box = $('#shoppage'); if (seq !== shopSeq || !box) return; box.innerHTML = html; swapIn(box); countUp(box); };
@@ -5111,8 +5116,11 @@ function stacklyApp() {
           <div class="sh-live-h"><span class="sh-onair">${I.live}В эфире</span><b>${esc(l.name)}</b>${l.url ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">Смотреть эфир <span class="lnk-ic">${I.chev}</span></a>` : ''}</div>
           <p class="muted">Сообщение прочитают вслух на трансляции. Без ссылок, до 200 символов.</p>
           <textarea name="text" maxlength="200" rows="2" placeholder="Например: спасибо за разбор 27-го!" aria-label="Текст сообщения"></textarea>
-          <div class="sh-live-f"><label class="fld sh-amt"><span>Баллов (минимум ${l.price})</span><input name="amount" type="number" min="${l.price}" step="1" value="${l.price}" inputmode="numeric"></label>
+          <div class="sh-live-f"><label class="fld sh-voice"><span>Голос</span><select name="voice" data-svoice>${(window.StacklyVoice ? StacklyVoice.STYLES : [['', 'Как настроил учитель']]).map(([c, n]) => `<option value="${c}">${n}</option>`).join('')}</select></label>
+            <label class="fld sh-amt"><span>Баллов (минимум ${l.price})</span><input name="amount" type="number" min="${l.price}" step="1" value="${l.price}" inputmode="numeric"></label>
+            <button type="button" class="btn ghost" data-voice-test>${I.live}Прослушать</button>
             <button class="btn" type="submit" ${l.price > bal ? 'disabled' : ''}>Отправить</button></div>
+          <p class="muted sh-vnote">Прозвучит на компьютере учителя. «Прослушать» играет похожий голос на вашем устройстве.</p>
           <div class="form-msg" role="alert"></div>
         </form>`).join('')}</section>` : ''}
 
@@ -5149,19 +5157,33 @@ function stacklyApp() {
     const msg = $('.form-msg', f), btn = $('button[type=submit]', f);
     btn.disabled = true; msg.textContent = '';
     try {
-      await api('/shop/buy', 'POST', { kind: 'alert', teacher_id: +f.dataset.shopAlert, text: f.elements.text.value, amount: +f.elements.amount.value });
+      await api('/shop/buy', 'POST', { kind: 'alert', teacher_id: +f.dataset.shopAlert, text: f.elements.text.value, amount: +f.elements.amount.value, voice: f.elements.voice.value });
       toast('Сообщение отправлено в эфир'); loadShop();
     } catch (err) { msg.textContent = err.message || 'Не получилось отправить'; msg.className = 'form-msg bad'; btn.disabled = false; }
   });
 
   /* ── учитель: награды, заявки и эфир ── */
   let tShop = null, livePollT = 0;
+  const TSHOP_ST = { new: 'ждёт', done: 'выдано', declined: 'отклонено, баллы вернулись', ok: 'ждёт очереди в оверлее', shown: 'прозвучало' };
+  const styleName = code => (window.StacklyVoice ? StacklyVoice.STYLES : []).find(x => x[0] === code)?.[1] || '';
+  function tAlertsHTML(d) {
+    const queue = d.alerts.filter(a => a.status === 'ok'), done = d.alerts.filter(a => a.status === 'shown').slice(0, 10);
+    const row = a => `<li><div class="bk-row"><span class="bk-i st-m"><b>${a.cost}</b>${ballsWord(a.cost)}</span><span class="bk-t"><b>${esc(a.name)}</b><span class="bk-meta"><span>${esc(a.text)}</span><span>${fmtTime(a.created * 1000)} · ${TSHOP_ST[a.status]}${a.item ? ' · голос: ' + esc(styleName(a.item).toLowerCase()) : ''}</span></span></span>
+      ${a.status === 'ok' ? `<button type="button" class="btn small ghost" data-tspend="${a.id}" data-st="declined">Не озвучивать</button>` : ''}</div></li>`;
+    return `${queue.length ? `<h3 class="tl-h">Сейчас прозвучат <span class="muted">${queue.length}</span></h3><ul class="bk-list">${queue.map(row).join('')}</ul>` : ''}
+      ${done.length ? `<h3 class="tl-h">Прозвучали</h3><ul class="bk-list">${done.map(row).join('')}</ul>` : ''}
+      ${!queue.length && !done.length ? `<p class="muted" style="margin-top:12px">${d.live.live ? 'Сообщений пока нет. Страница обновляется сама.' : 'Включите эфир — ученики ваших групп увидят форму сообщения в магазине баллов.'}</p>` : ''}`;
+  }
+  function tClaimsHTML(d) {
+    const fresh = d.claims.filter(c => c.status === 'new').length;
+    return `<h2 class="sec-h">Заявки на награды ${fresh ? `<span class="nav-n" style="margin:0">${fresh}</span>` : ''}</h2>
+      ${d.claims.length ? `<ul class="bk-list">${d.claims.slice(0, 40).map(c => `<li><div class="bk-row"><span class="bk-i st-m"><b>${fmtN(c.cost)}</b></span><span class="bk-t"><b>${esc(c.name)}</b><span class="bk-meta"><span>${esc(c.text)}</span><span>${fmtTime(c.created * 1000)} · ${TSHOP_ST[c.status]}</span></span></span>
+        ${c.status === 'new' ? `<button type="button" class="btn small" data-tspend="${c.id}" data-st="done">Выдано</button><button type="button" class="btn small ghost" data-tspend="${c.id}" data-st="declined">Отклонить</button>` : ''}</div></li>`).join('')}</ul>`
+        : '<p class="muted">Когда ученик обменяет баллы на награду, заявка появится здесь, а вам придёт уведомление в Telegram, если бот подключён.</p>'}`;
+  }
+  const RATES = [[0.85, 'медленнее'], [1, 'обычная'], [1.15, 'быстрее'], [1.3, 'быстро']];
   function tShopHTML(d) {
     const L = d.live, overlay = `${location.origin}/live.html#${L.token}`;
-    const newClaims = d.claims.filter(c => c.status === 'new'), queue = d.alerts.filter(a => a.status === 'ok'), done = d.alerts.filter(a => a.status === 'shown').slice(0, 10);
-    const st = { new: 'ждёт', done: 'выдано', declined: 'отклонено, баллы вернулись', ok: 'ждёт очереди в оверлее', shown: 'прозвучало' };
-    const alertRow = a => `<li><div class="bk-row"><span class="bk-i st-m"><b>${a.cost}</b>${ballsWord(a.cost)}</span><span class="bk-t"><b>${esc(a.name)}</b><span class="bk-meta"><span>${esc(a.text)}</span><span>${fmtTime(a.created * 1000)} · ${st[a.status]}</span></span></span>
-      ${a.status === 'ok' ? `<button type="button" class="btn small ghost" data-tspend="${a.id}" data-st="declined">Не озвучивать</button>` : ''}</div></li>`;
     return `<header class="t-head"><div><h1>Награды и эфир</h1>
         <p>Ученики зарабатывают баллы за учёбу. Здесь вы задаёте, на что их можно обменять, и принимаете сообщения во время вебинара.</p></div></header>
 
@@ -5170,20 +5192,18 @@ function stacklyApp() {
           <form class="ed-three" data-tliveform novalidate>
             <label class="fld"><span>Цена сообщения, баллов</span><input name="price" type="number" min="1" max="10000" value="${L.price}" inputmode="numeric"></label>
             <label class="fld" style="grid-column:span 2"><span>Ссылка на трансляцию для учеников (Kinescope и др.)</span><input name="url" type="url" maxlength="300" placeholder="https://kinescope.io/…" value="${esc(L.url)}"></label>
-            <label class="fld" style="grid-column:span 2"><span>Голос</span><select name="voice" id="tvoice" data-saved="${esc(L.voice)}"><option value="">Лучший русский голос на этом устройстве</option></select></label>
-            <label class="fld"><span>Скорость</span><select name="rate">${[[0.85, 'медленнее'], [1, 'обычная'], [1.15, 'быстрее'], [1.3, 'быстро']].map(([v, n]) => `<option value="${v}" ${Math.abs(L.rate - v) < .01 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+            <label class="fld" style="grid-column:span 2"><span>Голос по умолчанию</span><select name="voice" id="tvoice" data-tvoice data-saved="${esc(L.voice)}"></select></label>
+            <label class="fld"><span>Скорость</span><select name="rate" data-tvoice>${RATES.map(([v, n]) => `<option value="${v}" ${Math.abs(L.rate - v) < .01 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
             <p class="muted tl-vhint" id="tvhint" style="grid-column:1/-1"></p>
-            <div class="form-acts" style="grid-column:1/-1"><button class="btn small" type="submit">Сохранить</button><button type="button" class="btn small ghost" data-tvoice-test>${I.live}Прослушать</button></div>
-            <p class="muted" style="grid-column:1/-1;margin:0;font-size:13.5px">Сообщения озвучиваются сразу. Если сообщение ещё не прозвучало, его можно снять кнопкой «Не озвучивать» — баллы вернутся ученику.</p>
+            <div class="form-acts" style="grid-column:1/-1"><button class="btn small" type="submit">Сохранить цену и ссылку</button><button type="button" class="btn small ghost" data-voice-test>${I.live}Прослушать</button></div>
+            <p class="muted" style="grid-column:1/-1;margin:0;font-size:13.5px">Голос и скорость сохраняются сразу. Ученик может выбрать свой голос для сообщения — иначе прозвучит этот. Сообщения озвучиваются сразу; ещё не прозвучавшее можно снять кнопкой «Не озвучивать» — баллы вернутся ученику.</p>
             <div class="form-msg" role="alert" style="grid-column:1/-1"></div>
           </form>
           <div class="tl-ov"><span class="lbl">Ссылка на оверлей для трансляции</span><code>${esc(overlay)}</code>
             <div class="form-acts"><button type="button" class="btn small ghost" data-tact="copy-code" data-code="${esc(overlay)}">Копировать</button><a class="btn small ghost" href="${esc(overlay)}" target="_blank" rel="noopener">Открыть</a><button type="button" class="btn small ghost" data-tlive-new>Новая ссылка</button></div>
             <p class="muted">В OBS: «Источники» → «Браузер» → вставьте ссылку, ширина 1280, высота 720 — сообщения появятся поверх видео и прозвучат голосом. Если ведёте вебинар из браузера, откройте ссылку в соседней вкладке и нажмите на ней «Включить звук». Ссылка секретная: по ней видны сообщения ваших учеников.</p></div>
         </div>
-        ${queue.length ? `<h3 class="tl-h">Сейчас прозвучат <span class="muted">${queue.length}</span></h3><ul class="bk-list">${queue.map(alertRow).join('')}</ul>` : ''}
-        ${done.length ? `<h3 class="tl-h">Прозвучали</h3><ul class="bk-list">${done.map(alertRow).join('')}</ul>` : ''}
-        ${!queue.length && !done.length ? `<p class="muted" style="margin-top:12px">${L.live ? 'Сообщений пока нет. Страница обновляется сама.' : 'Включите эфир — ученики ваших групп увидят форму сообщения в магазине баллов.'}</p>` : ''}
+        <div id="tlalerts">${tAlertsHTML(d)}</div>
       </section>
 
       <section class="t-sec"><h2 class="sec-h">Награды</h2>
@@ -5193,46 +5213,61 @@ function stacklyApp() {
         <form class="t-create tr-add" data-trewardform novalidate><input name="title" maxlength="80" placeholder="Новая награда" aria-label="Название награды"><input name="cost" type="number" min="10" max="100000" placeholder="Цена" aria-label="Цена в баллах" inputmode="numeric"><button class="btn" type="submit">Добавить</button></form>
         <div class="form-msg" role="alert" id="trmsg"></div></section>
 
-      <section class="t-sec"><h2 class="sec-h">Заявки на награды ${newClaims.length ? `<span class="nav-n" style="margin:0">${newClaims.length}</span>` : ''}</h2>
-        ${d.claims.length ? `<ul class="bk-list">${d.claims.slice(0, 40).map(c => `<li><div class="bk-row"><span class="bk-i st-m"><b>${fmtN(c.cost)}</b></span><span class="bk-t"><b>${esc(c.name)}</b><span class="bk-meta"><span>${esc(c.text)}</span><span>${fmtTime(c.created * 1000)} · ${st[c.status]}</span></span></span>
-          ${c.status === 'new' ? `<button type="button" class="btn small" data-tspend="${c.id}" data-st="done">Выдано</button><button type="button" class="btn small ghost" data-tspend="${c.id}" data-st="declined">Отклонить</button>` : ''}</div></li>`).join('')}</ul>`
-          : '<p class="muted">Когда ученик обменяет баллы на награду, заявка появится здесь, а вам придёт уведомление в Telegram, если бот подключён.</p>'}</section>`;
+      <section class="t-sec" id="tlclaims">${tClaimsHTML(d)}</section>`;
   }
-  /* голос эфира: голоса берутся из браузера (Web Speech API). Естественно звучат нейросетевые — «Microsoft … Online (Natural)»
-     в Edge и «Google русский» в Chrome. Тот же порядок выбора — в public/live.html */
-  const voiceRank = v => /natural|online/i.test(v.name) ? 3 : /google/i.test(v.name) ? 2 : 1;
-  const ruVoices = () => (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter(v => /^ru/i.test(v.lang)).sort((a, b) => voiceRank(b) - voiceRank(a) || a.name.localeCompare(b.name));
-  const VOICE_RU = { Svetlana: 'Светлана', Dmitry: 'Дмитрий', Irina: 'Ирина', Pavel: 'Павел', Ekaterina: 'Екатерина' };
-  const voiceName = v => v.name.replace(/^Microsoft\s+/, '').replace(/\s+-\s+Russian.*$/i, '').replace(/\s*\(Natural\)/i, '').replace(/\s+Online$/i, '')
+  /* голос эфира: выбор голоса учителем и «Прослушать». Сами голоса и их выбор — в public/voice.js (общий с оверлеем) */
+  const VOICE_RU = { Svetlana: 'Светлана', Dmitry: 'Дмитрий', Irina: 'Ирина', Pavel: 'Павел', Ekaterina: 'Екатерина', Anahit: 'Анаит', Hayk: 'Айк' };
+  const voiceName = v => v.name.replace(/^Microsoft\s+/, '').replace(/\s+-\s+\w+\s*\(.*$/i, '').replace(/\s*\(Natural\)/i, '').replace(/\s+Online$/i, '')
     .replace(/^(\w+)/, w => VOICE_RU[w] || w).replace(/^Google русский$/i, 'Google, русский');
+  // подпись стиля с тем, каким голосом он прозвучит на этом устройстве
+  const styleOpt = (code, label, saved) => {
+    const r = StacklyVoice.pick(code);
+    return `<option value="${code}" ${code === saved ? 'selected' : ''}>${label}${r ? ` — ${esc(voiceName(r.voice))}` : code ? ' — нет на этом устройстве' : ''}</option>`;
+  };
   function fillVoices() {
-    const sel = $('#tvoice'); if (!sel) return;
-    const saved = sel.dataset.saved, list = ruVoices(), hint = $('#tvhint');
-    sel.innerHTML = `<option value="">Лучший русский голос на этом устройстве</option>`
-      + list.map(v => `<option value="${esc(v.name)}" ${v.name === saved ? 'selected' : ''}>${esc(voiceName(v))}${voiceRank(v) > 1 ? ' — естественный' : ''}</option>`).join('')
-      + (saved && !list.some(v => v.name === saved) ? `<option value="${esc(saved)}" selected>${esc(saved)} — нет на этом устройстве</option>` : '');
+    const sel = $('#tvoice'), hint = $('#tvhint'); if (!sel || !window.StacklyVoice) return;
+    const saved = sel.dataset.saved, V = StacklyVoice, list = V.ru(), styles = V.STYLES.filter(x => x[0]);
+    const named = [...list, ...V.hy()];
+    sel.innerHTML = `<option value="" ${!saved ? 'selected' : ''}>Лучший русский голос на этом устройстве</option>
+      <optgroup label="По типу — подберётся на любом устройстве">${styles.map(([c, n]) => styleOpt(c, n, saved)).join('')}</optgroup>
+      ${named.length ? `<optgroup label="Конкретный голос этого браузера">${named.map(v => `<option value="${esc(v.name)}" ${v.name === saved ? 'selected' : ''}>${esc(voiceName(v))}${/^hy/i.test(v.lang) ? ' — армянский акцент' : V.rank(v) > 1 ? ' — естественный' : ''}</option>`).join('')}</optgroup>` : ''}
+      ${saved && !styles.some(x => x[0] === saved) && !named.some(v => v.name === saved) ? `<option value="${esc(saved)}" selected>${esc(saved)} — нет на этом устройстве</option>` : ''}`;
     if (hint) hint.textContent = !window.speechSynthesis ? 'Этот браузер не умеет читать вслух — откройте страницу в Edge или Chrome.'
       : !list.length ? 'Русских голосов в этом браузере не нашлось. Естественные голоса есть в Microsoft Edge (Светлана, Дмитрий) и в Chrome (Google русский).'
-      : list.some(v => voiceRank(v) === 3) ? 'Голоса с пометкой «естественный» звучат почти как живая речь. Оверлей возьмёт этот голос, если откроете его в этом же браузере.'
-      : /Edg\//.test(navigator.userAgent) ? 'Естественные голоса Edge («Светлана», «Дмитрий») приходят из интернета — если их нет в списке, проверьте подключение и обновите страницу.'
-      : 'Самые естественные голоса — «Светлана» и «Дмитрий» в Microsoft Edge. Откройте эту страницу и оверлей в Edge, чтобы выбрать их.';
+      : !V.hy().length ? 'Армянский акцент звучит армянскими голосами Анаит и Айк — они есть в Microsoft Edge. Самые естественные русские голоса там же: Светлана и Дмитрий.'
+      : 'Голоса с пометкой «естественный» звучат почти как живая речь. Оверлей должен быть открыт в этом же браузере — тогда прозвучит выбранный голос.';
   }
-  if (window.speechSynthesis) speechSynthesis.addEventListener('voiceschanged', fillVoices);
-  document.addEventListener('click', e => {
-    const b = e.target.closest('[data-tvoice-test]'); if (!b || !window.speechSynthesis) return;
-    const f = b.closest('form'), u = new SpeechSynthesisUtterance('Аня Смирнова пишет: спасибо за разбор двадцать седьмого задания!');
-    const v = ruVoices().find(x => x.name === f.elements.voice.value) || ruVoices()[0];
-    u.lang = 'ru-RU'; u.rate = +f.elements.rate.value || 1; if (v) u.voice = v;
-    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  if (window.StacklyVoice) StacklyVoice.onReady(() => { fillVoices(); fillStudentVoices(); });
+  // голос и скорость сохраняются сразу: раньше выбор жил только в форме и терялся при автообновлении страницы
+  document.addEventListener('change', async e => {
+    const t = e.target.closest('[data-tvoice]'); if (!t) return;
+    const f = t.form;
+    try {
+      tShop.live = (await api('/teach/live', 'POST', { voice: f.elements.voice.value, rate: +f.elements.rate.value })).live;
+      f.elements.voice.dataset.saved = tShop.live.voice; toast('Голос сохранён — оверлей подхватит его через пару секунд');
+    } catch (err) { toast(err.message || 'Не получилось сохранить голос'); }
   });
-  async function reloadTShop() {
+  // «Прослушать»: у учителя — выбранный голос и скорость, у ученика — выбранный стиль поверх голоса учителя
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-voice-test]'); if (!b || !window.StacklyVoice) return;
+    const f = b.closest('form'), text = (f.elements.text && f.elements.text.value.trim()) || 'спасибо за разбор двадцать седьмого задания!';
+    if (f.elements.rate) StacklyVoice.speak(`Аня Смирнова пишет: ${text}`, f.elements.voice.value, +f.elements.rate.value);
+    else StacklyVoice.speak(`${(acct.name || 'Ученик').split(' ')[0]} пишет: ${text}`, f.elements.voice.value, 1, '');
+  });
+  // pollOnly — автообновление во время эфира: только списки сообщений и заявок, форма с выбором не перерисовывается
+  async function reloadTShop(pollOnly) {
     if (!$('#tpage') || location.hash !== '#teach-shop') return;
-    try { tShop = await api('/teach/shop'); const box = $('#tpage'); if (box && location.hash === '#teach-shop' && !box.contains(document.activeElement)) { box.innerHTML = tShopHTML(tShop); fillVoices(); } } catch (e) { }
+    try {
+      tShop = await api('/teach/shop');
+      if (location.hash !== '#teach-shop') return;
+      if (pollOnly) { const al = $('#tlalerts'), cl = $('#tlclaims'); if (al) al.innerHTML = tAlertsHTML(tShop); if (cl) cl.innerHTML = tClaimsHTML(tShop); return; }
+      const box = $('#tpage'); if (box) { box.innerHTML = tShopHTML(tShop); fillVoices(); }
+    } catch (e) { }
   }
   // пока открыта страница и идёт эфир, сообщения на проверку подтягиваются сами
   function startLivePoll() {
     clearInterval(livePollT);
-    livePollT = setInterval(() => { if (location.hash !== '#teach-shop') return clearInterval(livePollT); if (tShop && tShop.live.live) reloadTShop(); }, 5000);
+    livePollT = setInterval(() => { if (location.hash !== '#teach-shop') return clearInterval(livePollT); if (tShop && tShop.live.live) reloadTShop(true); }, 5000);
   }
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-tspend], [data-treward-del], [data-tlive-new]'); if (!b) return;

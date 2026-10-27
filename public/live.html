@@ -47,6 +47,7 @@ button.off { background: #262B36; }
 <body>
 <div class="panel"><span class="dot" id="dot"></span><span id="state">Подключение…</span><button type="button" id="sound">Включить звук</button><button type="button" class="off" id="test">Проверить</button></div>
 <div class="stage" id="stage" aria-live="polite"></div>
+<script src="/voice.js?v=1"></script>
 <script>
 (() => {
   const K = location.hash.slice(1), $ = s => document.querySelector(s);
@@ -70,23 +71,12 @@ button.off { background: #262B36; }
       });
     } catch (e) { }
   }
-  // голос из настроек учителя, если он есть на этом устройстве, иначе лучший русский: нейросетевые (Edge) → Google (Chrome) → любой
+  // голос: стиль, выбранный учеником, иначе голос учителя по умолчанию, иначе лучший русский (public/voice.js)
   let cfgVoice = '', cfgRate = 1;
-  const rank = v => /natural|online/i.test(v.name) ? 3 : /google/i.test(v.name) ? 2 : 1;
-  const voice = () => {
-    const ru = (speechSynthesis.getVoices() || []).filter(v => /^ru/i.test(v.lang)).sort((a, b) => rank(b) - rank(a));
-    return ru.find(v => v.name === cfgVoice) || ru[0] || null;
-  };
-  function speak(text) {
-    return new Promise(done => {
-      if (!sound || !window.speechSynthesis) return setTimeout(done, 5000);
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = 'ru-RU'; u.rate = cfgRate; const v = voice(); if (v) u.voice = v;
-      let fin = false; const end = () => { if (!fin) { fin = true; done(); } };
-      u.onend = end; u.onerror = end;
-      setTimeout(end, 4000 + text.length * 120);          // если голос не ответил — не зависаем
-      speechSynthesis.cancel(); speechSynthesis.speak(u);
-    });
+  const V = window.StacklyVoice;
+  function speak(text, style) {
+    if (!sound || !V) return new Promise(r => setTimeout(r, 5000));
+    return V.speak(text, style, cfgRate, cfgVoice);
   }
   async function show(a) {
     busy = true;
@@ -97,7 +87,7 @@ button.off { background: #262B36; }
     $('#stage').replaceChildren(card);
     if (sound) chime();
     await new Promise(r => setTimeout(r, 700));
-    await Promise.all([speak(`${a.name} пишет: ${a.text}`), new Promise(r => setTimeout(r, ms - 700))]);
+    await Promise.all([speak(`${a.name} пишет: ${a.text}`, a.voice || ''), new Promise(r => setTimeout(r, ms - 700))]);
     card.classList.add('out');
     await new Promise(r => setTimeout(r, 600));
     card.remove(); busy = false;
@@ -113,8 +103,8 @@ button.off { background: #262B36; }
       cfgVoice = d.voice || ''; cfgRate = d.rate || 1;
       for (const a of d.alerts) if (!seen.has(a.id)) { seen.add(a.id); queue.push(a); }
       $('#dot').classList.toggle('on', d.live);
-      const v = window.speechSynthesis && voice();
-      $('#state').innerHTML = `${esc(d.teacher)} · ${d.live ? 'эфир идёт, сообщения принимаются' : 'эфир выключен в кабинете учителя'} · голос: ${v ? esc(v.name.replace(/^Microsoft\s+/, '').replace(/\s+-\s+Russian.*$/i, '')) : 'не найден'}`;
+      const v = V && V.resolve('', cfgVoice);
+      $('#state').innerHTML = `${esc(d.teacher)} · ${d.live ? 'эфир идёт, сообщения принимаются' : 'эфир выключен в кабинете учителя'} · голос: ${v ? esc(v.voice.name.replace(/^Microsoft\s+/, '').replace(/\s+-\s+\w+\s*\(.*$/, '')) + (v.hy ? ' (армянский акцент)' : '') : 'не найден'}`;
       next();
     } catch (e) { $('#state').innerHTML = `<span class="err">${esc(e.message === 'Failed to fetch' ? 'Нет связи с сервером' : e.message)}</span>`; }
     setTimeout(poll, 2000);

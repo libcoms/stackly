@@ -515,6 +515,8 @@ STYLES = {
 }
 FREEZE_COST, FREEZE_MAX = 50, 2
 ALERT_MAX, ALERT_GAP = 200, 20          # длина сообщения в эфир и пауза между сообщениями одного ученика, с
+# голос, который ученик выбрал для сообщения (коды из public/voice.js); пусто — голос учителя по умолчанию
+ALERT_VOICES = ('', 'ru-f', 'ru-m', 'hy-f', 'hy-m')
 URL_RE = re.compile(r'(https?://|www\.|\b[\w-]+\.(ru|com|net|org|su|io|me|рф)\b)', re.I)
 
 def spent_net(uid):
@@ -1219,7 +1221,10 @@ class Handler(BaseHTTPRequestHandler):
             last = db().execute("SELECT MAX(created) FROM spends WHERE user_id = ? AND kind = 'alert'", (u['id'],)).fetchone()[0]
             if last and now - last < ALERT_GAP:
                 raise ApiError(429, 'slow_down', 'Подождите немного перед следующим сообщением')
-            take(amount, teacher_id=tid, text=text, status='ok', okat=now)          # в эфир сразу, без проверки учителем
+            voice = str(d.get('voice') or '')
+            if voice not in ALERT_VOICES:
+                raise ApiError(400, 'bad_voice', 'Нет такого голоса')
+            take(amount, teacher_id=tid, text=text, item=voice, status='ok', okat=now)    # в эфир сразу, без проверки учителем
         else:
             raise ApiError(400, 'bad_request', 'Некорректный запрос')
         self.send_json(200, {'ok': True, 'balance': left - db().execute('SELECT cost FROM spends WHERE user_id = ? ORDER BY id DESC LIMIT 1', (u['id'],)).fetchone()[0]})
@@ -1246,7 +1251,7 @@ class Handler(BaseHTTPRequestHandler):
         u = self.teacher()
         c = live_cfg(u['id'], create=True)
         rewards = db().execute('SELECT id, title, cost FROM rewards WHERE teacher_id = ? AND hidden = 0 ORDER BY cost, id', (u['id'],)).fetchall()
-        rows = db().execute("SELECT s.id, s.kind, s.cost, s.text, s.status, s.created, s.okat, s.user_id, u.name FROM spends s JOIN users u ON u.id = s.user_id "
+        rows = db().execute("SELECT s.id, s.kind, s.item, s.cost, s.text, s.status, s.created, s.okat, s.user_id, u.name FROM spends s JOIN users u ON u.id = s.user_id "
                             "WHERE s.teacher_id = ? AND s.kind IN ('reward', 'alert') ORDER BY s.id DESC LIMIT 120", (u['id'],)).fetchall()
         self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'voice', 'rate')}, 'rewards': [dict(r) for r in rewards],
                              'claims': [dict(r) for r in rows if r['kind'] == 'reward'], 'alerts': [dict(r) for r in rows if r['kind'] == 'alert'][:60]})
@@ -1332,7 +1337,7 @@ class Handler(BaseHTTPRequestHandler):
         """Лента оверлея эфира: без входа, по секретной ссылке учителя. Отдаёт одобренные и ещё не прозвучавшие сообщения за час."""
         c = self.live_cfg_by_token(self.query.get('k'))
         now = int(time.time())
-        rows = db().execute("SELECT s.id, s.cost, s.text, s.okat, u.name FROM spends s JOIN users u ON u.id = s.user_id "
+        rows = db().execute("SELECT s.id, s.cost, s.text, s.okat, s.item AS voice, u.name FROM spends s JOIN users u ON u.id = s.user_id "
                             "WHERE s.teacher_id = ? AND s.kind = 'alert' AND s.status = 'ok' AND s.okat > ? ORDER BY s.okat, s.id LIMIT 20",
                             (c['teacher_id'], now - 3600)).fetchall()
         self.send_json(200, {'teacher': c['name'], 'live': bool(c['live']), 'voice': c['voice'], 'rate': c['rate'], 'now': now,
