@@ -366,6 +366,26 @@ class ClassroomTest(ServerCase):
                                                       'items': {'ege': [1, 99, 'a'], 'bank': ['ok-1', '<script>'], 'py': [0, 5]}})
         self.assertEqual(body['homework']['items'], {'bank': ['ok-1'], 'py': [5], 'ege': [1]})
 
+    def test_admin_grants_points(self):
+        a, email = self.register()
+        self.set_role(email, 'admin')
+        s, semail = self.register()
+        sid = s.call('GET', '/auth/me')[1]['user']['id']
+        self.assertEqual(s.call('POST', '/admin/points', {'user_id': sid, 'amount': 2000})[0], 403)
+        self.assertEqual(a.call('POST', '/admin/points', {'user_id': sid, 'amount': 0})[0], 400)
+        r = a.call('POST', '/admin/points', {'user_id': sid, 'amount': 2000, 'reason': 'Тестовые баллы'})
+        self.assertEqual((r[0], r[1]['balance']['left']), (200, 2000))
+        shop = s.call('GET', '/shop')[1]
+        self.assertEqual((shop['balance'], shop['spent'], shop['history'][0]['cost']), (2000, 0, -2000))
+        self.assertEqual(s.call('GET', '/auth/me')[1]['user']['spent'], -2000)     # сайт: баланс = заработано − spent
+        self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'style', 'item': 'badge-crown'})[0], 200)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 1400)
+        # то же из консоли сервера
+        cli = subprocess.run([sys.executable, os.path.join(ROOT, 'app', 'stackly_api.py'), 'grant-points', semail, '100', 'Олимпиада'],
+                             env=dict(os.environ, STACKLY_DB=self.db), capture_output=True, text=True)
+        self.assertEqual(cli.returncode, 0, cli.stderr)
+        self.assertEqual(s.call('GET', '/shop')[1]['balance'], 1500)
+
     def test_admin_roles(self):
         a, email = self.register()
         self.set_role(email, 'admin')

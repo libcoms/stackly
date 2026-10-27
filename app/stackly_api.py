@@ -171,7 +171,8 @@ def migrate():
       CREATE TABLE IF NOT EXISTS metric_salt (day TEXT PRIMARY KEY, salt TEXT NOT NULL);
 
       -- магазин баллов. Баллы зарабатываются (points() из прогресса), здесь — на что потрачены.
-      -- kind: style — оформление профиля, freeze — заморозка серии, reward — награда учителя, alert — сообщение в эфир.
+      -- kind: style — оформление профиля, freeze — заморозка серии, reward — награда учителя, alert — сообщение в эфир,
+      -- grant — баллы, начисленные администратором (cost отрицательный: «трата наоборот»).
       -- status: '' — куплено; у наград new → done (выдано); у сообщений pending (ждёт учителя) → ok (в эфир) → shown;
       -- declined — учитель отклонил, баллы вернулись (такие траты не считаются)
       CREATE TABLE IF NOT EXISTS spends (
@@ -510,12 +511,21 @@ FREEZE_COST, FREEZE_MAX = 50, 2
 ALERT_MAX, ALERT_GAP = 200, 20          # длина сообщения в эфир и пауза между сообщениями одного ученика, с
 URL_RE = re.compile(r'(https?://|www\.|\b[\w-]+\.(ru|com|net|org|su|io|me|рф)\b)', re.I)
 
+def spent_net(uid):
+    """Сколько списано с учётом начислений администратора (они хранятся с минусом). Отклонённое учителем вернулось."""
+    return db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND status != 'declined'", (uid,)).fetchone()[0]
+
 def balance(uid):
-    """(заработано, потрачено) баллов. Отклонённые учителем траты вернулись и не считаются."""
+    """(заработано, потрачено) баллов: заработано — за учёбу плюс начисленное администратором."""
     data, updated = load_progress(uid)
-    earned = summary(data, updated, uid)['points']
-    spent = db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND status != 'declined'", (uid,)).fetchone()[0]
-    return earned, spent
+    bonus = -db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind = 'grant'", (uid,)).fetchone()[0]
+    return summary(data, updated, uid)['points'] + bonus, spent_net(uid) + bonus
+
+def grant_points(uid, amount, reason):
+    if not 1 <= amount <= 100000:
+        raise ApiError(400, 'bad_amount', 'Начислить можно от 1 до 100 000 баллов')
+    db().execute("INSERT INTO spends (user_id, kind, cost, text, created) VALUES (?, 'grant', ?, ?, ?)",
+                 (uid, -amount, (reason or 'Начислено администратором').strip()[:120], int(time.time())))
 
 def look_of(uid):
     r = db().execute('SELECT data FROM looks WHERE user_id = ?', (uid,)).fetchone()
@@ -889,6 +899,7 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/admin/role'): self.a_role,
             ('POST', '/api/admin/groups/add'): self.a_group_add,
             ('GET', '/api/admin/user'): self.a_user,
+            ('POST', '/api/admin/points'): self.a_points,
             ('GET', '/api/admin/bank'): self.a_bank,
             ('POST', '/api/admin/bank'): self.a_bank_set,
             # оплата Про через ЮKassa
@@ -957,7 +968,7 @@ class Handler(BaseHTTPRequestHandler):
                 if plan_of(r)['active']:
                     mats.update(json.loads(r['materials'] or '[]'))
             j['materials'] = sorted(mats)
-            j['spent'] = db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND status != 'declined'", (u['id'],)).fetchone()[0]
+            j['spent'] = spent_net(u['id'])
             j['look'] = look_of(u['id'])
         else:
             j['plan'] = plan_of(u)
@@ -2027,6 +2038,17 @@ class Handler(BaseHTTPRequestHandler):
             start_trial(uid)
         self.send_json(200, {'ok': True})
 
+    def a_points(self):
+        """Начислить ученику баллы (например, тестовые или за олимпиаду) — тратятся в магазине, как заработанные."""
+        self.admin()
+        d = self.body()
+        u = db().execute('SELECT id FROM users WHERE id = ?', (self.int_arg(d, 'user_id'),)).fetchone()
+        if not u:
+            raise ApiError(404, 'not_found', 'Пользователь не найден')
+        grant_points(u['id'], self.int_arg(d, 'amount'), str(d.get('reason') or ''))
+        earned, spent = balance(u['id'])
+        self.send_json(200, {'balance': {'earned': earned, 'spent': spent, 'left': earned - spent}})
+
     def a_user(self):
         """Карточка любого пользователя для администратора: учётная запись, тариф и нагрузка преподавателя,
         группы, задачи, материалы; у ученика — его группы, задания и сводка прогресса."""
@@ -2053,6 +2075,7 @@ class Handler(BaseHTTPRequestHandler):
             hws = assigned_homework(u['id'])
             done = {r['hw_id'] for r in db().execute('SELECT hw_id FROM homework_done WHERE user_id = ?', (u['id'],))}
             out['stats'] = summary(data, updated, u['id'])
+            out['balance'] = (lambda e, sp: {'earned': e, 'spent': sp, 'left': e - sp})(*balance(u['id']))
             out['groups'] = [dict(r) for r in db().execute(
                 'SELECT g.id, g.name, t.id AS teacher_id, t.name AS teacher, m.joined FROM group_members m JOIN study_groups g ON g.id = m.group_id '
                 'JOIN users t ON t.id = g.teacher_id WHERE m.user_id = ? ORDER BY m.joined DESC', (u['id'],))]
@@ -2223,6 +2246,19 @@ def cli_set_role(email, role):
     print(f'{email}: роль {role}')
 
 
+def cli_grant_points(email, amount, reason=''):
+    migrate()
+    u = db().execute('SELECT id FROM users WHERE email = ?', (email.strip().lower(),)).fetchone()
+    if not u:
+        sys.exit(f'Пользователь {email} не найден')
+    try:
+        grant_points(u['id'], int(amount), reason)
+    except (ApiError, ValueError) as e:
+        sys.exit(getattr(e, 'message', 'Количество баллов — целое число'))
+    earned, spent = balance(u['id'])
+    print(f'{email}: +{amount} баллов, на счёте {earned - spent}')
+
+
 def cli_set_password(email):
     # пароль вводится с клавиатуры без эха, а не аргументом — иначе он остался бы в истории оболочки и в списке процессов
     import getpass
@@ -2249,6 +2285,8 @@ def cli_set_password(email):
 def main():
     if len(sys.argv) == 4 and sys.argv[1] == 'set-role':
         return cli_set_role(sys.argv[2], sys.argv[3])
+    if len(sys.argv) in (4, 5) and sys.argv[1] == 'grant-points':
+        return cli_grant_points(*sys.argv[2:])
     if len(sys.argv) == 3 and sys.argv[1] == 'set-password':
         return cli_set_password(sys.argv[2])
     migrate()

@@ -1848,7 +1848,7 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 .tl-h { font: 600 15px/1.3 var(--f-body); margin: 20px 0 10px; display: flex; gap: 8px; }
 .tr-add { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
 .tr-add input[name=title] { flex: 1 1 260px; }
-.tr-add input[name=cost] { width: 120px; }
+.tr-add input[name=cost], .tr-add input[name=amount] { width: 140px; flex: none; }
 @media (max-width: 860px) { .tl-live { grid-template-columns: minmax(0, 1fr); } .tl-ov { padding-left: 0; border-left: 0; padding-top: 16px; border-top: 1px solid var(--line); } }
 
 /* ═════════════ движение ═════════════ */
@@ -5092,7 +5092,7 @@ function stacklyApp() {
       }).join('')}</div></div>`;
     };
     const st = { new: 'ждёт учителя', done: 'выдано', declined: 'отклонено, баллы вернулись', pending: 'ждёт проверки учителя', ok: 'в очереди эфира', shown: 'прозвучало в эфире', '': '' };
-    const histText = h => h.kind === 'style' ? `Оформление: ${esc((d.styles[h.item] || {}).title || h.item)}` : h.kind === 'freeze' ? 'Заморозка серии'
+    const histText = h => h.kind === 'grant' ? `Начислено: ${esc(h.text)}` : h.kind === 'style' ? `Оформление: ${esc((d.styles[h.item] || {}).title || h.item)}` : h.kind === 'freeze' ? 'Заморозка серии'
       : h.kind === 'reward' ? `Награда «${esc(h.text)}» · ${esc(h.teacher || '')}` : `Сообщение в эфир: «${esc(h.text)}»`;
     return `<header class="t-head"><div><h1>Магазин баллов</h1>
         <p>Баллы начисляются за решённые задачи, изученные темы и дни занятий. Здесь их можно потратить.</p></div></header>
@@ -5127,7 +5127,7 @@ function stacklyApp() {
         <p class="bk-hint" style="margin:-4px 0 14px">Видно вам и вашему преподавателю. Купленное надевается сразу, снять и надеть снова — бесплатно.</p>
         ${slot('ball', 'Цвет шара')}${slot('frame', 'Рамка')}${slot('badge', 'Значок у имени')}</section>
 
-      ${d.history.length ? `<section class="t-sec"><h2 class="sec-h">История</h2><ul class="feed">${d.history.map(h => `<li><span class="fd ${h.status === 'declined' ? '' : 'ok'}">−${h.cost}</span><span>${histText(h)}${st[h.status] ? ` <small class="muted">· ${st[h.status]}</small>` : ''}</span><time>${fmtTime(h.created * 1000)}</time></li>`).join('')}</ul></section>` : ''}`;
+      ${d.history.length ? `<section class="t-sec"><h2 class="sec-h">История</h2><ul class="feed">${d.history.map(h => `<li><span class="fd ${h.status === 'declined' ? '' : 'ok'}">${h.cost < 0 ? '+' + -h.cost : '−' + h.cost}</span><span>${histText(h)}${st[h.status] ? ` <small class="muted">· ${st[h.status]}</small>` : ''}</span><time>${fmtTime(h.created * 1000)}</time></li>`).join('')}</ul></section>` : ''}`;
   }
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-shop-buy], [data-shop-look]'); if (!b) return;
@@ -5216,6 +5216,15 @@ function stacklyApp() {
     const t = e.target.closest('[data-tlive]'); if (!t) return;
     try { tShop.live = (await api('/teach/live', 'POST', { [t.dataset.tlive]: t.checked })).live; reloadTShop(); }
     catch (err) { t.checked = !t.checked; toast(err.message || 'Не получилось сохранить'); }
+  });
+  document.addEventListener('submit', async e => {
+    const f = e.target.closest('[data-apoints]'); if (!f) return;
+    e.preventDefault();
+    const msg = f.nextElementSibling;
+    try {
+      const r = await api('/admin/points', 'POST', { user_id: +f.dataset.apoints, amount: +f.elements.amount.value, reason: f.elements.reason.value });
+      toast(`Начислено. На счёте ${fmtN(r.balance.left)} ${ballsWord(r.balance.left)}`); loadTeach(location.hash.slice(1));
+    } catch (err) { msg.textContent = err.message || 'Не получилось'; msg.className = 'form-msg bad'; }
   });
   document.addEventListener('submit', async e => {
     const f = e.target.closest('[data-tliveform], [data-trewardform]'); if (!f) return;
@@ -5771,6 +5780,10 @@ function stacklyApp() {
           <div class="kpi"><span class="k-l">Точность</span><b>${s.accuracy === null ? '—' : s.accuracy + '<small>%</small>'}</b><span class="k-s">${s.tries ? `${s.right} из ${s.tries} попыток` : 'ещё нет попыток'}</span></div>
           <div class="kpi"><span class="k-l">Домашние задания</span><b>${r.homework.done}<small> / ${r.homework.total}</small></b>${barHTML(r.homework.done, r.homework.total)}<span class="k-s">выполнено из выданных</span></div>
           <div class="kpi"><span class="k-l">Серия</span><b>${s.streak}<small> ${plural(s.streak, 'день', 'дня', 'дней')}</small></b><span class="k-s">активен ${s.active7} из 7 дней</span></div></section>
+        <section class="t-sec"><h2 class="sec-h">Баллы</h2>
+          <p class="muted" style="margin:-4px 0 12px">На счёте ${fmtN(r.balance.left)} ${ballsWord(r.balance.left)}: заработано ${fmtN(r.balance.earned)}, потрачено ${fmtN(r.balance.spent)}. Начисленные баллы тратятся в магазине, как заработанные.</p>
+          <form class="t-create tr-add" data-apoints="${u.id}" novalidate><input name="amount" type="number" min="1" max="100000" placeholder="Сколько" aria-label="Сколько баллов начислить" inputmode="numeric"><input name="reason" maxlength="120" placeholder="За что — увидит ученик" aria-label="Причина"><button class="btn" type="submit">Начислить</button></form>
+          <div class="form-msg" role="alert"></div></section>
         <section class="t-sec"><h2 class="sec-h">Группы</h2>${r.groups.length ? `<ul class="bk-list">${r.groups.map(g => `<li><a class="bk-row" href="#teach-g-${g.id}"><span class="bk-t"><b>${esc(g.name)}</b><span class="bk-meta"><span>преподаватель ${esc(g.teacher)}</span><span>в группе с ${fmtDate(g.joined * 1000)}</span></span></span><span class="bk-chev">${I.chev}</span></a></li>`).join('')}</ul>`
           : '<div class="t-empty"><b>Ни в одной группе</b>Ученик ещё не вступил в группу преподавателя.</div>'}</section>`;
     }
