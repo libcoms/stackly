@@ -109,7 +109,7 @@ button.off { background: #262B36; }
       $('#state').innerHTML = `${esc(d.teacher)} · ${d.live ? 'эфир идёт, сообщения принимаются' : 'эфир выключен в кабинете учителя'}`;
       next();
     } catch (e) { $('#state').innerHTML = `<span class="err">${esc(e.message === 'Failed to fetch' ? 'Нет связи с сервером' : e.message)}</span>`; }
-    setTimeout(poll, 3000);
+    setTimeout(poll, 2000);
   }
   // браузер не даёт звуку играть без нажатия — одна кнопка в начале эфира
   $('#sound').onclick = () => {

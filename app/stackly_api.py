@@ -173,7 +173,7 @@ def migrate():
       -- магазин баллов. Баллы зарабатываются (points() из прогресса), здесь — на что потрачены.
       -- kind: style — оформление профиля, freeze — заморозка серии, reward — награда учителя, alert — сообщение в эфир,
       -- grant — баллы, начисленные администратором (cost отрицательный: «трата наоборот»).
-      -- status: '' — куплено; у наград new → done (выдано); у сообщений pending (ждёт учителя) → ok (в эфир) → shown;
+      -- status: '' — куплено; у наград new → done (выдано); у сообщений ok (сразу в эфир) → shown (прозвучало);
       -- declined — учитель отклонил, баллы вернулись (такие траты не считаются)
       CREATE TABLE IF NOT EXISTS spends (
         id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -190,11 +190,13 @@ def migrate():
         id INTEGER PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         title TEXT NOT NULL, cost INTEGER NOT NULL, hidden INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL);
       -- эфир учителя: token — секрет ссылки на оверлей, live — эфир идёт и сообщения принимаются,
-      -- price — минимальная цена сообщения, url — ссылка на трансляцию для учеников, premod — сообщения сначала смотрит учитель
+      -- price — минимальная цена сообщения, url — ссылка на трансляцию для учеников, premod — не используется (сообщения идут в эфир сразу)
       CREATE TABLE IF NOT EXISTS live_cfg (
         teacher_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL UNIQUE,
         live INTEGER NOT NULL DEFAULT 0, price INTEGER NOT NULL DEFAULT 30, url TEXT NOT NULL DEFAULT '', premod INTEGER NOT NULL DEFAULT 1);
     ''')
+    # сообщения в эфир больше не ждут проверки учителя: старые «на проверке» закрываем, чтобы не всплыли
+    db().execute("UPDATE spends SET status = 'shown' WHERE kind = 'alert' AND status = 'pending'")
     # номера задач учителей — с 1001 (до 1000 — встроенный банк); старые 101… сдвигаем один раз
     db().execute('UPDATE problems SET num = num + 900 WHERE builtin = 0 AND num BETWEEN 101 AND 1000')
     cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
@@ -1157,7 +1159,7 @@ class Handler(BaseHTTPRequestHandler):
                             'LEFT JOIN users t ON t.id = s.teacher_id WHERE s.user_id = ? ORDER BY s.id DESC LIMIT 40', (u['id'],)).fetchall()
         owned = sorted({r['item'] for r in db().execute("SELECT item FROM spends WHERE user_id = ? AND kind = 'style'", (u['id'],))})
         frozen = [r['day'] for r in db().execute('SELECT day FROM frozen_days WHERE user_id = ? ORDER BY day', (u['id'],))]
-        self.send_json(200, {'earned': earned, 'spent': spent, 'balance': earned - spent, 'owned': owned, 'look': look_of(u['id']),
+        self.send_json(200, {'earned': earned, 'spent': spent, 'net': spent_net(u['id']), 'balance': earned - spent, 'owned': owned, 'look': look_of(u['id']),
                              'freezes': freezes_left(u['id']), 'freeze_cost': FREEZE_COST, 'freeze_max': FREEZE_MAX, 'frozen': frozen,
                              'styles': {k: {'slot': v[0], 'title': v[1], 'cost': v[2]} for k, v in STYLES.items()},
                              'rewards': [dict(r) for r in rewards], 'live': [dict(r) for r in lives], 'history': [dict(r) for r in hist]})
@@ -1213,7 +1215,7 @@ class Handler(BaseHTTPRequestHandler):
             last = db().execute("SELECT MAX(created) FROM spends WHERE user_id = ? AND kind = 'alert'", (u['id'],)).fetchone()[0]
             if last and now - last < ALERT_GAP:
                 raise ApiError(429, 'slow_down', 'Подождите немного перед следующим сообщением')
-            take(amount, teacher_id=tid, text=text, status='pending' if c['premod'] else 'ok', okat=None if c['premod'] else now)
+            take(amount, teacher_id=tid, text=text, status='ok', okat=now)          # в эфир сразу, без проверки учителем
         else:
             raise ApiError(400, 'bad_request', 'Некорректный запрос')
         self.send_json(200, {'ok': True, 'balance': left - db().execute('SELECT cost FROM spends WHERE user_id = ? ORDER BY id DESC LIMIT 1', (u['id'],)).fetchone()[0]})
@@ -1242,7 +1244,7 @@ class Handler(BaseHTTPRequestHandler):
         rewards = db().execute('SELECT id, title, cost FROM rewards WHERE teacher_id = ? AND hidden = 0 ORDER BY cost, id', (u['id'],)).fetchall()
         rows = db().execute("SELECT s.id, s.kind, s.cost, s.text, s.status, s.created, s.okat, s.user_id, u.name FROM spends s JOIN users u ON u.id = s.user_id "
                             "WHERE s.teacher_id = ? AND s.kind IN ('reward', 'alert') ORDER BY s.id DESC LIMIT 120", (u['id'],)).fetchall()
-        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'premod')}, 'rewards': [dict(r) for r in rewards],
+        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url')}, 'rewards': [dict(r) for r in rewards],
                              'claims': [dict(r) for r in rows if r['kind'] == 'reward'], 'alerts': [dict(r) for r in rows if r['kind'] == 'alert'][:60]})
 
     def t_reward_save(self):
@@ -1278,7 +1280,7 @@ class Handler(BaseHTTPRequestHandler):
         d = self.body()
         s = db().execute('SELECT * FROM spends WHERE id = ? AND teacher_id = ?', (self.int_arg(d, 'id'), u['id'])).fetchone()
         st = d.get('status')
-        ok = {'reward': {'new': ('done', 'declined')}, 'alert': {'pending': ('ok', 'declined'), 'ok': ('declined', 'shown')}}
+        ok = {'reward': {'new': ('done', 'declined')}, 'alert': {'ok': ('declined', 'shown')}}
         if not s or st not in ok.get(s['kind'], {}).get(s['status'], ()):
             raise ApiError(400, 'bad_status', 'Это действие уже недоступно')
         db().execute('UPDATE spends SET status = ?, okat = COALESCE(okat, ?) WHERE id = ?',
@@ -1291,8 +1293,6 @@ class Handler(BaseHTTPRequestHandler):
         live_cfg(u['id'], create=True)
         if 'live' in d:
             db().execute('UPDATE live_cfg SET live = ? WHERE teacher_id = ?', (1 if d['live'] else 0, u['id']))
-        if 'premod' in d:
-            db().execute('UPDATE live_cfg SET premod = ? WHERE teacher_id = ?', (1 if d['premod'] else 0, u['id']))
         if 'price' in d:
             price = self.int_arg(d, 'price')
             if not 1 <= price <= 10000:
@@ -1306,7 +1306,7 @@ class Handler(BaseHTTPRequestHandler):
         if d.get('new_token'):
             db().execute('UPDATE live_cfg SET token = ? WHERE teacher_id = ?', (secrets.token_urlsafe(18), u['id']))
         c = live_cfg(u['id'])
-        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'premod')}})
+        self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url')}})
 
     def live_cfg_by_token(self, token):
         c = db().execute('SELECT c.*, t.name FROM live_cfg c JOIN users t ON t.id = c.teacher_id WHERE c.token = ?', (str(token or ''),)).fetchone()

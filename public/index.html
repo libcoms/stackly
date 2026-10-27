@@ -5074,7 +5074,7 @@ function stacklyApp() {
     if (!acct.cloud) return put(tMsg('Войдите в аккаунт', 'Баллы и магазин доступны после входа.', '#login', 'Войти'));
     if (isTeacher()) { location.replace('#teach-shop'); return; }
     try { shopData = await api('/shop'); } catch (e) { return put(tMsg('Не получилось загрузить', e.message || 'Ошибка сервера', '#start', 'На главную')); }
-    acct.spent = shopData.spent; acct.look = shopData.look; renderPts(); renderAcctBtn();
+    acct.spent = shopData.net; acct.look = shopData.look; renderPts(); renderAcctBtn();
     put(shopHTML(shopData));
   }
   function shopHTML(d) {
@@ -5091,7 +5091,7 @@ function stacklyApp() {
           ${has ? `<button type="button" class="btn small ghost" data-shop-look="${k}" data-v="${on ? '' : id}">${on ? 'Снять' : 'Надеть'}</button>` : price(v.cost, `data-shop-buy="style" data-item="${id}"`)}</div>`;
       }).join('')}</div></div>`;
     };
-    const st = { new: 'ждёт учителя', done: 'выдано', declined: 'отклонено, баллы вернулись', pending: 'ждёт проверки учителя', ok: 'в очереди эфира', shown: 'прозвучало в эфире', '': '' };
+    const st = { new: 'ждёт учителя', done: 'выдано', declined: 'отклонено, баллы вернулись', ok: 'в очереди эфира', shown: 'прозвучало в эфире', '': '' };
     const histText = h => h.kind === 'grant' ? `Начислено: ${esc(h.text)}` : h.kind === 'style' ? `Оформление: ${esc((d.styles[h.item] || {}).title || h.item)}` : h.kind === 'freeze' ? 'Заморозка серии'
       : h.kind === 'reward' ? `Награда «${esc(h.text)}» · ${esc(h.teacher || '')}` : `Сообщение в эфир: «${esc(h.text)}»`;
     return `<header class="t-head"><div><h1>Магазин баллов</h1>
@@ -5155,11 +5155,10 @@ function stacklyApp() {
   let tShop = null, livePollT = 0;
   function tShopHTML(d) {
     const L = d.live, overlay = `${location.origin}/live.html#${L.token}`;
-    const newClaims = d.claims.filter(c => c.status === 'new'), pend = d.alerts.filter(a => a.status === 'pending'), queue = d.alerts.filter(a => a.status === 'ok');
-    const st = { new: 'ждёт', done: 'выдано', declined: 'отклонено', pending: 'на проверке', ok: 'в эфире', shown: 'прозвучало' };
+    const newClaims = d.claims.filter(c => c.status === 'new'), queue = d.alerts.filter(a => a.status === 'ok'), done = d.alerts.filter(a => a.status === 'shown').slice(0, 10);
+    const st = { new: 'ждёт', done: 'выдано', declined: 'отклонено, баллы вернулись', ok: 'ждёт очереди в оверлее', shown: 'прозвучало' };
     const alertRow = a => `<li><div class="bk-row"><span class="bk-i st-m"><b>${a.cost}</b>${ballsWord(a.cost)}</span><span class="bk-t"><b>${esc(a.name)}</b><span class="bk-meta"><span>${esc(a.text)}</span><span>${fmtTime(a.created * 1000)} · ${st[a.status]}</span></span></span>
-      ${a.status === 'pending' ? `<button type="button" class="btn small" data-tspend="${a.id}" data-st="ok">В эфир</button><button type="button" class="btn small ghost" data-tspend="${a.id}" data-st="declined">Отклонить</button>`
-        : a.status === 'ok' ? `<button type="button" class="btn small ghost" data-tspend="${a.id}" data-st="shown">Прозвучало</button>` : ''}</div></li>`;
+      ${a.status === 'ok' ? `<button type="button" class="btn small ghost" data-tspend="${a.id}" data-st="declined">Не озвучивать</button>` : ''}</div></li>`;
     return `<header class="t-head"><div><h1>Награды и эфир</h1>
         <p>Ученики зарабатывают баллы за учёбу. Здесь вы задаёте, на что их можно обменять, и принимаете сообщения во время вебинара.</p></div></header>
 
@@ -5168,17 +5167,17 @@ function stacklyApp() {
           <form class="ed-three" data-tliveform novalidate>
             <label class="fld"><span>Цена сообщения, баллов</span><input name="price" type="number" min="1" max="10000" value="${L.price}" inputmode="numeric"></label>
             <label class="fld" style="grid-column:span 2"><span>Ссылка на трансляцию для учеников (Kinescope и др.)</span><input name="url" type="url" maxlength="300" placeholder="https://kinescope.io/…" value="${esc(L.url)}"></label>
-            <div class="form-acts" style="grid-column:1/-1"><button class="btn small" type="submit">Сохранить</button>
-              <label class="sw"><input type="checkbox" data-tlive="premod" ${L.premod ? 'checked' : ''}><i></i><span>Сначала показывать сообщения мне</span></label></div>
+            <div class="form-acts" style="grid-column:1/-1"><button class="btn small" type="submit">Сохранить</button></div>
+            <p class="muted" style="grid-column:1/-1;margin:0;font-size:13.5px">Сообщения озвучиваются сразу. Если сообщение ещё не прозвучало, его можно снять кнопкой «Не озвучивать» — баллы вернутся ученику.</p>
             <div class="form-msg" role="alert" style="grid-column:1/-1"></div>
           </form>
           <div class="tl-ov"><span class="lbl">Ссылка на оверлей для трансляции</span><code>${esc(overlay)}</code>
             <div class="form-acts"><button type="button" class="btn small ghost" data-tact="copy-code" data-code="${esc(overlay)}">Копировать</button><a class="btn small ghost" href="${esc(overlay)}" target="_blank" rel="noopener">Открыть</a><button type="button" class="btn small ghost" data-tlive-new>Новая ссылка</button></div>
             <p class="muted">В OBS: «Источники» → «Браузер» → вставьте ссылку, ширина 1280, высота 720 — сообщения появятся поверх видео и прозвучат голосом. Если ведёте вебинар из браузера, откройте ссылку в соседней вкладке и нажмите на ней «Включить звук». Ссылка секретная: по ней видны сообщения ваших учеников.</p></div>
         </div>
-        ${pend.length ? `<h3 class="tl-h">Ждут проверки <span class="muted">${pend.length}</span></h3><ul class="bk-list">${pend.map(alertRow).join('')}</ul>` : ''}
-        ${queue.length ? `<h3 class="tl-h">В очереди эфира</h3><ul class="bk-list">${queue.map(alertRow).join('')}</ul>` : ''}
-        ${!pend.length && !queue.length ? `<p class="muted" style="margin-top:12px">${L.live ? 'Новых сообщений нет. Страница обновляется сама.' : 'Включите эфир — ученики ваших групп увидят форму сообщения в магазине баллов.'}</p>` : ''}
+        ${queue.length ? `<h3 class="tl-h">Сейчас прозвучат <span class="muted">${queue.length}</span></h3><ul class="bk-list">${queue.map(alertRow).join('')}</ul>` : ''}
+        ${done.length ? `<h3 class="tl-h">Прозвучали</h3><ul class="bk-list">${done.map(alertRow).join('')}</ul>` : ''}
+        ${!queue.length && !done.length ? `<p class="muted" style="margin-top:12px">${L.live ? 'Сообщений пока нет. Страница обновляется сама.' : 'Включите эфир — ученики ваших групп увидят форму сообщения в магазине баллов.'}</p>` : ''}
       </section>
 
       <section class="t-sec"><h2 class="sec-h">Награды</h2>

@@ -336,7 +336,7 @@ class ClassroomTest(ServerCase):
         self.assertEqual(t.call('POST', '/teach/spends', {'id': claim['id'], 'status': 'done'})[0], 400)
         self.assertEqual(s.call('GET', '/shop')[1]['balance'], 100)
 
-        # эфир: пока не идёт — нельзя; ссылки запрещены; с премодерацией оверлей видит сообщение только после одобрения
+        # эфир: пока не идёт — нельзя; ссылки запрещены; сообщение сразу попадает в оверлей, учитель может его снять
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет'})[1]['error'], 'not_live')
         live = t.call('POST', '/teach/live', {'live': True, 'price': 20})[1]['live']
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'смотри site.ru'})[1]['error'], 'link')
@@ -344,9 +344,6 @@ class ClassroomTest(ServerCase):
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Привет!', 'amount': 25})[0], 200)
         anon = Client(self.base)
         self.assertEqual(anon.call('GET', '/live/feed?k=wrong')[0], 404)
-        self.assertEqual(anon.call('GET', f'/live/feed?k={live["token"]}')[1]['alerts'], [])
-        a = t.call('GET', '/teach/shop')[1]['alerts'][0]
-        t.call('POST', '/teach/spends', {'id': a['id'], 'status': 'ok'})
         feed = anon.call('GET', f'/live/feed?k={live["token"]}')[1]
         self.assertEqual([x['text'] for x in feed['alerts']], ['Привет!'])
         self.assertEqual(anon.call('POST', '/live/shown', {'k': live['token'], 'id': feed['alerts'][0]['id']})[0], 200)
@@ -378,6 +375,7 @@ class ClassroomTest(ServerCase):
         shop = s.call('GET', '/shop')[1]
         self.assertEqual((shop['balance'], shop['spent'], shop['history'][0]['cost']), (2000, 0, -2000))
         self.assertEqual(s.call('GET', '/auth/me')[1]['user']['spent'], -2000)     # сайт: баланс = заработано − spent
+        self.assertEqual(shop['net'], -2000)          # то же из магазина — иначе счётчик в панели теряет начисленное
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'style', 'item': 'badge-crown'})[0], 200)
         self.assertEqual(s.call('GET', '/shop')[1]['balance'], 1400)
         # то же из консоли сервера
