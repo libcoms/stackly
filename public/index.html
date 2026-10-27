@@ -1860,6 +1860,58 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 .tr-add input[name=cost], .tr-add input[name=amount] { width: 140px; flex: none; }
 @media (max-width: 860px) { .tl-live { grid-template-columns: minmax(0, 1fr); } .tl-ov { padding-left: 0; border-left: 0; padding-top: 16px; border-top: 1px solid var(--line); } }
 
+/* опрос в эфире: полосы результатов — общие для учителя и ученика */
+.pl-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pl-bars li { position: relative; display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: var(--r-s); background: var(--paper-2); overflow: hidden; font-size: 14.5px; }
+.pl-bars li::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: var(--blue-soft); transition: width .6s var(--ease); }
+.pl-bars li > * { position: relative; }
+.pl-bars li.me { box-shadow: inset 0 0 0 1.5px var(--blue); }
+.pl-bars li.ok::before { background: var(--ok-soft); }
+.pl-bars li.ok .pl-o::after { content: " — верный"; color: var(--ok); font-weight: 600; }
+.pl-n { flex: none; font: 600 13px/1.45 var(--f-mono); color: var(--mute); }
+.pl-chip { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 5px; background: var(--lime); color: var(--on-lime); font: 600 12.5px/1 var(--f-mono); }
+.pl-left { font: 600 13px/1 var(--f-mono); color: var(--mute); }
+/* учитель: форма опроса и идущий опрос */
+.tp-form { display: grid; gap: 14px; }
+.tp-opts { display: grid; gap: 8px; }
+.tp-opt { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.tp-opt input[type=text] { min-height: 42px; padding: 0 13px; border: 1px solid var(--line-2); border-radius: var(--r-s); background: var(--paper); color: var(--ink); font: 15px/1.4 var(--f-body); }
+.tp-opt input[type=text]:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.tp-ok { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--mute); cursor: pointer; }
+.tp-ok input { width: 17px; height: 17px; margin: 0; accent-color: var(--ok); }
+.tp-ok:has(input:checked) { color: var(--ok); font-weight: 600; }
+.tp-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+.tp-row .fld { width: 180px; }
+.tp-cur { display: grid; gap: 12px; }
+.tp-cur-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.tp-cur-h b { font: 650 18px/1.3 var(--f-display); flex: 1 1 100%; order: 2; }
+.tp-past { margin-top: 18px; }
+.tp-past details { border-top: 1px solid var(--line); padding: 10px 0; }
+.tp-past summary { cursor: pointer; display: flex; gap: 10px; justify-content: space-between; font-size: 14.5px; }
+.tp-past summary span:last-child { flex: none; color: var(--mute); font-size: 13px; }
+.tp-past .pl-bars { margin-top: 10px; }
+/* ученик: опрос всплывает на любой странице, пока идёт */
+.pollbox { position: fixed; right: 20px; bottom: 20px; z-index: 58; width: min(380px, calc(100vw - 32px)); max-height: calc(100vh - 96px); overflow: auto;
+  display: grid; gap: 12px; padding: 16px 18px 18px; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); box-shadow: var(--shadow-pop); animation: rise .35s var(--ease) both; }
+.pollbox[hidden] { display: none; }
+.pb-h { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--mute); padding-right: 30px; }
+.pb-h b { color: var(--ink); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pb-x { position: absolute; top: 10px; right: 10px; }
+.pb-q { margin: 0; font: 650 17px/1.35 var(--f-display); letter-spacing: -.01em; overflow-wrap: anywhere; }
+.pb-opts { display: grid; gap: 6px; }
+.pb-opts button { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; padding: 9px 12px; border: 1px solid var(--line-2); border-radius: var(--r-s); background: var(--paper); color: var(--ink); font: 500 15px/1.35 var(--f-body); cursor: pointer; transition: border-color .15s, background-color .15s, transform .15s var(--ease); }
+.pb-opts button:hover { border-color: var(--blue); background: var(--blue-soft); }
+.pb-opts button:active { transform: scale(.98); }
+.pb-opts button:disabled { opacity: .6; cursor: default; }
+.pb-opts button i { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--paper-2); font: 600 13px/1 var(--f-mono); font-style: normal; color: var(--mute); }
+.pb-f { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-2); }
+.pb-res { margin: 0; font: 600 15px/1.35 var(--f-body); }
+.pb-res.ok { color: var(--ok); }
+.pb-res.bad { color: var(--bad); }
+.pb-bar { height: 3px; border-radius: 2px; background: var(--paper-2); overflow: hidden; }
+.pb-bar i { display: block; height: 100%; background: var(--blue); transform-origin: left; transition: transform 1s linear; }
+@media (max-width: 999px) { html:not(.guest) .pollbox { left: 16px; right: 16px; width: auto; bottom: calc(74px + env(safe-area-inset-bottom, 0px)); max-height: calc(100vh - 150px); } }
+
 /* ═════════════ движение ═════════════ */
 .sr { opacity: 0; transform: translateY(16px); animation: none !important; }
 .sr.in { opacity: 1; transform: none; transition: opacity .5s var(--ease) var(--d, 0ms), transform .6s var(--ease) var(--d, 0ms); }
@@ -4318,14 +4370,14 @@ function stacklyApp() {
       store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]);
       await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok';
       renderAcctBtn(); refreshHW();
-      if (!silent) toast(`Вы вошли как ${acct.name}`);
+      if (!silent) { toast(`Вы вошли как ${acct.name}`); loadPolls(); }
       return true;
     } catch (e) { if (!silent) toast(e.message || 'Не получилось загрузить прогресс'); return false; }
   }
   async function initAccount() {
     try { const r = await api('/auth/me'); setUser(r.user); await connect(true); }
     catch (e) { /* не вошли — работаем в гостевом режиме */ }
-    acct.checked = true; renderAcctBtn();
+    acct.checked = true; renderAcctBtn(); loadPolls();
     $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
     if (/^#(login|me|teach|admin|hw|start|shop|edit|mat)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
@@ -5103,7 +5155,7 @@ function stacklyApp() {
       }).join('')}</div></div>`;
     };
     const st = { new: 'ждёт учителя', done: 'выдано', declined: 'отклонено, баллы вернулись', ok: 'в очереди эфира', shown: 'прозвучало в эфире', '': '' };
-    const histText = h => h.kind === 'grant' ? `Начислено: ${esc(h.text)}` : h.kind === 'style' ? `Оформление: ${esc((d.styles[h.item] || {}).title || h.item)}` : h.kind === 'freeze' ? 'Заморозка серии'
+    const histText = h => h.kind === 'grant' ? `Начислено: ${esc(h.text)}` : h.kind === 'poll' ? `Опрос в эфире: «${esc(h.text)}» · ${esc(h.teacher || '')}` : h.kind === 'style' ? `Оформление: ${esc((d.styles[h.item] || {}).title || h.item)}` : h.kind === 'freeze' ? 'Заморозка серии'
       : h.kind === 'reward' ? `Награда «${esc(h.text)}» · ${esc(h.teacher || '')}` : `Сообщение в эфир: «${esc(h.text)}»`;
     return `<header class="t-head"><div><h1>Магазин баллов</h1>
         <p>Баллы начисляются за решённые задачи, изученные темы и дни занятий. Здесь их можно потратить.</p></div></header>
@@ -5184,6 +5236,47 @@ function stacklyApp() {
         ${c.status === 'new' ? `<button type="button" class="btn small" data-tspend="${c.id}" data-st="done">Выдано</button><button type="button" class="btn small ghost" data-tspend="${c.id}" data-st="declined">Отклонить</button>` : ''}</div></li>`).join('')}</ul>`
         : '<p class="muted">Когда ученик обменяет баллы на награду, заявка появится здесь, а вам придёт уведомление в Telegram, если бот подключён.</p>'}`;
   }
+  /* ── опрос в эфире ──
+     Учитель задаёт вопрос, ученики его групп отвечают во всплывающей карточке на любой странице и получают баллы.
+     Отмечен верный ответ — викторина: баллы получат ответившие верно, когда опрос закроется */
+  const POLL_TIMERS = [[0, 'Пока не закрою'], [30, '30 секунд'], [60, '1 минута'], [120, '2 минуты'], [300, '5 минут']];
+  const LETTERS = 'АБВГДЕ';
+  let pollSkew = 0;                      // разница часов сервера и устройства, мс: таймер считается по серверу
+  const pollLeft = p => Math.max(0, Math.ceil((p.ends_at * 1000 - Date.now() - pollSkew) / 1000));
+  const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  // полосы результатов; counts сервер отдаёт ученику только когда можно (в викторине — после закрытия)
+  function pollBars(p) {
+    const total = Math.max(1, p.votes);
+    return `<ol class="pl-bars">${p.options.map((o, i) => {
+      const n = p.counts ? p.counts[i] : 0, pc = Math.round(n / total * 100);
+      return `<li class="${p.correct === i ? 'ok' : ''}${p.mine === i ? ' me' : ''}" style="--w:${pc}%"><span class="pl-o">${esc(o)}</span><span class="pl-n">${n} · ${pc}%</span></li>`;
+    }).join('')}</ol>`;
+  }
+  const pollOptRow = (i, v = '') => `<div class="tp-opt"><label class="tp-ok" title="Отметить верным"><input type="radio" name="correct" value="${i}">верный</label>
+    <input type="text" name="opt" maxlength="80" value="${esc(v)}" placeholder="Вариант ${LETTERS[i]}" aria-label="Вариант ответа ${LETTERS[i]}">
+    <button type="button" class="icon-x" data-tp-del aria-label="Убрать вариант" title="Убрать">${I.cross}</button></div>`;
+  function tPollHTML(d) {
+    const cur = d.polls.find(p => !p.closed), past = d.polls.filter(p => p.closed).slice(0, 5);
+    const pastHTML = past.length ? `<div class="tp-past"><h3 class="tl-h">Прошедшие опросы</h3>${past.map((p, i) => `<details ${i === 0 && !cur ? 'open' : ''}><summary><span>${esc(p.question)}</span><span>${p.votes} ${plural(p.votes, 'ответ', 'ответа', 'ответов')} · ${fmtTime(p.created * 1000)}</span></summary>${pollBars(p)}</details>`).join('')}</div>` : '';
+    if (cur) return `<div class="panel tp-cur">
+        <div class="tp-cur-h"><span class="sh-onair">${I.live}Идёт опрос</span>${cur.reward ? `<span class="pl-chip">+${cur.reward} ${cur.quiz ? 'за верный' : 'за ответ'}</span>` : ''}
+          <span class="pl-left">${cur.ends_at ? `<span data-pl-ends="${cur.ends_at}">${mmss(pollLeft(cur))}</span>` : 'без таймера'}</span><b>${esc(cur.question)}</b></div>
+        ${pollBars(cur)}
+        <div class="form-acts"><button type="button" class="btn small" data-tp-close="${cur.id}">Закрыть и подвести итог</button>
+          <span class="muted" style="font-size:14px">${cur.votes} ${plural(cur.votes, 'ответ', 'ответа', 'ответов')} · обновляется само${cur.quiz ? ' · ученики увидят верный ответ после закрытия' : ''}</span></div>
+      </div>${pastHTML}`;
+    return `<form class="panel tp-form" data-tpform novalidate>
+        <label class="fld"><span>Вопрос</span><input name="question" maxlength="200" placeholder="Например: сколько бит нужно, чтобы закодировать 30 символов?" autocomplete="off"></label>
+        <div class="fld"><span>Варианты ответа</span><div class="tp-opts" id="tpopts">${[0, 1, 2].map(i => pollOptRow(i)).join('')}</div>
+          <div class="form-acts"><button type="button" class="btn small ghost" data-tp-add>+ Вариант</button>
+            <label class="tp-ok"><input type="radio" name="correct" value="-1" checked>без верного ответа</label></div></div>
+        <div class="tp-row"><label class="fld"><span>Баллов за ответ</span><input name="reward" type="number" min="0" max="100" value="10" inputmode="numeric"></label>
+          <label class="fld"><span>Время на ответ</span><select name="timer">${POLL_TIMERS.map(([v, n]) => `<option value="${v}" ${v === 60 ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+          <button class="btn" type="submit">Запустить опрос</button></div>
+        <p class="muted" style="margin:0;font-size:13.5px">Ученики ваших групп увидят вопрос на любой странице stackly, а зрители трансляции — в оверлее с результатами. Без верного ответа баллы начисляются сразу за любой ответ. Отметите верный — это викторина: баллы получат ответившие верно, когда опрос закроется.</p>
+        <div class="form-msg" role="alert"></div>
+      </form>${pastHTML}`;
+  }
   const RATES = [[0.85, 'медленнее'], [1, 'обычная'], [1.15, 'быстрее'], [1.3, 'быстро']];
   function tShopHTML(d) {
     const L = d.live, overlay = `${location.origin}/live.html#${L.token}`;
@@ -5208,6 +5301,8 @@ function stacklyApp() {
         </div>
         <div id="tlalerts">${tAlertsHTML(d)}</div>
       </section>
+
+      <section class="t-sec"><h2 class="sec-h">Опрос в эфире</h2><div id="tlpoll">${tPollHTML(d)}</div></section>
 
       <section class="t-sec"><h2 class="sec-h">Награды</h2>
         ${d.rewards.length ? `<ul class="bk-list">${d.rewards.map(r => `<li><div class="bk-row"><span class="bk-i st-m"><b>${fmtN(r.cost)}</b>${ballsWord(r.cost)}</span><span class="bk-t"><b>${esc(r.title)}</b></span>
@@ -5258,20 +5353,137 @@ function stacklyApp() {
     else StacklyVoice.speak(`${(acct.name || 'Ученик').split(' ')[0]} пишет: ${text}`, f.elements.voice.value, 1, '');
   });
   // pollOnly — автообновление во время эфира: только списки сообщений и заявок, форма с выбором не перерисовывается
+  // опрос перерисовывается, только пока он идёт (или только что закончился): форму нового опроса автообновление не трогает
+  const pollActive = d => !!(d && d.polls && d.polls.some(p => !p.closed));
   async function reloadTShop(pollOnly) {
     if (!$('#tpage') || location.hash !== '#teach-shop') return;
     try {
-      tShop = await api('/teach/shop');
+      const was = pollActive(tShop);
+      tShop = await api('/teach/shop'); pollSkew = tShop.now * 1000 - Date.now();
       if (location.hash !== '#teach-shop') return;
-      if (pollOnly) { const al = $('#tlalerts'), cl = $('#tlclaims'); if (al) al.innerHTML = tAlertsHTML(tShop); if (cl) cl.innerHTML = tClaimsHTML(tShop); return; }
+      if (pollOnly) {
+        const al = $('#tlalerts'), cl = $('#tlclaims'), pl = $('#tlpoll');
+        if (al) al.innerHTML = tAlertsHTML(tShop); if (cl) cl.innerHTML = tClaimsHTML(tShop);
+        if (pl && (was || pollActive(tShop))) pl.innerHTML = tPollHTML(tShop);
+        return;
+      }
       const box = $('#tpage'); if (box) { box.innerHTML = tShopHTML(tShop); fillVoices(); }
     } catch (e) { }
   }
   // пока открыта страница и идёт эфир, сообщения на проверку подтягиваются сами
   function startLivePoll() {
     clearInterval(livePollT);
-    livePollT = setInterval(() => { if (location.hash !== '#teach-shop') return clearInterval(livePollT); if (tShop && tShop.live.live) reloadTShop(true); }, 5000);
+    livePollT = setInterval(() => { if (location.hash !== '#teach-shop') return clearInterval(livePollT); if (tShop && (tShop.live.live || pollActive(tShop))) reloadTShop(true); }, 3000);
   }
+  // опрос: варианты добавляются и убираются прямо в форме, без перерисовки — набранное не теряется
+  document.addEventListener('click', async e => {
+    const add = e.target.closest('[data-tp-add]'), del = e.target.closest('[data-tp-del]'), cl = e.target.closest('[data-tp-close]');
+    if (add) {
+      const box = $('#tpopts'), n = box.children.length;
+      if (n >= 6) return toast('Не больше 6 вариантов');
+      box.insertAdjacentHTML('beforeend', pollOptRow(n)); $$('input[name=opt]', box)[n].focus();
+    } else if (del) {
+      const box = $('#tpopts'); if (box.children.length <= 2) return toast('Нужно хотя бы 2 варианта');
+      del.closest('.tp-opt').remove();
+      // номера и буквы — по порядку, чтобы «верный» указывал на нужный вариант
+      [...box.children].forEach((r, i) => { $('input[type=radio]', r).value = i; const t = $('input[name=opt]', r); t.placeholder = `Вариант ${LETTERS[i]}`; t.setAttribute('aria-label', `Вариант ответа ${LETTERS[i]}`); });
+    } else if (cl) {
+      cl.disabled = true;
+      try { await api('/teach/polls/close', 'POST', { id: +cl.dataset.tpClose }); await reloadTShop(); toast('Опрос закрыт, баллы начислены'); }
+      catch (err) { toast(err.message || 'Не получилось'); cl.disabled = false; }
+    }
+  });
+  document.addEventListener('submit', async e => {
+    const f = e.target.closest('[data-tpform]'); if (!f) return;
+    e.preventDefault();
+    const msg = $('.form-msg', f), btn = $('button[type=submit]', f);
+    const opts = $$('input[name=opt]', f).map(x => x.value.trim()), pick = +$('input[name=correct]:checked', f).value;
+    // пустые варианты сервер отбросит — номер верного пересчитываем по непустым
+    const correct = pick >= 0 && opts[pick] ? opts.slice(0, pick).filter(Boolean).length : -1;
+    if (pick >= 0 && !opts[pick]) { msg.textContent = 'Верным отмечен пустой вариант'; msg.className = 'form-msg bad'; return; }
+    btn.disabled = true; msg.textContent = '';
+    try {
+      await api('/teach/polls', 'POST', { question: f.elements.question.value, options: opts, correct, reward: +f.elements.reward.value || 0, timer: +f.elements.timer.value });
+      await reloadTShop(); startLivePoll(); toast('Опрос запущен');
+    } catch (err) { msg.textContent = err.message || 'Не получилось запустить'; msg.className = 'form-msg bad'; btn.disabled = false; }
+  });
+  // секундомер опросов: у учителя и в карточке ученика
+  setInterval(() => {
+    $$('[data-pl-ends]').forEach(el => { const s = pollLeft({ ends_at: +el.dataset.plEnds }); el.textContent = s ? mmss(s) : 'время вышло'; });
+    $$('[data-pb-bar]').forEach(el => { const p = { ends_at: +el.dataset.pbBar }; el.style.transform = `scaleX(${pollLeft(p) / +el.dataset.len})`; });
+  }, 1000);
+
+  /* ── ученик: карточка опроса поверх любой страницы. Опросы спрашиваются раз в 4 секунды, пока вкладка видна;
+     у ученика без групп — раз в минуту (вдруг вступит) ── */
+  let pollList = [], pollT = 0, pollBusy = false, pollGen = 0;
+  const pollSeen = new Map();                                       // id → закрыт ли опрос, когда видели его в прошлый раз
+  const pollHidden = new Set(store.get('pollHidden', []));          // закрытые учеником карточки
+  async function loadPolls() {
+    clearTimeout(pollT);
+    const gen = ++pollGen;                 // новый вызов отменяет прежний цикл, даже если тот ждёт ответа сервера
+    const on = acct.cloud && acct.role === 'student';
+    if (!on) { pollList = []; renderPollBox(); return; }
+    let wait = 4000;
+    if (!document.hidden && !pollBusy) {
+      try {
+        const r = await api('/polls');
+        if (gen !== pollGen) return;
+        pollSkew = r.now * 1000 - Date.now();
+        if (!r.teachers) wait = 60000;
+        for (const p of r.polls) {
+          // викторина закрылась, ответ верный — баллы начислены на сервере, показываем их здесь
+          if (pollSeen.get(p.id) === false && p.closed && p.quiz && p.mine === p.correct && p.reward) { acct.spent = (acct.spent || 0) - p.reward; ptsFx(p.reward, $('#pollbox')); }
+          pollSeen.set(p.id, !!p.closed);
+        }
+        pollList = r.polls; renderPollBox();
+      } catch (e) { if (gen !== pollGen) return; wait = 15000; }
+    }
+    pollT = setTimeout(loadPolls, wait);
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && acct.cloud && acct.role === 'student') loadPolls(); });
+  function renderPollBox() {
+    let box = $('#pollbox');
+    const p = pollList.find(x => !pollHidden.has(x.id));
+    if (!p) { if (box) box.hidden = true; return; }
+    if (!box) { box = document.createElement('aside'); box.id = 'pollbox'; box.className = 'pollbox'; box.setAttribute('aria-label', 'Опрос в эфире'); document.body.appendChild(box); }
+    // не перерисовываем без изменений: иначе заново играет появление и сбивается фокус
+    const key = JSON.stringify([p.id, p.closed, p.mine, p.counts, p.votes]);
+    if (box.dataset.key === key && !box.hidden) return;
+    const fresh = box.hidden || box.dataset.id !== String(p.id);
+    box.dataset.key = key; box.dataset.id = p.id; box.hidden = false;
+    const won = p.quiz && p.closed && p.mine === p.correct;
+    const left = p.ends_at && !p.closed ? pollLeft(p) : 0;
+    const len = p.ends_at ? p.ends_at - p.created : 0;
+    let body;
+    if (!p.closed && p.mine == null) body = `<div class="pb-opts">${p.options.map((o, i) => `<button type="button" data-pb-vote="${i}"><i>${LETTERS[i]}</i><span>${esc(o)}</span></button>`).join('')}</div>`;
+    else if (!p.closed && p.quiz) body = `<p class="pb-res">Ответ принят: ${LETTERS[p.mine]} — ${esc(p.options[p.mine])}</p><p class="muted" style="margin:0;font-size:14px">Верный ответ и баллы — когда учитель закроет опрос.</p>`;
+    else body = `${p.closed ? `<p class="pb-res ${p.quiz ? (won ? 'ok' : 'bad') : ''}">${!p.quiz ? 'Опрос завершён' : p.mine == null ? 'Вы не ответили' : won ? `Верно!${p.reward ? ` +${p.reward} ${ballsWord(p.reward)}` : ''}` : 'Неверно — верный ответ отмечен'}</p>` : `<p class="pb-res">Ответ принят${p.reward ? ` · +${p.reward} ${ballsWord(p.reward)}` : ''}</p>`}${pollBars(p)}`;
+    box.innerHTML = `<div class="pb-h"><span class="sh-onair">${I.live}${p.closed ? 'Итог опроса' : 'Опрос'}</span><b>${esc(p.teacher)}</b></div>
+      <button type="button" class="icon-x pb-x" data-pb-hide aria-label="Скрыть опрос" title="Скрыть">${I.cross}</button>
+      <p class="pb-q">${esc(p.question)}</p>${body}
+      ${!p.closed ? `<div class="pb-f"><span>${p.reward && p.mine == null ? `<span class="pl-chip">+${p.reward} ${p.quiz ? 'за верный ответ' : 'за ответ'}</span>` : ''}</span>${p.ends_at ? `<span class="pl-left" data-pl-ends="${p.ends_at}">${mmss(left)}</span>` : ''}</div>
+        ${p.ends_at ? `<div class="pb-bar"><i data-pb-bar="${p.ends_at}" data-len="${len}" style="transform:scaleX(${len ? left / len : 0})"></i></div>` : ''}` : ''}`;
+    if (!fresh) box.style.animation = 'none';
+    else { box.style.animation = ''; }
+  }
+  document.addEventListener('click', async e => {
+    const v = e.target.closest('[data-pb-vote]'), h = e.target.closest('[data-pb-hide]');
+    if (h) {
+      const id = +$('#pollbox').dataset.id; pollHidden.add(id); store.set('pollHidden', [...pollHidden].slice(-50)); renderPollBox(); return;
+    }
+    if (!v) return;
+    const id = +$('#pollbox').dataset.id;
+    $$('[data-pb-vote]').forEach(b => { b.disabled = true; });
+    pollBusy = true;
+    try {
+      const r = await api('/polls/vote', 'POST', { id, choice: +v.dataset.pbVote });
+      pollList = pollList.map(p => p.id === id ? { ...r.poll, teacher: p.teacher } : p);
+      if (r.gain) { acct.spent = (acct.spent || 0) - r.gain; ptsFx(r.gain, v); }
+      renderPollBox();
+    } catch (err) { toast(err.message || 'Не получилось ответить'); $$('[data-pb-vote]').forEach(b => { b.disabled = false; }); }
+    pollBusy = false;
+    loadPolls();
+  });
   document.addEventListener('click', async e => {
     const b = e.target.closest('[data-tspend], [data-treward-del], [data-tlive-new]'); if (!b) return;
     b.disabled = true;
@@ -5389,7 +5601,7 @@ function stacklyApp() {
         if (me) setUser(me.user);
         put(tGroupsHTML(gr.groups, all));
       }
-      else if (h === 'teach-shop') { tShop = await api('/teach/shop'); if (put(tShopHTML(tShop))) fillVoices(); startLivePoll(); }
+      else if (h === 'teach-shop') { tShop = await api('/teach/shop'); pollSkew = tShop.now * 1000 - Date.now(); if (put(tShopHTML(tShop))) fillVoices(); startLivePoll(); }
       else if (h === 'teach-pro') {
         if (acct.role === 'admin') return put(tMsg('У администратора ограничений нет', 'Оплачивать тариф не нужно.', '#teach', 'К группам'));
         const me = await api('/auth/me').catch(() => null); if (me) setUser(me.user);

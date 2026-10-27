@@ -356,6 +356,61 @@ class ClassroomTest(ServerCase):
         self.assertEqual(s.call('POST', '/shop/buy', {'kind': 'alert', 'teacher_id': g['teacher_id'], 'text': 'Ещё'})[0], 429)
         self.assertEqual(s.call('GET', '/shop')[1]['balance'], 75)
 
+    def test_live_polls(self):
+        t, _ = self.teacher()
+        g = t.call('POST', '/teach/groups', {'name': 'Эфир'})[1]['group']
+        s1, _ = self.register(); s2, _ = self.register(); outsider, _ = self.register()
+        for s in (s1, s2):
+            s.call('POST', '/me/groups/join', {'code': g['code']})
+        self.assertEqual(s1.call('POST', '/teach/polls', {'question': 'x', 'options': ['a', 'b'], 'reward': 5})[0], 403)
+        for bad, err in (({'question': '', 'options': ['a', 'b']}, 'bad_question'), ({'question': 'Q', 'options': ['a']}, 'bad_options'),
+                         ({'question': 'Q', 'options': ['a', 'A']}, 'bad_options'), ({'question': 'Q', 'options': ['a', 'b'], 'correct': 2}, 'bad_correct'),
+                         ({'question': 'Q', 'options': ['a', 'b'], 'reward': 500}, 'bad_reward'), ({'question': 'Q', 'options': ['a', 'b'], 'timer': 7}, 'bad_timer')):
+            self.assertEqual(t.call('POST', '/teach/polls', {'reward': 10} | bad)[1]['error'], err)
+
+        # опрос без верного ответа: баллы за любой ответ сразу, результаты видны ответившему
+        p = t.call('POST', '/teach/polls', {'question': 'Как темп?', 'options': ['Быстро', ' Нормально ', ''], 'reward': 10})[1]['poll']
+        self.assertEqual(p['options'], ['Быстро', 'Нормально'])
+        self.assertEqual(outsider.call('GET', '/polls')[1]['polls'], [])
+        self.assertEqual(outsider.call('POST', '/polls/vote', {'id': p['id'], 'choice': 0})[0], 404)
+        seen = s1.call('GET', '/polls')[1]['polls'][0]
+        self.assertEqual((seen['question'], seen['mine'], 'counts' in seen), ('Как темп?', None, False))
+        self.assertEqual(s1.call('POST', '/polls/vote', {'id': p['id'], 'choice': 5})[1]['error'], 'bad_choice')
+        r = s1.call('POST', '/polls/vote', {'id': p['id'], 'choice': 1})[1]
+        self.assertEqual((r['gain'], r['poll']['counts']), (10, [0, 1]))
+        self.assertEqual(s1.call('POST', '/polls/vote', {'id': p['id'], 'choice': 0})[1]['error'], 'voted')
+        self.assertEqual(s1.call('GET', '/shop')[1]['balance'], 10)
+        self.assertEqual(s1.call('GET', '/auth/me')[1]['user']['spent'], -10)
+
+        # викторина: новый опрос закрывает прежний; до закрытия ученик не видит ни верного ответа, ни результатов
+        q = t.call('POST', '/teach/polls', {'question': '2+2?', 'options': ['3', '4'], 'correct': 1, 'reward': 20})[1]['poll']
+        self.assertEqual(q['correct'], 1)
+        self.assertIsNotNone(t.call('GET', '/teach/shop')[1]['polls'][1]['closed'])
+        r = s1.call('POST', '/polls/vote', {'id': q['id'], 'choice': 1})[1]
+        self.assertEqual((r['gain'], 'counts' in r['poll'], 'correct' in r['poll']), (0, False, False))
+        s2.call('POST', '/polls/vote', {'id': q['id'], 'choice': 0})
+        live = t.call('POST', '/teach/live', {})[1]['live']
+        ov = Client(self.base).call('GET', f'/live/feed?k={live["token"]}')[1]['poll']
+        self.assertEqual((ov['id'], ov['counts'], 'correct' in ov), (q['id'], [1, 1], False))
+        self.assertEqual(s1.call('GET', '/shop')[1]['balance'], 10)
+        self.assertEqual(t.call('POST', '/teach/polls/close', {'id': q['id']})[0], 200)
+        self.assertEqual(t.call('POST', '/teach/polls/close', {'id': q['id']})[0], 200)       # повторное закрытие не начисляет снова
+        self.assertEqual(s1.call('GET', '/shop')[1]['balance'], 30)
+        self.assertEqual(s2.call('GET', '/shop')[1]['balance'], 0)
+        self.assertEqual(Client(self.base).call('GET', f'/live/feed?k={live["token"]}')[1]['poll']['correct'], 1)
+        done = s2.call('GET', '/polls')[1]['polls'][0]
+        self.assertEqual((done['mine'], done['correct'], done['counts']), (0, 1, [1, 1]))
+        self.assertEqual(s2.call('POST', '/polls/vote', {'id': q['id'], 'choice': 1})[1]['error'], 'closed')
+
+        # таймер: истёкший опрос закрывается при первом обращении
+        r = t.call('POST', '/teach/polls', {'question': 'Быстрый?', 'options': ['Да', 'Нет'], 'correct': 0, 'reward': 5, 'timer': 30})[1]['poll']
+        self.assertEqual(r['ends_at'] - r['created'], 30)
+        s1.call('POST', '/polls/vote', {'id': r['id'], 'choice': 0})
+        con = sqlite3.connect(self.db)
+        con.execute('UPDATE polls SET ends_at = ? WHERE id = ?', (int(time.time()) - 1, r['id'])); con.commit(); con.close()
+        self.assertEqual(s2.call('POST', '/polls/vote', {'id': r['id'], 'choice': 0})[1]['error'], 'closed')
+        self.assertEqual(s1.call('GET', '/shop')[1]['balance'], 35)
+
     def test_homework_validation(self):
         t, _ = self.teacher()
         g = t.call('POST', '/teach/groups', {'name': 'Пн 18:00'})[1]['group']

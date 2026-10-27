@@ -172,7 +172,7 @@ def migrate():
 
       -- магазин баллов. Баллы зарабатываются (points() из прогресса), здесь — на что потрачены.
       -- kind: style — оформление профиля, freeze — заморозка серии, reward — награда учителя, alert — сообщение в эфир,
-      -- grant — баллы, начисленные администратором (cost отрицательный: «трата наоборот»).
+      -- grant — баллы, начисленные администратором, poll — баллы за ответ в опросе эфира (у обоих cost отрицательный: «трата наоборот»).
       -- status: '' — куплено; у наград new → done (выдано); у сообщений ok (сразу в эфир) → shown (прозвучало);
       -- declined — учитель отклонил, баллы вернулись (такие траты не считаются)
       CREATE TABLE IF NOT EXISTS spends (
@@ -194,6 +194,16 @@ def migrate():
       CREATE TABLE IF NOT EXISTS live_cfg (
         teacher_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL UNIQUE,
         live INTEGER NOT NULL DEFAULT 0, price INTEGER NOT NULL DEFAULT 30, url TEXT NOT NULL DEFAULT '', premod INTEGER NOT NULL DEFAULT 1);
+      -- опросы в эфире: options — JSON-список вариантов, correct — номер верного (-1 — опрос без верного ответа),
+      -- reward — баллы за ответ, ends_at — срок по таймеру (NULL — пока учитель не закроет), closed — когда закрыт
+      CREATE TABLE IF NOT EXISTS polls (
+        id INTEGER PRIMARY KEY, teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        question TEXT NOT NULL, options TEXT NOT NULL, correct INTEGER NOT NULL DEFAULT -1, reward INTEGER NOT NULL DEFAULT 0,
+        created INTEGER NOT NULL, ends_at INTEGER, closed INTEGER);
+      CREATE INDEX IF NOT EXISTS polls_teacher ON polls(teacher_id, id);
+      CREATE TABLE IF NOT EXISTS poll_votes (
+        poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        choice INTEGER NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (poll_id, user_id));
     ''')
     # сообщения в эфир больше не ждут проверки учителя: старые «на проверке» закрываем, чтобы не всплыли
     db().execute("UPDATE spends SET status = 'shown' WHERE kind = 'alert' AND status = 'pending'")
@@ -524,9 +534,9 @@ def spent_net(uid):
     return db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND status != 'declined'", (uid,)).fetchone()[0]
 
 def balance(uid):
-    """(заработано, потрачено) баллов: заработано — за учёбу плюс начисленное администратором."""
+    """(заработано, потрачено) баллов: заработано — за учёбу плюс начисленное администратором и за опросы эфира."""
     data, updated = load_progress(uid)
-    bonus = -db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind = 'grant'", (uid,)).fetchone()[0]
+    bonus = -db().execute("SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ('grant', 'poll')", (uid,)).fetchone()[0]
     return summary(data, updated, uid)['points'] + bonus, spent_net(uid) + bonus
 
 ADMIN_RESET_HOURS = 24
@@ -589,6 +599,56 @@ def live_cfg(teacher_id, create=False):
 def my_teachers(uid):
     return [r['teacher_id'] for r in db().execute('SELECT DISTINCT g.teacher_id FROM group_members m JOIN study_groups g ON g.id = m.group_id '
                                                    'WHERE m.user_id = ?', (uid,))]
+
+# ---------------------------------------------------------------- опросы в эфире
+# Учитель задаёт вопрос во время трансляции, ученики его групп отвечают на сайте и получают баллы.
+# Опрос без верного ответа — баллы за любой ответ сразу. Викторина (отмечен верный) — баллы получат ответившие верно,
+# когда опрос закроется (учителем или по таймеру): до этого ученики не видят ни верного ответа, ни результатов
+POLL_OPTIONS, POLL_TEXT, POLL_REWARD_MAX = (2, 6), (200, 80), 100     # число вариантов, длина вопроса и варианта, максимум баллов
+POLL_TIMERS = (0, 30, 60, 120, 300)     # таймер, с; 0 — пока учитель не закроет
+POLL_SHOW, POLL_OVERLAY = 600, 45       # сколько секунд закрытый опрос виден ученикам и висит в оверлее с итогами
+
+def poll_close(p):
+    """Закрыть опрос и начислить баллы за верный ответ. Закрывается ровно один раз, даже если одновременно
+    сработали таймер и кнопка учителя: баллы начисляет только тот, чей UPDATE изменил строку."""
+    now = int(time.time())
+    if not db().execute('UPDATE polls SET closed = ? WHERE id = ? AND closed IS NULL', (min(now, p['ends_at'] or now), p['id'])).rowcount:
+        return
+    if p['correct'] >= 0 and p['reward']:
+        for r in db().execute('SELECT user_id FROM poll_votes WHERE poll_id = ? AND choice = ?', (p['id'], p['correct'])).fetchall():
+            poll_award(p, r['user_id'])
+
+def poll_award(p, uid):
+    db().execute("INSERT INTO spends (user_id, kind, item, cost, teacher_id, text, created) VALUES (?, 'poll', ?, ?, ?, ?, ?)",
+                 (uid, str(p['id']), -p['reward'], p['teacher_id'], p['question'][:120], int(time.time())))
+
+def polls_expire(teacher_ids):
+    """Таймер опроса: истёкшие закрываются при первом обращении после срока — отдельного планировщика нет."""
+    if not teacher_ids:
+        return
+    q = ','.join('?' * len(teacher_ids))
+    for p in db().execute(f'SELECT * FROM polls WHERE closed IS NULL AND ends_at <= ? AND teacher_id IN ({q})',
+                          (int(time.time()), *teacher_ids)).fetchall():
+        poll_close(p)
+
+def poll_json(p, role, mine=None):
+    """role: teacher — всё сразу; overlay — результаты сразу, верный ответ после закрытия;
+    student — результаты, когда ответил (в викторине — после закрытия), верный ответ после закрытия."""
+    opts = json.loads(p['options'])
+    counts = [0] * len(opts)
+    for r in db().execute('SELECT choice, COUNT(*) AS n FROM poll_votes WHERE poll_id = ? GROUP BY choice', (p['id'],)):
+        if 0 <= r['choice'] < len(counts):
+            counts[r['choice']] = r['n']
+    quiz, closed = p['correct'] >= 0, p['closed'] is not None
+    out = {'id': p['id'], 'teacher_id': p['teacher_id'], 'question': p['question'], 'options': opts, 'reward': p['reward'], 'quiz': quiz,
+           'created': p['created'], 'ends_at': p['ends_at'], 'closed': p['closed'], 'votes': sum(counts)}
+    if role != 'student' or closed or (mine is not None and not quiz):
+        out['counts'] = counts
+    if quiz and (role == 'teacher' or closed):
+        out['correct'] = p['correct']
+    if role == 'student':
+        out['mine'] = mine
+    return out
 
 def hw_json(h):
     return {'id': h['id'], 'group_id': h['group_id'], 'title': h['title'], 'comment': h['comment'],
@@ -949,6 +1009,11 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/teach/live'): self.t_live_set,
             ('GET', '/api/live/feed'): self.live_feed,
             ('POST', '/api/live/shown'): self.live_shown,
+            # опросы в эфире: учитель запускает и закрывает, ученики его групп отвечают за баллы
+            ('POST', '/api/teach/polls'): self.t_poll_start,
+            ('POST', '/api/teach/polls/close'): self.t_poll_close,
+            ('GET', '/api/polls'): self.polls,
+            ('POST', '/api/polls/vote'): self.poll_vote,
             # свои материалы учителей
             ('GET', '/api/materials'): self.materials,
             ('POST', '/api/materials'): self.material_save,
@@ -1262,8 +1327,11 @@ class Handler(BaseHTTPRequestHandler):
         rewards = db().execute('SELECT id, title, cost FROM rewards WHERE teacher_id = ? AND hidden = 0 ORDER BY cost, id', (u['id'],)).fetchall()
         rows = db().execute("SELECT s.id, s.kind, s.item, s.cost, s.text, s.status, s.created, s.okat, s.user_id, u.name FROM spends s JOIN users u ON u.id = s.user_id "
                             "WHERE s.teacher_id = ? AND s.kind IN ('reward', 'alert') ORDER BY s.id DESC LIMIT 120", (u['id'],)).fetchall()
+        polls_expire([u['id']])
+        polls = db().execute('SELECT * FROM polls WHERE teacher_id = ? ORDER BY id DESC LIMIT 8', (u['id'],)).fetchall()
         self.send_json(200, {'live': {k: c[k] for k in ('token', 'live', 'price', 'url', 'voice', 'rate')}, 'rewards': [dict(r) for r in rewards],
-                             'claims': [dict(r) for r in rows if r['kind'] == 'reward'], 'alerts': [dict(r) for r in rows if r['kind'] == 'alert'][:60]})
+                             'claims': [dict(r) for r in rows if r['kind'] == 'reward'], 'alerts': [dict(r) for r in rows if r['kind'] == 'alert'][:60],
+                             'polls': [poll_json(p, 'teacher') for p in polls], 'now': int(time.time())})
 
     def t_reward_save(self):
         u = self.teacher()
@@ -1349,8 +1417,12 @@ class Handler(BaseHTTPRequestHandler):
         rows = db().execute("SELECT s.id, s.cost, s.text, s.okat, s.item AS voice, u.name FROM spends s JOIN users u ON u.id = s.user_id "
                             "WHERE s.teacher_id = ? AND s.kind = 'alert' AND s.status = 'ok' AND s.okat > ? ORDER BY s.okat, s.id LIMIT 20",
                             (c['teacher_id'], now - 3600)).fetchall()
+        # опрос на экране трансляции: идущий или только что закрытый — с итогами и верным ответом
+        polls_expire([c['teacher_id']])
+        p = db().execute('SELECT * FROM polls WHERE teacher_id = ? AND (closed IS NULL OR closed > ?) ORDER BY id DESC LIMIT 1',
+                         (c['teacher_id'], now - POLL_OVERLAY)).fetchone()
         self.send_json(200, {'teacher': c['name'], 'live': bool(c['live']), 'voice': c['voice'], 'rate': c['rate'], 'now': now,
-                             'alerts': [dict(r) for r in rows]})
+                             'alerts': [dict(r) for r in rows], 'poll': poll_json(p, 'overlay') if p else None})
 
     def live_shown(self):
         """Оверлей прочитал сообщение — больше его не показываем (и после перезагрузки страницы)."""
@@ -1359,6 +1431,79 @@ class Handler(BaseHTTPRequestHandler):
         db().execute("UPDATE spends SET status = 'shown' WHERE id = ? AND teacher_id = ? AND kind = 'alert' AND status = 'ok'",
                      (self.int_arg(d, 'id'), c['teacher_id']))
         self.send_json(200, {'ok': True})
+
+    # --- опросы в эфире
+    def t_poll_start(self):
+        """Новый опрос. Идёт один опрос за раз: предыдущий закрывается (с начислением баллов за верный ответ)."""
+        u = self.teacher()
+        d = self.body()
+        clean = lambda s: re.sub(r'\s+', ' ', str(s or '')).strip()
+        question = clean(d.get('question'))
+        if not question or len(question) > POLL_TEXT[0]:
+            raise ApiError(400, 'bad_question', f'Вопрос — от 1 до {POLL_TEXT[0]} символов')
+        opts = [clean(o) for o in d.get('options') or [] if clean(o)] if isinstance(d.get('options'), list) else []
+        if not POLL_OPTIONS[0] <= len(opts) <= POLL_OPTIONS[1]:
+            raise ApiError(400, 'bad_options', f'Вариантов ответа — от {POLL_OPTIONS[0]} до {POLL_OPTIONS[1]}')
+        if any(len(o) > POLL_TEXT[1] for o in opts):
+            raise ApiError(400, 'bad_options', f'Вариант ответа — до {POLL_TEXT[1]} символов')
+        if len({o.lower() for o in opts}) < len(opts):
+            raise ApiError(400, 'bad_options', 'Варианты ответа повторяются')
+        correct = -1 if d.get('correct') in (None, '', -1) else self.int_arg(d, 'correct')
+        if not -1 <= correct < len(opts):
+            raise ApiError(400, 'bad_correct', 'Верный ответ — один из вариантов')
+        reward, timer = self.int_arg(d, 'reward'), self.int_arg(d, 'timer') if d.get('timer') else 0
+        if not 0 <= reward <= POLL_REWARD_MAX:
+            raise ApiError(400, 'bad_reward', f'Баллы за ответ — от 0 до {POLL_REWARD_MAX}')
+        if timer not in POLL_TIMERS:
+            raise ApiError(400, 'bad_timer', 'Нет такого таймера')
+        for p in db().execute('SELECT * FROM polls WHERE teacher_id = ? AND closed IS NULL', (u['id'],)).fetchall():
+            poll_close(p)
+        now = int(time.time())
+        pid = db().execute('INSERT INTO polls (teacher_id, question, options, correct, reward, created, ends_at) VALUES (?,?,?,?,?,?,?)',
+                           (u['id'], question, json.dumps(opts, ensure_ascii=False), correct, reward, now, now + timer if timer else None)).lastrowid
+        self.send_json(200, {'poll': poll_json(db().execute('SELECT * FROM polls WHERE id = ?', (pid,)).fetchone(), 'teacher')})
+
+    def t_poll_close(self):
+        u = self.teacher()
+        p = db().execute('SELECT * FROM polls WHERE id = ? AND teacher_id = ?', (self.int_arg(self.body(), 'id'), u['id'])).fetchone()
+        if not p:
+            raise ApiError(404, 'not_found', 'Опрос не найден')
+        poll_close(p)
+        self.send_json(200, {'poll': poll_json(db().execute('SELECT * FROM polls WHERE id = ?', (p['id'],)).fetchone(), 'teacher')})
+
+    def polls(self):
+        """Опросы для ученика: идущие у его учителей и недавно закрытые, в которых он участвовал (чтобы увидеть итог)."""
+        u = self.current_user()
+        tids = my_teachers(u['id'])
+        if not tids:
+            return self.send_json(200, {'polls': [], 'teachers': 0, 'now': int(time.time())})
+        polls_expire(tids)
+        now, q = int(time.time()), ','.join('?' * len(tids))
+        rows = db().execute(f'SELECT p.*, v.choice AS mine, t.name AS teacher FROM polls p JOIN users t ON t.id = p.teacher_id '
+                            f'LEFT JOIN poll_votes v ON v.poll_id = p.id AND v.user_id = ? '
+                            f'WHERE p.teacher_id IN ({q}) AND (p.closed IS NULL OR (p.closed > ? AND v.choice IS NOT NULL)) ORDER BY p.id DESC LIMIT 5',
+                            (u['id'], *tids, now - POLL_SHOW)).fetchall()
+        self.send_json(200, {'polls': [poll_json(p, 'student', p['mine']) | {'teacher': p['teacher']} for p in rows], 'teachers': len(tids), 'now': now})
+
+    def poll_vote(self):
+        u = self.current_user()
+        d = self.body()
+        p = db().execute('SELECT * FROM polls WHERE id = ?', (self.int_arg(d, 'id'),)).fetchone()
+        if not p or p['teacher_id'] not in my_teachers(u['id']):
+            raise ApiError(404, 'not_found', 'Опрос не найден')
+        polls_expire([p['teacher_id']])
+        p = db().execute('SELECT * FROM polls WHERE id = ?', (p['id'],)).fetchone()
+        if p['closed'] is not None:
+            raise ApiError(400, 'closed', 'Опрос уже закрыт')
+        choice = self.int_arg(d, 'choice')
+        if not 0 <= choice < len(json.loads(p['options'])):
+            raise ApiError(400, 'bad_choice', 'Нет такого варианта')
+        if not db().execute('INSERT OR IGNORE INTO poll_votes VALUES (?,?,?,?)', (p['id'], u['id'], choice, int(time.time()))).rowcount:
+            raise ApiError(400, 'voted', 'Вы уже ответили')
+        gain = 0
+        if p['correct'] < 0 and p['reward']:
+            poll_award(p, u['id']); gain = p['reward']
+        self.send_json(200, {'poll': poll_json(p, 'student', choice), 'gain': gain})
 
     # --- ученик: группы и домашние задания
     def my_groups(self):

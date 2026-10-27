@@ -32,6 +32,24 @@ body.browser { background: #101217; }
 @keyframes drop { 0% { transform: translateY(-80px) rotate(-200deg); opacity: 0; } 60% { transform: translateY(4px) rotate(0); opacity: 1; } 80% { transform: translateY(-6px); } 100% { transform: none; } }
 @keyframes word { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+/* опрос: вопрос и живые результаты в правом верхнем углу, после закрытия — верный ответ */
+.poll { position: fixed; top: 6vh; right: 24px; width: min(460px, calc(100% - 48px)); display: grid; gap: 12px; padding: 18px 22px 20px; border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: 0 2px 6px rgb(0 0 0 / .12), 0 26px 60px -20px rgb(0 0 0 / .55); animation: cardIn .7s var(--ease) both; }
+body.browser .poll { top: 76px; }
+.poll.out { animation: cardOut .5s var(--ease) both; }
+.ph { display: flex; align-items: center; gap: 10px; font: 600 14px/1 "Golos Text", sans-serif; color: var(--mute); }
+.ph .tag { padding: 5px 9px; border-radius: 6px; background: var(--blue); color: #fff; }
+.ph .tag.done { background: #157A4B; }
+.ph .rw { margin-left: auto; font: 600 14px/1 "JetBrains Mono", monospace; background: var(--yellow); color: #3F3200; padding: 5px 8px; border-radius: 6px; }
+.pq { font: 700 22px/1.3 "Golos Text", sans-serif; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.po { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.po li { position: relative; display: flex; justify-content: space-between; gap: 12px; padding: 10px 14px; border-radius: 8px; background: #F3F5F9; overflow: hidden; font: 500 18px/1.3 "Golos Text", sans-serif; }
+.po li::before { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: #DCE3FB; transition: width .8s var(--ease); }
+.po li > * { position: relative; }
+.po li b { font: 600 16px/1.3 "JetBrains Mono", monospace; color: var(--mute); }
+.po li.ok { box-shadow: inset 0 0 0 2px #157A4B; }
+.po li.ok::before { background: #CDEBDA; }
+.po li.ok b { color: #157A4B; }
+.pf { display: flex; justify-content: space-between; font: 600 14px/1 "JetBrains Mono", monospace; color: var(--mute); }
 /* в обычном браузере — панель с состоянием и кнопкой звука; в OBS её нет */
 .panel { position: fixed; top: 16px; left: 16px; right: 16px; display: none; align-items: center; gap: 14px; flex-wrap: wrap; color: #E6E9F0; font-size: 15px; }
 body.browser .panel { display: flex; }
@@ -47,6 +65,7 @@ button.off { background: #262B36; }
 <body>
 <div class="panel"><span class="dot" id="dot"></span><span id="state">Подключение…</span><button type="button" id="sound">Включить звук</button><button type="button" class="off" id="test">Проверить</button></div>
 <div class="stage" id="stage" aria-live="polite"></div>
+<div id="pollbox"></div>
 <script src="/voice.js?v=1"></script>
 <script>
 (() => {
@@ -95,12 +114,47 @@ button.off { background: #262B36; }
     next();
   }
   function next() { if (!busy && queue.length) show(queue.shift()); }
+  // опрос: карточка живёт, пока сервер его отдаёт (идёт или закрыт меньше минуты назад); полосы обновляются на месте
+  let pollKey = '', pollEnds = 0, skew = 0;
+  const LET = 'АБВГДЕ';
+  function renderPoll(p) {
+    const box = $('#pollbox'), old = box.firstElementChild;
+    if (!p) {
+      pollKey = ''; pollEnds = 0;
+      if (old && !old.classList.contains('out')) { old.classList.add('out'); setTimeout(() => { if (!pollKey) box.replaceChildren(); }, 600); }
+      return;
+    }
+    const total = Math.max(1, p.votes);
+    const rows = p.options.map((o, i) => { const n = p.counts[i], pc = Math.round(n / total * 100);
+      return `<li class="${p.correct === i ? 'ok' : ''}" style="--w:${pc}%"><span>${LET[i]}. ${esc(o)}</span><b>${pc}%</b></li>`; }).join('');
+    const key = `${p.id}:${!!p.closed}`;
+    pollEnds = p.closed ? 0 : p.ends_at || 0;
+    if (key === pollKey && old) {        // тот же опрос — двигаем полосы, без повторного появления
+      old.querySelector('.po').innerHTML = rows;
+      old.querySelector('[data-votes]').textContent = `${p.votes} ${plural(p.votes, 'ответ', 'ответа', 'ответов')}`;
+      return;
+    }
+    pollKey = key;
+    const card = document.createElement('div'); card.className = 'poll';
+    card.innerHTML = `<div class="ph"><span class="tag ${p.closed ? 'done' : ''}">${p.closed ? 'Итог опроса' : 'Опрос'}</span>${p.closed ? '' : 'отвечайте на stackly'}${p.reward ? `<span class="rw">+${p.reward} ${p.quiz ? 'за верный' : plural(p.reward, 'балл', 'балла', 'баллов')}</span>` : ''}</div>
+      <div class="pq">${esc(p.question)}</div><ol class="po">${rows}</ol>
+      <div class="pf"><span data-votes>${p.votes} ${plural(p.votes, 'ответ', 'ответа', 'ответов')}</span><span data-left></span></div>`;
+    box.replaceChildren(card);
+    tickPoll();
+  }
+  function tickPoll() {
+    const el = document.querySelector('#pollbox [data-left]'); if (!el) return;
+    const s = pollEnds ? Math.max(0, Math.ceil((pollEnds * 1000 - Date.now() - skew) / 1000)) : -1;
+    el.textContent = s < 0 ? '' : s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : 'время вышло';
+  }
+  setInterval(tickPoll, 1000);
   async function poll() {
     try {
       const r = await fetch(`/api/live/feed?k=${encodeURIComponent(K)}`, { credentials: 'omit' });
       const d = await r.json();
       if (!r.ok) throw new Error(d.message || 'Ошибка');
-      cfgVoice = d.voice || ''; cfgRate = d.rate || 1;
+      cfgVoice = d.voice || ''; cfgRate = d.rate || 1; skew = d.now * 1000 - Date.now();
+      renderPoll(d.poll);
       for (const a of d.alerts) if (!seen.has(a.id)) { seen.add(a.id); queue.push(a); }
       $('#dot').classList.toggle('on', d.live);
       const v = V && V.resolve('', cfgVoice);
