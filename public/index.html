@@ -1690,7 +1690,7 @@ table.mapping td, table.mapping th { text-align: left; }
 <main id="app"></main>
 <!-- на телефоне разделы из шапки переезжают сюда, под большой палец; пункты собирает syncTabbar() -->
 <nav class="tabbar" id="tabbar" aria-label="Разделы сайта"></nav>
-<footer class="foot"><div class="wrap">
+<footer class="foot" hidden><div class="wrap">
   <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
   <span class="foot-links"><a href="#pricing">Тарифы и оплата</a> · <a href="#offer">Публичная оферта</a> · <a href="#privacy">Политика обработки персональных данных</a></span>
   <span>Курс ЕГЭ по информатике: структура заданий по плану изменений КИМ ЕГЭ 2027 (ФИПИ), ответы банка проверены запуском решений.</span>
@@ -6173,6 +6173,8 @@ function stacklyApp() {
     // проявление при прокрутке — только у главной для гостя; рабочие страницы видны сразу
     if (nav === 'home') reveal($('#app'));
     if (nav === 'home') mountHome();
+    // подвал с реквизитами и документами — только на главной, в самом низу
+    $('footer.foot').hidden = nav !== 'home';
     if (nav === 'teach') loadTeach(h);
     if (nav === 'hw') loadHW(h); else curHW = 0;
     if (nav === 'me') { loadMyClass(); loadTg(); }
