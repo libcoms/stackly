@@ -1601,7 +1601,7 @@
 .fg-goal { display: grid; gap: 7px; margin: 4px 0 12px; }
 .fg-goal div { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .fg-goal i { grid-column: 2; height: 6px; border-radius: 3px; background: #3A3C42; overflow: hidden; }
-.fg-goal i::after { content: ""; display: block; height: 100%; width: var(--p); background: #8DB33A; border-radius: 3px; transition: width .2s; }
+.fg-goal i::after { content: ""; display: block; height: 100%; width: 100%; background: #8DB33A; border-radius: 3px; transform: scaleX(var(--p)); transform-origin: left; transition: transform .2s; }
 .fg-goal div.ok span { color: #A9D35A; }
 .fg-learn { margin-top: 4px; padding-top: 12px; border-top: 1px solid #3A3C42; }
 .fg-learn h4 { margin: 0 0 7px; font: 600 13.5px var(--f-body); color: #fff; }
@@ -1918,7 +1918,7 @@
       $('.fg-res').innerHTML = items.map(k => `<div title="${ITEMS[k]}">${itemIcon(k, 34)}<span>${shortN(w.items[k] || 0)}</span></div>`).join('');
       if (lv.goal) $('.fg-goal').innerHTML = goalItems.map(k => {
         const n = lv.goal[k], h = Math.min(n, w.items[k] || 0);
-        return `<div class="${h >= n ? 'ok' : ''}">${itemIcon(k, 20)}<i style="--p:${h / n * 100}%"></i><span>${h} / ${n}</span></div>`;
+        return `<div class="${h >= n ? 'ok' : ''}">${itemIcon(k, 20)}<i style="--p:${h / n}"></i><span>${h} / ${n}</span></div>`;
       }).join('');
     }
     function fly(ev) {
