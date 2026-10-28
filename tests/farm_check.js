@@ -13,7 +13,7 @@ function check(name, fn) {
 }
 function py(code) {
   const out = [], ip = new F.Interp({ print: s => out.push(s), idleOps: 200000 });
-  const g = ip.run(F.parse(code), ip.top);
+  const g = ip.exec(F.parse(code));
   try { while (!g.next().done); } catch (e) { if (e instanceof F.PyError && e.line == null) e.line = ip.line; throw e; }   // как Run.fail
   return out.join('');
 }
@@ -53,8 +53,60 @@ check('ошибки с номером строки', () => {
   assert.match(F.simulate(L(1), 'harvst()').error, /имелось в виду «harvest»/);
   assert.match(F.simulate(L(1), 'move(East)').error, /откроется на уровне 3/);
 });
+check('длинные числа, побитовые операции, форматы, множества, словари — как в Python', () => {
+  // ожидаемый вывод получен запуском того же кода в CPython 3.14
+  assert.strictEqual(py('print(2 ** 100, 3 ** 50 - 1, -(2 ** 70) // 3, (2 ** 70) % 7, 10 ** 20 // 10 ** 18)'), '1267650600228229401496703205376 717897987691852588770248 -393530540239137101142 2 100\n');
+  assert.strictEqual(py("x = 4 ** 2020 + 2 ** 2017 - 15\ns = ''\nwhile x > 0:\n    s = str(x % 2) + s\n    x //= 2\nprint(s.count('1'), len(s))"), '2015 4041\n');
+  assert.strictEqual(py("print(bin(37), bin(37)[2:], int('100101', 2), hex(255), int('ff', 16), f'{37:b}', f'{5:08b}', f'{255:x}', f'{3.14159:.2f}', format(10, 'b'))"), '0b100101 100101 37 0xff 255 100101 00000101 ff 3.14 1010\n');
+  assert.strictEqual(py('print(5 & 3, 5 | 3, 5 ^ 3, ~5, 1 << 10, 1024 >> 3)'), '1 7 6 -6 1024 128\n');
+  assert.strictEqual(py("st = {1, 2, 3} | {3, 4}\nst.add(9)\nprint(len(st), 4 in st, {x % 3 for x in range(10)}, set('hello') == set('lehol'))"), '5 True {0, 1, 2} True\n');
+  assert.strictEqual(py("d = {c: 0 for c in 'abc'}\nd['a'] += 2\nprint(d, sorted(d.items(), key=lambda kv: -kv[1])[0])"), "{'a': 2, 'b': 0, 'c': 0} ('a', 2)\n");
+  assert.strictEqual(py("print(list(map(int, '1 2 3'.split())), sum(map(int, str(9875))), list(filter(lambda v: v % 2, range(7))))"), '[1, 2, 3] 29 [1, 3, 5]\n');
+  assert.strictEqual(py("s = '1' * 50\nwhile '11' in s:\n    s = s.replace('11', '2', 1)\nprint(s)"), '2222222222222222222222222\n');
+  assert.strictEqual(py("print(*[1, 2, 3], sep='-')"), '1-2-3\n');
+});
+check('import, itertools, lru_cache, глубокая рекурсия', () => {
+  assert.strictEqual(py("from itertools import product, permutations, combinations\nprint(len(list(product('АБВ', repeat=3))), len(list(permutations('abcd'))), len(list(combinations(range(5), 2))))"), '27 24 10\n');
+  assert.strictEqual(py("from functools import lru_cache\n@lru_cache(None)\ndef F(n):\n    if n <= 1:\n        return n\n    return F(n - 1) + F(n - 2)\nprint(F(200))"), '280571172992510140037611932413038677189525\n');
+  assert.strictEqual(py('import sys\nsys.setrecursionlimit(5000)\ndef G(n):\n    if n < 3:\n        return 1\n    return G(n - 1) + n\nprint(G(3000))'), '4501498\n');
+  assert.strictEqual(pyErr('def G(n):\n    return G(n - 1)\nG(5)'), 'RecursionError:2');           // без setrecursionlimit — 1000, как в Python
+  assert.strictEqual(pyErr('import numpy'), 'ImportError:1');
+  assert.strictEqual(py("import math\nprint(math.isqrt(10 ** 20 + 5), math.sqrt(16), math.gcd(12, 18), math.ceil(2.1), math.floor(-2.1))"), '10000000000 4.0 6 3 -3\n');
+});
+const TASKS = F.ORDER.map(id => L(id)).filter(l => l.answer);
+for (const lv of TASKS) {
+  check(`задача ${lv.id} «${lv.title}» (ЕГЭ №${lv.ege.join(', ') || '—'}): эталон верен на 5 наборах данных, стартовый код и неверный ответ — нет`, () => {
+    for (const seed of [11, 22, 33, 44, 55]) {
+      const data = new F.Run(lv, '', { seed }).data, r = F.simulate(lv, F.solutionFor(lv, data), { seed });
+      assert.strictEqual(r.state, 'win', `seed ${seed}: ${r.state} ${r.error || ''} ${r.wrong || ''}`);
+    }
+    const st = F.simulate(lv, lv.start, { seed: 7, maxOps: 400000 });
+    assert.notStrictEqual(st.state, 'win', 'стартовый код уже решает задачу');
+    const n = new F.Run(lv, '', { seed: 7 }).data.expect.length;
+    const wrong = F.simulate(lv, 'answer(' + Array(n).fill('-1').join(', ') + ')', { seed: 7 });
+    assert.strictEqual(wrong.state, 'wrong');
+  });
+}
+check('без кэша рекурсия упирается в лимит и подсказывает @lru_cache', () => {
+  const r = F.simulate(L(31), L(31).start, { seed: 3, maxOps: 300000 });
+  assert.match(r.error, /TimeoutError.*lru_cache/);
+});
+check('уровни покрывают все 43 темы учебника и все задания ЕГЭ, которые решаются кодом', () => {
+  const py = new Set(F.LEVELS.flatMap(l => l.py)), ege = new Set(F.LEVELS.flatMap(l => l.ege));
+  for (let t = 1; t <= 43; t++) assert.ok(py.has(t), 'тема ' + t);
+  for (const n of [2, 5, 8, 9, 12, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26]) assert.ok(ege.has(n), 'ЕГЭ №' + n);
+  assert.deepStrictEqual([...F.ORDER].sort((a, b) => a - b), F.LEVELS.map(l => l.id).sort((a, b) => a - b));     // каждый уровень в одной главе
+});
+check('карта уровней в index.html (ссылки из учебника и методички) совпадает с farm.js', () => {
+  const html = require('fs').readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const m = /const FARM_LV = (\[.*\]);/.exec(html);
+  assert.ok(m, 'в index.html нет FARM_LV');
+  const got = JSON.parse(m[1].replace(/'/g, '"'));
+  const want = F.ORDER.map(id => L(id)).map(l => [l.id, l.title, l.py, l.ege]);
+  assert.deepStrictEqual(got, want, 'обновите FARM_LV в index.html по LEVELS из farm.js');
+});
 for (const lv of F.LEVELS) {
-  if (!lv.solution) continue;
+  if (!lv.solution || lv.answer) continue;
   check(`уровень ${lv.id} «${lv.title}»: решение проходит, стартовый код — нет`, () => {
     const r = F.simulate(lv, lv.solution);
     assert.strictEqual(r.state, 'win', `решение: ${r.state} ${r.error || ''} ${JSON.stringify(r.items)}`);

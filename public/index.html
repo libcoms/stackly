@@ -968,6 +968,12 @@ a.bk-tile.empty:hover, a.bk-tile.add:hover { border-color: var(--blue); }
 .task-goal { font-size: 17.5px; color: var(--ink-2); margin: 22px 0 10px; max-width: 70ch; }
 .pytags { display: flex; flex-wrap: wrap; gap: 6px; }
 .pytags a { font: 500 12.5px/1 var(--f-mono); padding: 6px 9px; border-radius: 5px; background: var(--blue-soft); color: var(--blue-ink); }
+.farm-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 2px; font-size: 13px; }
+.farm-links > span { display: inline-flex; align-items: center; gap: 5px; color: var(--mute); font-weight: 500; }
+.farm-links > span svg { width: 16px; height: 16px; }
+.farm-links a { padding: 5px 8px; border-radius: 5px; background: var(--ok-soft); color: var(--ok); font-weight: 500; }
+.farm-practice { margin-top: 24px; }
+.farm-practice b a { color: var(--ok); margin-right: 8px; }
 .pytags a:hover { text-decoration: none; background: var(--blue); color: var(--on-blue); }
 .changed { margin-top: 20px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; padding: 14px 16px; border-radius: var(--r-s); background: var(--lime-soft); color: var(--ink); }
 .changed .newbadge { margin-top: 2px; }
@@ -2771,6 +2777,16 @@ function stacklyApp() {
   };
   let farmX = normFarmX(store.get('farmx', null));
   const clearFarm = () => { Object.keys(farmDone).forEach(k => delete farmDone[k]); farmX = null; store.set('farmx', null); };
+  // уровни игры «Ферма»: [номер, название, темы учебника, задания ЕГЭ] — копия из public/farm.js, сверяется в tests/farm_check.js
+  const FARM_LV = [[1,'Первый урожай',[1],[]], [2,'Снова и снова',[14],[]], [3,'Шаг в сторону',[1],[]], [4,'Сначала проверь',[6],[]], [5,'Обход поля',[11,12,17],[]], [6,'Кусты',[35],[]], [7,'Морковь',[6],[]], [8,'Шахматный лес',[5,6],[]], [9,'Свои функции',[34,35,36],[]], [10,'Тыквы',[6,8],[]], [11,'Подсолнухи',[27,29,31],[26]], [13,'Перепись грядок',[3,4,13],[17]], [14,'Лучшая грядка',[5,7,13],[17]], [15,'Цифры на бирках',[9,14,15],[5,14]], [16,'Делители',[10,12,16],[25]], [17,'Соседние грядки',[27,28,30],[17]], [18,'Метки сортов',[2,19,21,22],[24]], [19,'Самая длинная полоса',[18,19,24],[24]], [20,'Редактор семян',[14,22],[12]], [21,'Двоичные бирки',[20,25],[5]], [22,'Системы счисления',[15,26],[14]], [23,'Журнал урожая',[39,32],[17]], [24,'Таблица склада',[23,33,40,41],[9]], [25,'Коробки',[29,31],[26]], [26,'Частые соседи',[42,43],[24]], [27,'Датчики полива',[7,34],[2]], [28,'Названия сортов',[41,43],[8]], [29,'Параметр полива',[16,36],[15]], [30,'Самый богатый путь',[33,17],[18]], [31,'Рекурсивный рост',[36,37,38],[16]], [32,'Программы дрона',[35,38],[23]], [33,'Куча урожая',[38],[19,20,21]], [12,'Своя ферма',[],[]]];
+  // ссылки на уровни фермы из темы учебника (kind = 'py') и из разбора задания ЕГЭ (kind = 'ege')
+  function farmFor(kind, id) {
+    const ls = FARM_LV.filter(l => (kind === 'py' ? l[2] : l[3]).includes(id));
+    if (!ls.length) return '';
+    const links = ls.map(l => `<a href="#farm-${l[0]}">${l[0]}. ${esc(l[1])}</a>`).join('');
+    return kind === 'py' ? `<div class="farm-links"><span>${I.tabFarm}В игре «Ферма»</span>${links}</div>`
+      : `<div class="practice farm-practice"><b>Потренироваться в игре «Ферма» — ${ls.length === 1 ? 'уровень' : 'уровни'} ${links}</b><a class="btn ghost" href="#farm-${ls[0][0]}">Играть <span class="arr">${I.arrow}</span></a></div>`;
+  }
 
   /* ── иконки (тонкая линия) ── */
   const svg = (d, w = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -3502,6 +3518,7 @@ function stacklyApp() {
           <section class="block"><h2><span class="ball"></span>Решение на Python</h2>${codeBlock(t.code)}</section>
           <section class="block"><h2><span class="ball"></span>Частые ошибки</h2><div class="traps">${t.traps.map(x => `<div class="trap"><span>${esc(x)}</span></div>`).join('')}</div></section>
           <section class="block"><div class="tipbox"><span class="ball"></span><div><b>Совет</b>${esc(t.tip)}</div></div></section>
+          ${farmFor('ege', n)}
           ${bankN ? `<div class="practice"><b>${bankN} ${plural(bankN, 'задача', 'задачи', 'задач')} на задание ${n} в банке</b><a class="btn" href="#bank-${n}">Потренироваться <span class="arr">${I.arrow}</span></a></div>` : ''}
           <nav class="task-foot">${prev ? `<a href="#ege-${prev.n}"><small>← Задание ${prev.n}</small><b>${esc(prev.title)}</b></a>` : '<span></span>'}${next ? `<a class="nx" href="#ege-${next.n}"><small>Задание ${next.n} →</small><b>${esc(next.title)}</b></a>` : ''}</nav>
         </article>
@@ -3514,7 +3531,7 @@ function stacklyApp() {
     return `<article class="topic" id="topic-${t.id}">
       <aside><span class="eyebrow">Тема <b>${t.id}</b></span><h3>${esc(t.title)}</h3>
         <div class="pytags">${t.ege.length ? t.ege.map(e => `<a href="#ege-${e}">№${e}</a>`).join('') : '<a href="#ege-1">основа для всех заданий</a>'}</div>
-        <button type="button" class="btn small ghost study-btn ${on ? 'on' : ''}" data-study="${t.id}">${on ? 'Изучено' : 'Отметить изученной'}</button>${acct.role === 'admin' && acct.cloud ? `<a class="btn small ghost" style="margin-top:8px" href="#edit-py-${t.id}">Изменить тему</a>` : ''}</aside>
+        ${farmFor('py', t.id)}<button type="button" class="btn small ghost study-btn ${on ? 'on' : ''}" data-study="${t.id}">${on ? 'Изучено' : 'Отметить изученной'}</button>${acct.role === 'admin' && acct.cloud ? `<a class="btn small ghost" style="margin-top:8px" href="#edit-py-${t.id}">Изменить тему</a>` : ''}</aside>
       <div class="main"><div class="prose">${t.text}</div>${codeBlock(t.code)}${t.out ? `<div class="out">${esc(t.out)}</div>` : ''}
         <div class="note"><b>Запомни.</b> ${esc(t.note)}</div></div>
     </article>`;
@@ -5453,7 +5470,7 @@ function stacklyApp() {
   function farmLib() {
     if (window.StacklyFarm) return Promise.resolve();
     return farmReq || (farmReq = new Promise((ok, no) => {
-      const s = document.createElement('script'); s.src = '/farm.js?v=4';
+      const s = document.createElement('script'); s.src = '/farm.js?v=5';
       s.onload = ok; s.onerror = () => { farmReq = null; s.remove(); no(); };
       document.head.appendChild(s);
     }));
@@ -5467,6 +5484,7 @@ function stacklyApp() {
     if (farmCtl) farmCtl.destroy();
     const m = h.match(/^farm-(\d+)$/);
     farmCtl = StacklyFarm.mount(box, { level: m ? +m[1] : 0, done: farmDone, all: isTeacher(), hl, store, points: PTS.farm, onWin: farmWin,
+      topic: id => pyBy[id] && pyBy[id].title, egeTitle: n => egeBy[n] && egeBy[n].title,
       farmSave: () => farmX, onFarmSave: (s, cloud) => { farmX = normFarmX(s); if (cloud) persist(); else store.set('farmx', farmX); } });
   }
   // уровень пройден: лучший результат в прогрессе, баллы — только за первое прохождение
