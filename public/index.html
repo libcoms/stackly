@@ -5445,7 +5445,7 @@ function stacklyApp() {
   function farmLib() {
     if (window.StacklyFarm) return Promise.resolve();
     return farmReq || (farmReq = new Promise((ok, no) => {
-      const s = document.createElement('script'); s.src = '/farm.js?v=1';
+      const s = document.createElement('script'); s.src = '/farm.js?v=2';
       s.onload = ok; s.onerror = () => { farmReq = null; s.remove(); no(); };
       document.head.appendChild(s);
     }));
@@ -7241,7 +7241,7 @@ function stacklyApp() {
     }
     else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
-    else if (/^farm(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="farmpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'farm'; }
+    else if (/^farm(-\d+)?$/.test(h)) { html = `<div class="page fm-host" id="farmpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'farm'; }
     else if (h === 'login' || h === 'signup') {
       if (acct.cloud) { location.replace('#me'); return; }
       try { sessionStorage.removeItem(NEXT); } catch (e) { }
@@ -7330,7 +7330,7 @@ function stacklyApp() {
     if (nav === 'rating') loadRating();
     if (nav === 'farm') loadFarm(h);
     if (nav === 'me') { loadMyClass(); loadTg(); }
-    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', farm: 'Ферма: Python в игре · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
+    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', farm: 'Ферма · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', (nav === 'me' && acct.role !== 'student') || nav === 'login');
   }
 
