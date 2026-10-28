@@ -517,7 +517,8 @@ def summary(data, updated, uid=None):
     streak, back = 0, (0 if day(0) in days else 1)        # сегодня ещё не занимался — серия считается со вчера
     while day(back) in days or day(back) in frozen:
         streak += day(back) in days; back += 1
-    return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']), 'farm': len(sets['farm']),
+    # games — номера пройденных уровней игр (ферма до 100, склад с 101): сайт сам делит их по играм
+    return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']), 'farm': len(sets['farm']), 'games': sorted(sets['farm']),
             'tries': tries, 'right': right, 'first': first, 'accuracy': round(right / tries * 100) if tries else None,
             'active7': sum(day(i) in days for i in range(7)), 'streak': streak, 'updated': updated,
             'points': points(len(sets['bank']), first, len(sets['py']) + len(sets['ege']) + len(sets['mat']), len(days), len(sets['farm']))}
