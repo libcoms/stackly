@@ -1021,7 +1021,7 @@
   class World {
     constructor(lv, seed) {
       this.lv = lv; this.w = lv.w; this.h = lv.h; this.t = 0; this.x = 0; this.y = 0;
-      this.items = {}; this.rng = rng32(seed);
+      this.items = { ...(lv.items || {}) }; this.rng = rng32(seed);           // в своей ферме урожай копится между запусками
       this.cells = Array.from({ length: this.w * this.h }, () => ({ g: 'grass', e: { type: 'Grass', at: -1e6 } }));
     }
     cell(x = this.x, y = this.y) { return this.cells[y * this.w + x]; }
@@ -1051,7 +1051,7 @@
       if (type === 'Sunflower') c.e.petals = 7 + Math.floor(this.rng() * 9);
     }
     clear(c) { c.e = null; if (c.g === 'grass') this.put(c, 'Grass'); }
-    add(item, n) { this.items[item] = (this.items[item] || 0) + n; }
+    add(item, n) { this.items[item] = (this.items[item] || 0) + n * (this.lv.mul || 1); }
     done() { const g = this.lv.goal; return !!g && Object.keys(g).every(k => (this.items[k] || 0) >= g[k]); }
   }
 
@@ -1100,6 +1100,10 @@
         if (!(p instanceof Const) || p.group !== 'Entities' || p.name === 'Dead_Pumpkin') throw E('TypeError', 'plant() ждёт растение, например plant(Entities.Bush)');
         const c = w.cell();
         let ok = true;
+        if (lv.plants && !lv.plants.includes(p.name)) {
+          const u = UPGRADES.find(x => x.gives && (x.gives.plants || []).includes(p.name));
+          throw E('LockedError', `растение «${ENT[p.name].ru}» пока закрыто: купите улучшение «${u ? u.title : '?'}»`);
+        }
         if (ENT[p.name].soil && c.g !== 'soil') { ok = false; run.note('soil', `${ENT[p.name].ru} растёт только на вспаханной земле: сначала till()`); }
         else if (c.e && c.e.type !== 'Grass') ok = false;
         if (ok) w.put(c, p.name);
@@ -1128,8 +1132,9 @@
     for (const name of GAME) {
       const open = !lv.api || lv.api.includes(name);
       if (!open) {
-        const at = LEVELS.find(l => l.api && l.api.includes(name));
-        ip.builtins.set(name, new Bi(name, () => { throw E('NameError', `команда ${name}() откроется ${at ? `на уровне ${at.id}` : 'позже'}`); }));
+        const at = LEVELS.find(l => l.api && l.api.includes(name)), u = UPGRADES.find(x => x.gives && (x.gives.api || []).includes(name));
+        const when = lv.sandbox ? `после улучшения «${u ? u.title : '?'}»` : at ? `на уровне ${at.id}` : 'позже';
+        ip.builtins.set(name, new Bi(name, () => { throw E('NameError', `команда ${name}() откроется ${when}`); }));
       } else ip.builtins.set(name, new Bi(name, impl[name], impl[name].constructor.name === 'GeneratorFunction'));
     }
   }
@@ -1264,11 +1269,11 @@
       solution: 'n = get_world_size()\n\ndef goto(x, y):\n    while get_pos_x() != x:\n        move(East)\n    while get_pos_y() != y:\n        move(North)\n\ndef plant_all():\n    for i in range(n):\n        for j in range(n):\n            if get_ground_type() == Grounds.Grassland:\n                till()\n            plant(Entities.Sunflower)\n            move(North)\n        move(East)\n\nwhile True:\n    plant_all()\n    cells = []\n    for i in range(n):\n        for j in range(n):\n            cells.append([measure(), get_pos_x(), get_pos_y()])\n            move(North)\n        move(East)\n    cells.sort(reverse=True)\n    for c in cells:\n        goto(c[1], c[2])\n        while not can_harvest():\n            pass\n        harvest()\n',
     },
     {
-      id: 12, title: 'Своя ферма', concept: 'свободная игра', w: 6, h: 6, goal: null, limit: 20000, par: 0, need: 6,
-      text: 'Цели нет: все команды открыты, поле 6×6. Попробуйте собрать как можно больше за 20 000 ходов или придумайте свою задачу.',
-      learn: ['Всё вместе', 'while True:\n    print(num_items(Items.Wood))', '<code>num_items(Items.Hay)</code> — сколько собрано: <code>Hay</code>, <code>Wood</code>, <code>Carrot</code>, <code>Pumpkin</code>, <code>Power</code>. <code>print()</code> выводит значения в журнал под полем.'],
-      start: '# Свободная ферма: все команды открыты\n',
-      hint: 'Начните с программы из «Свои функции» и добавьте тыквы и подсолнухи',
+      id: 12, title: 'Своя ферма', concept: 'дерево улучшений', w: 3, h: 3, goal: null, limit: 1e7, par: 0, need: 6, sandbox: true,
+      text: 'Здесь урожай не пропадает: всё собранное копится в амбаре между запусками. Тратьте его на улучшения (кнопка «+» справа вверху): новые команды, растения, поле побольше, удобрение. Начинаете с поля 3×3 и травы.',
+      learn: ['Цикл, который не кончается', 'while True:\n    for i in range(get_world_size()):\n        if can_harvest():\n            harvest()\n        move(North)\n    move(East)', 'Программа работает, пока вы её не остановите кнопкой ■. Амбар сохраняется сам. Купили улучшение — допишите программу, чтобы им пользоваться.'],
+      start: '# Своя ферма: урожай копится в амбаре, за него покупаются улучшения (кнопка «+»)\nwhile True:\n    if can_harvest():\n        harvest()\n    move(North)\n',
+      hint: 'Сначала копите сено на «Посадку» и «Расширение поля». Потом кусты дают древесину для деревьев и вспашки.',
       solution: null,
     },
   ];
@@ -1289,7 +1294,157 @@
   const PAR = { 3: 23, 4: 22, 5: 128, 6: 167, 7: 239, 8: 235, 9: 717, 10: 934, 11: 498 };
   LEVELS.forEach(l => { if (!l.par && PAR[l.id]) l.par = PAR[l.id]; });
 
-  const api = { PyError, parse, tokenize, Interp, Run, World, simulate, LEVELS, pystr, repr };
+  /* ═════════════ ДЕРЕВО УЛУЧШЕНИЙ (своя ферма, уровень 12) ═════════════
+     Сохранение: { t: время, items: {Hay: …}, up: {id: купленный уровень} } — в общем прогрессе как farmx */
+  const SIZES = [3, 4, 5, 6, 7, 8];
+  const BASE_API = ['harvest', 'can_harvest', 'move', 'get_world_size'];
+  const UPGRADES = [
+    { id: 'plant', title: 'Посадка', icon: 'Bush', text: '<code>plant()</code> и кусты — из них древесина', cost: { Hay: 20 }, gives: { api: ['plant'], plants: ['Grass', 'Bush'] } },
+    { id: 'size', title: 'Расширение поля', icon: 'size', text: n => `поле ${SIZES[n + 1]}×${SIZES[n + 1]}`, levels: [{ Hay: 40 }, { Hay: 100, Wood: 40 }, { Wood: 150, Carrot: 60 }, { Carrot: 200, Pumpkin: 80 }, { Pumpkin: 250, Power: 80 }] },
+    { id: 'count', title: 'Учёт', icon: 'count', text: '<code>num_items()</code> — сколько в амбаре', cost: { Hay: 30 }, gives: { api: ['num_items'] } },
+    { id: 'pos', title: 'Координаты', icon: 'pos', text: '<code>get_pos_x()</code> и <code>get_pos_y()</code>', cost: { Hay: 60 }, need: ['plant'], gives: { api: ['get_pos_x', 'get_pos_y'] } },
+    { id: 'trees', title: 'Деревья', icon: 'Tree', text: 'деревья: 5 древесины, но соседние мешают расти', cost: { Wood: 40 }, need: ['plant'], gives: { plants: ['Tree'] } },
+    { id: 'till', title: 'Вспашка', icon: 'Carrot', text: '<code>till()</code>, <code>get_ground_type()</code> и морковь', cost: { Hay: 80, Wood: 50 }, need: ['plant'], gives: { api: ['till', 'get_ground_type'], plants: ['Carrot'] } },
+    { id: 'grow', title: 'Удобрение', icon: 'grow', text: 'всё растёт на 20% быстрее', levels: [{ Hay: 150, Wood: 60 }, { Wood: 150, Carrot: 120 }, { Pumpkin: 150, Power: 60 }], need: ['plant'] },
+    { id: 'sense', title: 'Сенсор', icon: 'sense', text: '<code>get_entity_type()</code> — что растёт под дроном', cost: { Carrot: 40 }, need: ['till'], gives: { api: ['get_entity_type'] } },
+    { id: 'yield', title: 'Щедрый урожай', icon: 'yield', text: 'каждый сбор приносит вдвое больше', levels: [{ Wood: 200, Carrot: 150 }, { Pumpkin: 300, Power: 150 }], need: ['till'] },
+    { id: 'pumpkin', title: 'Тыквы', icon: 'Pumpkin', text: 'тыквы; сгнившие убирайте <code>harvest()</code>', cost: { Carrot: 80, Wood: 80 }, need: ['sense'], gives: { plants: ['Pumpkin'] } },
+    { id: 'sun', title: 'Подсолнухи', icon: 'Sunflower', text: 'подсолнухи и <code>measure()</code> — энергия', cost: { Pumpkin: 60, Carrot: 60 }, need: ['pumpkin'], gives: { api: ['measure'], plants: ['Sunflower'] } },
+  ];
+  const upMax = u => u.levels ? u.levels.length : 1;
+  const upCost = (u, have) => have >= upMax(u) ? null : u.levels ? u.levels[have] : u.cost;
+  function upState(save, u) {
+    const have = (save.up || {})[u.id] || 0, cost = upCost(u, have);
+    if (!cost) return { have, cost, st: 'done' };
+    if ((u.need || []).some(n => !(save.up || {})[n])) return { have, cost, st: 'locked' };
+    return { have, cost, st: Object.entries(cost).every(([k, n]) => ((save.items || {})[k] || 0) >= n) ? 'ready' : 'poor' };
+  }
+  // покупка: новое сохранение или null, если нельзя
+  function buy(save, id) {
+    const u = UPGRADES.find(x => x.id === id), s = u && upState(save, u);
+    if (!s || s.st !== 'ready') return null;
+    const items = { ...save.items };
+    for (const [k, n] of Object.entries(s.cost)) items[k] -= n;
+    return { t: Date.now(), items, up: { ...save.up, [id]: s.have + 1 } };
+  }
+  // уровень «своя ферма» под текущие улучшения
+  function sandbox(save) {
+    const up = (save && save.up) || {}, lvl = id => up[id] || 0, base = LEVELS.find(l => l.sandbox);
+    const api = [...BASE_API], plants = ['Grass'];
+    for (const u of UPGRADES) if (lvl(u.id) && u.gives) { api.push(...(u.gives.api || [])); plants.push(...(u.gives.plants || [])); }
+    const size = SIZES[Math.min(SIZES.length - 1, lvl('size'))], f = Math.pow(0.8, lvl('grow'));
+    const grow = Object.fromEntries(Object.entries(ENT).filter(([, d]) => d.grow).map(([k, d]) => [k, Math.max(1, Math.round(d.grow * f))]));
+    return { ...base, w: size, h: size, api, plants, grow, mul: Math.pow(2, lvl('yield')), items: { ...((save && save.items) || {}) } };
+  }
+
+  /* ═════════════ ПОДСКАЗКИ В РЕДАКТОРЕ: автодополнение и справка по аргументам ═════════════ */
+  const CDOC = {
+    ...Object.fromEntries(Object.entries(DOC).map(([k, v]) => [k, [v[0].split(',')[0].replace(/\(.*\)/, k === 'move' ? '(направление)' : k === 'plant' ? '(растение)' : k === 'num_items' ? '(вид)' : '()'), v[1]]])),
+    get_pos_y: ['get_pos_y()', 'координата дрона по вертикали, 0 — нижний ряд'],
+  };
+  const BDOC = {
+    print: ['print(значение, …)', 'вывести значения в журнал'], range: ['range(n) · range(a, b, шаг)', 'числа 0…n−1 или от a до b−1'],
+    len: ['len(x)', 'длина списка или строки'], abs: ['abs(x)', 'модуль числа'], min: ['min(a, b, …) · min(список)', 'наименьшее значение'],
+    max: ['max(a, b, …) · max(список)', 'наибольшее значение'], sum: ['sum(список)', 'сумма'], int: ['int(x)', 'целое число из строки или дроби'],
+    str: ['str(x)', 'строка из значения'], float: ['float(x)', 'дробное число'], list: ['list(x)', 'список из перебираемого'],
+    sorted: ['sorted(список, reverse=False)', 'новый отсортированный список'], reversed: ['reversed(список)', 'элементы в обратном порядке'],
+    enumerate: ['enumerate(список)', 'пары (номер, элемент)'], zip: ['zip(a, b)', 'пары из двух списков'], round: ['round(x)', 'округление'],
+    random: ['random()', 'случайное число от 0 до 1'], bool: ['bool(x)', 'True или False'], dict: ['dict()', 'пустой словарь'], tuple: ['tuple(x)', 'кортеж'],
+  };
+  const MDOC = {
+    append: ['.append(x)', 'добавить в конец списка'], pop: ['.pop(i)', 'убрать элемент (по умолчанию последний) и вернуть его'],
+    sort: ['.sort(reverse=False)', 'отсортировать список на месте'], insert: ['.insert(i, x)', 'вставить x на место i'],
+    remove: ['.remove(x)', 'убрать первое значение x'], index: ['.index(x)', 'номер первого x'], count: ['.count(x)', 'сколько раз встречается x'],
+    reverse: ['.reverse()', 'развернуть список'], copy: ['.copy()', 'копия'], keys: ['.keys()', 'ключи словаря'], values: ['.values()', 'значения словаря'],
+    items: ['.items()', 'пары (ключ, значение)'], get: ['.get(ключ, иначе)', 'значение по ключу или запасное'], split: ['.split(разделитель)', 'разрезать строку'],
+    join: ['.join(список)', 'склеить строки'], upper: ['.upper()', 'ПРОПИСНЫМИ'], lower: ['.lower()', 'строчными'],
+  };
+  const KWDOC = {
+    while: 'повторять, пока условие верно', for: 'перебрать значения: for i in range(n):', if: 'выполнить, если условие верно', elif: 'иначе, если…', else: 'иначе',
+    def: 'своя функция: def имя(параметры):', return: 'вернуть ответ из функции', break: 'выйти из цикла', continue: 'к следующему шагу цикла',
+    pass: 'ничего не делать', and: 'и', or: 'или', not: 'не', in: 'входит ли / перебор в for', True: 'истина', False: 'ложь', None: 'ничего', global: 'менять переменную всей программы из функции',
+  };
+  const NS_RU = { Entities: ENT, Items: ITEMS, Grounds: { Grassland: 'трава', Soil: 'вспаханная земля' } };
+  // имена, которые ученик сам завёл в программе: функции (с параметрами) и переменные
+  function userNames(code) {
+    const out = new Map();
+    for (const m of code.matchAll(/\bdef\s+([A-Za-z_]\w*)\s*\(([^)]*)\)/g)) {
+      out.set(m[1], { kind: 'функция', doc: [`${m[1]}(${m[2].trim()})`, 'ваша функция'], args: !!m[2].trim() });
+      for (const p of m[2].split(',')) { const n = p.split('=')[0].trim(); if (/^[A-Za-z_]\w*$/.test(n) && !out.has(n)) out.set(n, { kind: 'параметр' }); }
+    }
+    for (const m of code.matchAll(/^[ \t]*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s*(?:[-+*/%]|\/\/|\*\*)?=(?!=)/gm))
+      for (const n of m[1].split(',')) { const k = n.trim(); if (!out.has(k) && !KEYWORDS.has(k)) out.set(k, { kind: 'переменная' }); }
+    for (const m of code.matchAll(/\bfor\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s+in\b/g))
+      for (const n of m[1].split(',')) { const k = n.trim(); if (!out.has(k)) out.set(k, { kind: 'переменная' }); }
+    return out;
+  }
+  function inCodePart(line) {           // курсор не внутри строки и не в комментарии
+    let q = '';
+    for (const ch of line) { if (q) { if (ch === q) q = ''; } else if (ch === '"' || ch === "'") q = ch; else if (ch === '#') return false; }
+    return !q;
+  }
+  // варианты для слова перед курсором. avail: { api: [...], plants: [...] | null }
+  function complete(code, caret, avail) {
+    const before = code.slice(0, caret), line = before.slice(before.lastIndexOf('\n') + 1);
+    if (!inCodePart(line)) return null;
+    const m = /(?:([A-Za-z_]\w*|\)|\])\.)?([A-Za-z_]\w*)?$/.exec(line), obj = m[1], pre = m[2] || '';
+    if (/\b(def|for|global)\s+[A-Za-z_]*$/.test(line) && !obj) return null;      // здесь пишут новое имя
+    const api = avail.api || GAME, has = n => api.includes(n);
+    let items = [];
+    if (obj !== undefined) {
+      if (NS_RU[obj]) {
+        const ru = NS_RU[obj];
+        items = Object.keys(ru).filter(n => obj !== 'Entities' || !avail.plants || avail.plants.includes(n === 'Dead_Pumpkin' ? 'Pumpkin' : n))
+          .map(n => ({ name: n, kind: obj, doc: [`${obj}.${n}`, typeof ru[n] === 'string' ? ru[n] : ru[n].ru] }));
+      } else if (/^\d+$/.test(obj)) return null;
+      else items = Object.entries(MDOC).map(([n, d]) => ({ name: n, kind: 'метод', doc: d, call: true, args: !/\(\)$/.test(d[0]) }));
+    } else {
+      if (!pre) return null;
+      const user = userNames(code.slice(0, caret - pre.length) + code.slice(caret));
+      items = [
+        ...GAME.filter(has).map(n => ({ name: n, kind: 'дрон', doc: CDOC[n], call: true, args: ['move', 'plant', 'num_items'].includes(n) })),
+        ...(has('move') ? Object.keys(DIRS).map(n => ({ name: n, kind: 'направление', doc: [n, `направление: ${DIRS[n][2]}`] })) : []),
+        ...Object.keys(NS_RU).filter(n => n !== 'Grounds' || has('get_ground_type')).filter(n => n !== 'Items' || has('num_items')).filter(n => n !== 'Entities' || has('plant') || has('get_entity_type'))
+          .map(n => ({ name: n, kind: 'набор', doc: [n + '.…', n === 'Entities' ? 'растения' : n === 'Items' ? 'виды урожая' : 'виды земли'], ns: true })),
+        ...[...user].map(([n, u]) => ({ name: n, kind: u.kind, doc: u.doc || [n, u.kind === 'параметр' ? 'параметр функции' : 'ваша переменная'], call: u.kind === 'функция', args: u.args })),
+        ...Object.keys(BDOC).map(n => ({ name: n, kind: 'Python', doc: BDOC[n], call: true, args: !/^\w+\(\)$/.test(BDOC[n][0]) })),
+        ...Object.keys(KWDOC).map(n => ({ name: n, kind: 'слово', doc: [n, KWDOC[n]], kw: true })),
+      ];
+    }
+    const low = pre.toLowerCase(), seen = new Set();
+    items = items.filter(it => it.name.toLowerCase().startsWith(low) && it.name !== pre && !seen.has(it.name) && seen.add(it.name)).slice(0, 8);
+    return items.length ? { from: caret - pre.length, pre, items } : null;
+  }
+  // что вставить при выборе: текст и где оставить курсор
+  function insertion(it) {
+    if (it.ns) return { text: it.name + '.', back: 0, again: true };
+    if (it.call) return { text: it.name + '()', back: it.args ? 1 : 0 };
+    if (it.kw) return { text: it.name + (['True', 'False', 'None', 'pass', 'break', 'continue'].includes(it.name) ? '' : ' '), back: 0 };
+    return { text: it.name, back: 0 };
+  }
+  // справка по вызову, внутри скобок которого стоит курсор
+  function signature(code, caret, avail) {
+    const before = code.slice(0, caret), line = before.slice(before.lastIndexOf('\n') + 1);
+    if (!inCodePart(line)) return null;
+    let depth = 0;
+    for (let i = line.length - 1; i >= 0; i--) {
+      const ch = line[i];
+      if (ch === ')' || ch === ']') depth++;
+      else if (ch === '[') depth--;
+      else if (ch === '(') {
+        if (depth) { depth--; continue; }
+        const m = /(\.)?([A-Za-z_]\w*)\s*$/.exec(line.slice(0, i));
+        if (!m) return null;
+        const n = m[2];
+        if (m[1]) return MDOC[n] || null;
+        const u = userNames(code).get(n);
+        return ((avail.api || GAME).includes(n) && CDOC[n]) || BDOC[n] || (u && u.doc) || null;
+      }
+    }
+    return null;
+  }
+
+  const api = { PyError, parse, tokenize, Interp, Run, World, simulate, LEVELS, pystr, repr, UPGRADES, SIZES, upState, buy, sandbox, complete, signature, insertion };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
   /* ═════════════ ЭКРАН ИГРЫ: островок в 3D (Three.js), поверх — окна с заданием и кодом ═════════════ */
@@ -1641,6 +1796,41 @@
 .fg-out .s { color: #AEB4BC; }
 .fg-out .w { color: #A9D35A; font-weight: 600; }
 .fg-out button.ln { padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.fg-tree { width: min(780px, calc(100% - 32px)) !important; }
+.fg-tier { margin-bottom: 14px; }
+.fg-tier h5 { margin: 0 0 8px; font: 600 12px/1.2 var(--f-body); color: #9CA2AB; text-transform: uppercase; letter-spacing: .04em; }
+.fg-ups { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.fg-up { display: flex; flex-direction: column; gap: 7px; padding: 10px; border-radius: 4px; background: #2A2B30; box-shadow: inset 0 0 0 1px #3A3C42; }
+.fg-up.ready { box-shadow: inset 0 0 0 1px #8DB33A; }
+.fg-up.done { background: #2C3120; box-shadow: inset 0 0 0 1px #4B5A18; }
+.fg-up.locked { opacity: .55; }
+.fg-up .h { display: flex; align-items: center; gap: 8px; }
+.fg-up .h i { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 3px; background: #3C3F45; }
+.fg-up .h svg { width: 24px; height: 24px; }
+.fg-up .h b { flex: 1; font-size: 14px; color: #fff; }
+.fg-up .h small { color: #C5DA6E; font: 600 12px var(--f-mono); }
+.fg-up p { margin: 0; font-size: 12.5px; line-height: 1.4; color: #CDD2D8; }
+.fg-up p code { font: 500 .92em var(--f-mono); background: #34363C; border: 0; border-radius: 3px; padding: 0 3px; color: #F1F3F5; }
+.fg-up .cost { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 600 13px var(--f-body); font-variant-numeric: tabular-nums; }
+.fg-up .cost span { display: inline-flex; align-items: center; gap: 3px; }
+.fg-up .cost .no { color: #FF9A90; }
+.fg-up .need { font-size: 12px; color: #9CA2AB; }
+.fg-up .got { display: flex; align-items: center; gap: 5px; color: #A9D35A; font-weight: 600; font-size: 13px; }
+.fg-up .got svg { width: 15px; height: 15px; }
+.fg-up button { height: 28px; border: 0; border-radius: 3px; background: #6B7B21; color: #fff; font: 600 13px var(--f-body); cursor: pointer; box-shadow: inset 0 -2px 0 #4C5815; }
+.fg-up button:disabled { background: #3C3F45; color: #8A9099; box-shadow: none; cursor: default; }
+.fg-speed button:disabled { opacity: .35; cursor: default; }
+.fg-cw { position: absolute; left: 0; top: 0; visibility: hidden; pointer-events: none; font: 13.5px/22px var(--f-mono); white-space: pre; font-variant-ligatures: none; }
+.fg-ac { position: absolute; z-index: 20; min-width: 230px; max-width: min(420px, calc(100% - 12px)); background: #2A2B30; border-radius: 4px; box-shadow: 0 12px 26px rgb(0 0 0 / .5), 0 0 0 1px #46494F; overflow: hidden; }
+.fg-ac ul { list-style: none; margin: 0; padding: 3px 0; }
+.fg-ac li { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 2px 10px; cursor: pointer; font: 13px/1.65 var(--f-mono); color: #D9DDE3; }
+.fg-ac li b { color: #C5DA6E; font-weight: 700; }
+.fg-ac li.on { background: #3A4219; color: #fff; }
+.fg-ac li small { font: 11.5px var(--f-body); color: #9CA2AB; }
+.fg-ac .dc { padding: 6px 10px 8px; border-top: 1px solid #3A3C42; font-size: 12.5px; line-height: 1.45; color: #CDD2D8; }
+.fg-ac .dc > code { display: block; margin-bottom: 2px; padding: 0; border: 0; background: none; font: 600 12.5px var(--f-mono); color: #fff; }
+.fg-ac .dc span code { font: 500 .92em var(--f-mono); background: #34363C; border: 0; border-radius: 3px; padding: 0 3px; color: #F1F3F5; }
+.fg-ac.sig .dc { border-top: 0; }
 .fg-pop { left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(460px, calc(100% - 32px)); max-height: calc(100% - 40px); z-index: 30; }
 .fg-pop .fg-bar { cursor: default; }
 .fg-lv { list-style: none; margin: 0; padding: 0; }
@@ -1706,10 +1896,13 @@
   function mount(box, ctx) {
     injectCSS();
     box.classList.add('fm-host');
-    const ctl = { destroy() { } };
+    const ctl = { destroy() { } }, off = new AbortController();      // обработчики снимаются вместе с игрой
     const wanted = ctx.level ? LEVELS.find(l => l.id === ctx.level) : null;
     const firstOpen = LEVELS.find(l => l.goal && ctx.done[l.id] == null && unlocked(l, ctx));
-    const lv = wanted && unlocked(wanted, ctx) ? wanted : firstOpen || LEVELS[LEVELS.length - 1];
+    const base = wanted && unlocked(wanted, ctx) ? wanted : firstOpen || LEVELS[LEVELS.length - 1];
+    // своя ферма: амбар и купленные улучшения — из прогресса
+    let save = base.sandbox ? JSON.parse(JSON.stringify((ctx.farmSave && ctx.farmSave()) || { t: 0, items: {}, up: {} })) : null;
+    let lv = base.sandbox ? sandbox(save) : base;
     let note = '';
     if (wanted && !unlocked(wanted, ctx)) note = `Уровень ${wanted.id} откроется, когда вы пройдёте уровень ${wanted.need || wanted.id - 1}.`;
     else if (ctx.level && !wanted) note = 'Такого уровня нет — выберите из списка.';
@@ -1717,10 +1910,12 @@
     const hl = ctx.hl || esc;
     const codeKey = 'farm-code-' + lv.id;
     let code = ctx.store.get(codeKey, null) ?? lv.start;
-    let speed = Math.min(3, Math.max(0, +ctx.store.get('farm-speed', 1) || 0));
+    let speed = Math.min(lv.sandbox ? 2 : 3, Math.max(0, +ctx.store.get('farm-speed', 1) || 0));        // в своей ферме время идёт по-настоящему
     const prev = LEVELS.find(l => l.id === lv.id - 1), next = LEVELS.find(l => l.id === lv.id + 1);
     const showPet = !lv.api || lv.api.includes('measure');
-    const apiList = (lv.api || Object.keys(DOC)).filter(n => DOC[n] && n !== 'get_pos_y');
+    const helpHTML = () => `<ul>${(lv.api || Object.keys(DOC)).filter(n => DOC[n] && n !== 'get_pos_y').map(n => `<li><b>${esc(DOC[n][0])}</b> — ${DOC[n][1]}</li>`).join('')}</ul>
+          <p>Каждая команда дрону — один ход. <code>get_pos_x()</code>, <code>get_world_size()</code> и <code>num_items()</code> бесплатны. Работает и обычный Python: <code>print()</code>, <code>range()</code>, <code>len()</code>, <code>min()</code>, <code>max()</code>, списки, словари, свои функции.</p>
+          <p>В редакторе при наборе появляются подсказки: ↑ ↓ — выбрать, Tab или Enter — вставить, Esc — закрыть. Tab — отступ, Shift+Tab — убрать отступ, Ctrl+Enter — запуск, Esc и затем Tab — выйти из редактора. Окна можно перетаскивать за заголовок и сворачивать.</p>`;
     const goalItems = lv.goal ? Object.keys(lv.goal) : [];
 
     box.innerHTML = `<div class="fg" role="application" aria-label="Ферма: уровень ${lv.id}">
@@ -1728,8 +1923,8 @@
       <div class="fg-labels"></div>
       <div class="fg-res" aria-label="Урожай"></div>
       <div class="fg-turn">Ход <b>0</b>${lv.goal ? ` / ${lv.limit.toLocaleString('ru-RU')}` : ''}</div>
-      <div class="fg-tools"><button type="button" class="fg-tb" data-fg="levels" title="Уровни" aria-label="Уровни">${ICON.grid}</button><button type="button" class="fg-tb" data-fg="help" title="Команды дрона" aria-label="Команды дрона">${ICON.info}</button></div>
-      <div class="fg-speed" role="group" aria-label="Скорость">${SPEEDS.map((s, i) => `<button type="button" data-speed="${i}" class="${i === speed ? 'on' : ''}" aria-pressed="${i === speed}">${s[0]}</button>`).join('')}</div></div>
+      <div class="fg-tools">${lv.sandbox ? `<button type="button" class="fg-tb" data-fg="tree" title="Улучшения" aria-label="Улучшения">${ICON.plus}</button>` : ''}<button type="button" class="fg-tb" data-fg="levels" title="Уровни" aria-label="Уровни">${ICON.grid}</button><button type="button" class="fg-tb" data-fg="help" title="Команды дрона" aria-label="Команды дрона">${ICON.info}</button></div>
+      <div class="fg-speed" role="group" aria-label="Скорость">${SPEEDS.map((s, i) => `<button type="button" data-speed="${i}" class="${i === speed ? 'on' : ''}" aria-pressed="${i === speed}" ${i === 3 && lv.sandbox ? 'disabled title="В своей ферме время идёт по-настоящему"' : ''}>${s[0]}</button>`).join('')}</div></div>
       <section class="fg-win fg-task" data-win="task" aria-label="Задание"><div class="fg-bar"><b>Уровень ${lv.id} · ${esc(lv.title)}</b><button type="button" class="fg-b" data-fg="min" aria-label="Свернуть">${ICON.min}</button></div>
         <div class="fg-body"><span class="fg-chip">${esc(lv.concept)}</span><h3>${esc(lv.title)}</h3><p>${lv.text}</p>
           ${lv.goal ? '<div class="fg-goal"></div>' : ''}
@@ -1742,14 +1937,13 @@
           <button type="button" class="fg-b" data-fg="reset" aria-label="Заново" title="Вернуть поле в начало">${ICON.reset}</button>
           <b>уровень_${lv.id}.py</b><button type="button" class="fg-b" data-fg="min" aria-label="Свернуть">${ICON.min}</button></div>
         <div class="fg-ed"><div class="fg-ed-in"><div class="fg-gut" aria-hidden="true"></div><div class="fg-src"><div class="fg-hl"></div><pre aria-hidden="true"><code></code></pre>
-          <textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Программа на Python"></textarea></div></div></div>
-        <div class="fg-out" aria-live="polite"></div></section>
+          <textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Программа на Python" aria-autocomplete="list"></textarea><span class="fg-cw" aria-hidden="true">xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span></div></div></div>
+        <div class="fg-out" aria-live="polite"></div><div class="fg-ac" role="listbox" aria-label="Подсказки" hidden></div></section>
+      ${lv.sandbox ? `<section class="fg-win fg-pop fg-tree" data-win="tree" aria-label="Улучшения" hidden><div class="fg-bar"><b>Улучшения</b><button type="button" class="fg-b" data-fg="tree" aria-label="Закрыть">${ICON.close}</button></div><div class="fg-body"></div></section>` : ''}
       <section class="fg-win fg-pop" data-win="levels" aria-label="Уровни" ${openLevels ? '' : 'hidden'}><div class="fg-bar"><b>Ферма · уровни</b><button type="button" class="fg-b" data-fg="levels" aria-label="Закрыть">${ICON.close}</button></div>
         <div class="fg-body">${levelsHTML(ctx, lv, note || `Дрон-фермер слушается только программы на Python. Каждый уровень учит одной вещи, за первое прохождение — ${ctx.points || 10} баллов.`)}</div></section>
       <section class="fg-win fg-pop fg-help" data-win="help" aria-label="Команды" hidden><div class="fg-bar"><b>Команды дрона</b><button type="button" class="fg-b" data-fg="help" aria-label="Закрыть">${ICON.close}</button></div>
-        <div class="fg-body"><ul>${apiList.map(n => `<li><b>${esc(DOC[n][0])}</b> — ${DOC[n][1]}</li>`).join('')}</ul>
-          <p>Каждая команда дрону — один ход. <code>get_pos_x()</code>, <code>get_world_size()</code> и <code>num_items()</code> бесплатны. Работает и обычный Python: <code>print()</code>, <code>range()</code>, <code>len()</code>, <code>min()</code>, <code>max()</code>, списки, словари, свои функции.</p>
-          <p>В редакторе: Tab — отступ, Shift+Tab — убрать отступ, Ctrl+Enter — запуск, Esc и затем Tab — выйти из редактора. Окна можно перетаскивать за заголовок и сворачивать.</p></div></section>
+        <div class="fg-body">${helpHTML()}</div></section>
     </div>`;
     const $ = s => box.querySelector(s);
     const fg = $('.fg'), stage = $('.fg-view'), labels = $('.fg-labels');
@@ -1826,7 +2020,7 @@
     const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { clearTimeout(ro.t); ro.t = setTimeout(() => { if (!narrow) saveUI(); layout(); }, 80); }) : null;
     if (ro) { ro.observe(box); ro.observe(codeW); }
     const onResize = () => layout();
-    addEventListener('resize', onResize);
+    addEventListener('resize', onResize, { signal: off.signal });
 
     /* сцена */
     function attach(make) {
@@ -1835,10 +2029,10 @@
       view = make();
       view.fit(freeZone(), narrow); view.sync(world); petals();
     }
-    loadThree().then(THREE => {
-      try { attach(() => scene3d(THREE, stage, lv)); }
-      catch (e) { attach(() => sceneFlat(stage, lv)); }
-    }, () => attach(() => sceneFlat(stage, lv)));
+    let THREE_ = null;
+    // сцена пересоздаётся, когда поле выросло
+    const build = () => { if (view) { view.dispose(); view = null; } if (THREE_) { try { attach(() => scene3d(THREE_, stage, lv)); return; } catch (e) { } } attach(() => sceneFlat(stage, lv)); };
+    loadThree().then(T => { THREE_ = T; build(); }, build);
     function petals() {
       labels.querySelectorAll('.fg-pet').forEach(x => x.remove());
       if (!view || !showPet) return;
@@ -1873,12 +2067,17 @@
       if (top < ed.scrollTop || top > ed.scrollTop + ed.clientHeight - 30) ed.scrollTop = top - 60;
     }
     ta.addEventListener('input', () => {
-      code = ta.value; setMark(null); paint();
+      code = ta.value; setMark(null); paint(); acUpdate(true);
       clearTimeout(saveT); saveT = setTimeout(() => ctx.store.set(codeKey, code), 400);
     });
     let tabOut = false;
     function edit(a, b, text) { ta.setRangeText(text, a, b, 'end'); ta.dispatchEvent(new Event('input')); }
     ta.addEventListener('keydown', e => {
+      if (ac && !acEl.hidden) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); ac.sel = (ac.sel + (e.key === 'ArrowDown' ? 1 : ac.items.length - 1)) % ac.items.length; acShow(); return; }
+        if ((e.key === 'Enter' || e.key === 'Tab') && !e.shiftKey && !e.ctrlKey && !e.metaKey) { e.preventDefault(); acAccept(ac.sel); return; }
+        if (e.key === 'Escape') { e.preventDefault(); acHide(); return; }
+      } else if (e.key === 'Escape' && !acEl.hidden) { e.preventDefault(); acHide(); return; }
       if (e.key === 'Escape') { tabOut = true; return; }
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); start(); return; }
       if (ta.readOnly) return;
@@ -1950,10 +2149,19 @@
       stepB.setAttribute('aria-label', on ? 'Пауза' : 'Шаг'); stepB.title = on ? 'Пауза' : 'Выполнить до следующей команды дрону';
       ta.readOnly = m === 'run' || m === 'pause';
     }
+    // амбар своей фермы: собранное сохраняется во время работы (в браузере) и после остановки (в аккаунте)
+    let keptAt = 0;
+    function keep(cloud) {
+      if (!lv.sandbox || !run) return;
+      save = { ...save, t: Date.now(), items: { ...run.world.items } };
+      keptAt = NOW();
+      if (ctx.onFarmSave) ctx.onFarmSave(save, cloud);
+    }
     function fresh() {
       clearTimeout(timer); timer = 0;
       fg.querySelector('.fg-done')?.remove();
       out.innerHTML = ''; outN = 0;
+      if (lv.sandbox) lv = sandbox(save);
       run = new Run(lv, ta.value); run.outI = 0;
       world = run.world; draw(); petals();
       if (run.state === 'error') { finish(); return false; }
@@ -1966,6 +2174,7 @@
     }
     function stop(msg) {
       clearTimeout(timer); timer = 0;
+      if (mode !== 'idle') keep(true);
       if (msg) log('s', esc(msg));
       setMode('idle'); setMark(null);
     }
@@ -1991,6 +2200,7 @@
       }
       if (speed === 3) draw(last);
       flushOut();
+      if (lv.sandbox && NOW() - keptAt > 3000) { keep(false); if (!$('[data-win="tree"]').hidden) treeRender(); }
       if (run.state !== 'run') return finish();
       if (speed < 3) setMark(run.ip.line);
       timer = setTimeout(loop, acts ? ms : 0);
@@ -1999,6 +2209,7 @@
       clearTimeout(timer); timer = 0;
       flushOut(); petals();
       const st = run.state, t = run.world.t;
+      keep(true);
       setMode('idle');
       if (st === 'error') {
         const e = run.error;
@@ -2025,10 +2236,90 @@
       fg.appendChild(d);
       $('[data-win="levels"] .fg-body').innerHTML = levelsHTML(ctx, lv, '');
     }
-    function resetField() { stop(); fg.querySelector('.fg-done')?.remove(); out.innerHTML = ''; outN = 0; run = null; world = new World(lv, 0); draw(); petals(); }
+    function resetField() { stop(); fg.querySelector('.fg-done')?.remove(); out.innerHTML = ''; outN = 0; run = null; if (lv.sandbox) lv = sandbox(save); world = new World(lv, 0); draw(); petals(); }
+
+    /* дерево улучшений */
+    const UP_ICON = {
+      size: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 12h16M12 4v16"/>', count: '<path d="M5 19V9M10 19V5M15 19v-7M20 19H3"/>',
+      pos: '<circle cx="12" cy="12" r="6"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>', grow: '<path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z"/>',
+      sense: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>', yield: '<path d="M5 7l5 5-5 5M12 7l5 5-5 5"/>',
+    };
+    const upIcon = u => ENT[u.icon] ? `<svg viewBox="0 0 40 40">${GL[u.icon]}</svg>` : `<svg viewBox="0 0 24 24" fill="none" stroke="#E6E9EC" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${UP_ICON[u.icon]}</svg>`;
+    function treeRender() {
+      const p = $('[data-win="tree"] .fg-body'); if (!p) return;
+      const depth = {}, dOf = u => depth[u.id] ?? (depth[u.id] = (u.need || []).length ? 1 + Math.max(...u.need.map(n => dOf(UPGRADES.find(x => x.id === n)))) : 0);
+      UPGRADES.forEach(dOf);
+      const tiers = [...new Set(Object.values(depth))].sort();
+      const items = save.items || {};
+      p.innerHTML = `<p class="fg-note">Амбар копится между запусками. Купленное улучшение действует со следующего запуска${mode !== 'idle' ? ' — сейчас программа работает, покупать можно после остановки' : ''}.</p>` + tiers.map(t => `<div class="fg-tier"><h5>Ступень ${t + 1}</h5><div class="fg-ups">${UPGRADES.filter(u => depth[u.id] === t).map(u => {
+        const s = upState(save, u), multi = upMax(u) > 1, txt = typeof u.text === 'function' ? (s.cost ? u.text(s.have) : `поле ${SIZES[s.have]}×${SIZES[s.have]}`) : u.text;
+        const cost = s.cost ? Object.entries(s.cost).map(([k, n]) => `<span class="${(items[k] || 0) >= n ? '' : 'no'}">${itemIcon(k, 16)}${n}</span>`).join('') : '';
+        const need = s.st === 'locked' ? 'нужно: ' + u.need.map(n => '«' + UPGRADES.find(x => x.id === n).title + '»').join(', ') : '';
+        return `<div class="fg-up ${s.st}"><div class="h"><i>${upIcon(u)}</i><b>${esc(u.title)}</b>${multi ? `<small>${s.have}/${upMax(u)}</small>` : ''}</div><p>${txt}</p>
+          ${s.st === 'done' ? '<div class="got">' + ICON.check + 'куплено</div>' : `<div class="cost">${cost}</div>${need ? `<div class="need">${need}</div>` : `<button type="button" data-buy="${u.id}" ${s.st === 'ready' && mode === 'idle' ? '' : 'disabled'}>Купить</button>`}`}</div>`;
+      }).join('')}</div></div>`).join('');
+    }
+    function buyUp(id) {
+      if (mode !== 'idle') return;
+      const ns = buy(save, id); if (!ns) return;
+      const old = lv;
+      save = ns; lv = sandbox(save);
+      if (ctx.onFarmSave) ctx.onFarmSave(save, true);
+      run = null; world = new World(lv, 0);
+      if (old.w !== lv.w && view) build();
+      $('[data-win="help"] .fg-body').innerHTML = helpHTML();
+      treeRender(); draw(); petals();
+      const u = UPGRADES.find(x => x.id === id);
+      out.innerHTML = ''; outN = 0;
+      log('w', `Куплено: «${esc(u.title)}». Действует со следующего запуска.`);
+    }
+
+    /* подсказки при наборе */
+    const acEl = $('.fg-ac'), cwEl = $('.fg-cw'), edEl = $('.fg-ed');
+    let ac = null;
+    const avail = () => ({ api: lv.api || GAME, plants: lv.plants || null });
+    function acHide() { ac = null; acEl.hidden = true; }
+    function acPlace(pos) {
+      const cw = cwEl.offsetWidth / 40 || 8.1, v = ta.value.slice(0, pos), line = v.split('\n').length - 1, col = v.length - v.lastIndexOf('\n') - 1;
+      const er = edEl.getBoundingClientRect(), wr = codeW.getBoundingClientRect();
+      let x = er.left - wr.left + gut.offsetWidth + 14 + col * cw - edEl.scrollLeft, y = er.top - wr.top + 10 + (line + 1) * 22 - edEl.scrollTop + 2;
+      acEl.hidden = false;
+      x = Math.max(4, Math.min(x, wr.width - acEl.offsetWidth - 6));
+      if (y + acEl.offsetHeight > wr.height - 4) y = y - 24 - acEl.offsetHeight;
+      acEl.style.left = x + 'px'; acEl.style.top = Math.max(36, y) + 'px';
+    }
+    const docHTML = d => `<div class="dc"><code>${esc(d[0])}</code><span>${d[1]}</span></div>`;
+    function acShow() {
+      const it = ac.items[ac.sel];
+      acEl.classList.remove('sig');
+      acEl.innerHTML = `<ul>${ac.items.map((x, i) => `<li role="option" data-ac="${i}" class="${i === ac.sel ? 'on' : ''}" aria-selected="${i === ac.sel}"><span><b>${esc(x.name.slice(0, ac.pre.length))}</b>${esc(x.name.slice(ac.pre.length))}</span><small>${esc(x.kind)}</small></li>`).join('')}</ul>${it.doc ? docHTML(it.doc) : ''}`;
+      acPlace(ac.from);
+    }
+    function acUpdate(typing) {
+      if (ta.readOnly || document.activeElement !== ta || ta.selectionStart !== ta.selectionEnd) return acHide();
+      const r = typing ? complete(ta.value, ta.selectionStart, avail()) : null;
+      if (r) { ac = { ...r, sel: 0 }; acShow(); return; }
+      ac = null;
+      const sg = signature(ta.value, ta.selectionStart, avail());
+      if (!sg) { acEl.hidden = true; return; }
+      acEl.classList.add('sig'); acEl.innerHTML = docHTML(sg); acPlace(ta.selectionStart);
+    }
+    function acAccept(i) {
+      const it = ac.items[i], ins = insertion(it), end = ta.selectionStart;
+      ta.setRangeText(ins.text, ac.from, end, 'end');
+      const c = ac.from + ins.text.length - ins.back;
+      ta.setSelectionRange(c, c);
+      ac = null;
+      ta.dispatchEvent(new Event('input'));
+    }
+    acEl.addEventListener('mousedown', e => { const li = e.target.closest('[data-ac]'); e.preventDefault(); if (li && ac) acAccept(+li.dataset.ac); });
+    ta.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== ta) acHide(); }, 100));
+    ta.addEventListener('click', () => acUpdate(false));
+    ta.addEventListener('keyup', e => { if (/^(Arrow(Left|Right)|Home|End)$/.test(e.key)) acUpdate(false); });
+    edEl.addEventListener('scroll', () => { if (!acEl.hidden) acUpdate(!!ac); });
 
     box.addEventListener('click', e => {
-      const b = e.target.closest('[data-fg],[data-speed],[data-line]');
+      const b = e.target.closest('[data-fg],[data-speed],[data-line],[data-buy]');
       if (!b) return;
       if (b.dataset.speed) {
         speed = +b.dataset.speed; ctx.store.set('farm-speed', speed);
@@ -2036,8 +2327,9 @@
         return;
       }
       if (b.dataset.line) { setMark(+b.dataset.line, true); revealLine(+b.dataset.line); ta.focus(); return; }
+      if (b.dataset.buy) { buyUp(b.dataset.buy); return; }
       const a = b.dataset.fg;
-      if (a === 'run') start();
+      if (a === 'run') { acHide(); start(); }
       else if (a === 'step') stepOnce();
       else if (a === 'reset' || a === 'again') resetField();
       else if (a === 'min') {
@@ -2045,9 +2337,11 @@
         b.innerHTML = w.classList.contains('min') ? ICON.plus : ICON.min; b.setAttribute('aria-label', w.classList.contains('min') ? 'Развернуть' : 'Свернуть');
         saveUI(); if (view) { view.fit(freeZone()); petals(); }
       }
-      else if (a === 'levels' || a === 'help') {
-        const p = $(`[data-win="${a}"]`), other = $(`[data-win="${a === 'levels' ? 'help' : 'levels'}"]`);
-        p.hidden = !p.hidden; other.hidden = true;
+      else if (a === 'levels' || a === 'help' || a === 'tree') {
+        const p = $(`[data-win="${a}"]`);
+        p.hidden = !p.hidden;
+        box.querySelectorAll('.fg-pop').forEach(x => { if (x !== p) x.hidden = true; });
+        if (a === 'tree' && !p.hidden) treeRender();
         if (a === 'levels') fg.querySelector('.fg-done')?.remove();
         box.querySelectorAll('.fg-tb').forEach(t => t.classList.toggle('on', !$(`[data-win="${t.dataset.fg}"]`).hidden));
       }
@@ -2056,15 +2350,16 @@
         delete b.dataset.sure; b.textContent = 'Начать код заново';
         stop(); ta.value = lv.start; ta.dispatchEvent(new Event('input'));
       }
-    });
+    }, { signal: off.signal });
     box.querySelectorAll('.fg-win:not(.fg-pop) [data-fg="min"]').forEach(b => { if (b.closest('.fg-win').classList.contains('min')) b.innerHTML = ICON.plus; });
     box.querySelectorAll('.fg-tb').forEach(t => t.classList.toggle('on', !$(`[data-win="${t.dataset.fg}"]`).hidden));
     setMode('idle');
     layout(); draw();
     requestAnimationFrame(layout);
     ctl.destroy = () => {
+      if (mode !== 'idle') keep(true);
       dead = true; clearTimeout(timer); clearTimeout(saveT); ctx.store.set(codeKey, ta.value); mode = 'idle';
-      removeEventListener('resize', onResize); if (ro) ro.disconnect();
+      off.abort(); if (ro) ro.disconnect();
       if (view) view.dispose();
     };
     return ctl;

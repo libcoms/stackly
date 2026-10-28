@@ -76,5 +76,62 @@ check('тыквы: без уборки сгнивших не уложиться'
   assert.notStrictEqual(F.simulate(L(10), L(10).start).state, 'win');
 });
 
+check('подсказки: команды уровня, наборы, свои имена, методы; не в строке и не в комментарии', () => {
+  const names = (code, avail = {}) => { const r = F.complete(code, code.length, avail); return r ? r.items.map(i => i.name) : []; };
+  const lv5 = { api: L(5).api };
+  assert.deepStrictEqual(names('har', lv5), ['harvest']);
+  assert.deepStrictEqual(names('pl', lv5), []);                                   // plant() на уровне 5 ещё закрыта
+  assert.ok(names('mo', lv5).includes('move'));
+  assert.strictEqual(names('move(N', lv5)[0], 'North');                         // направления — раньше слов Python
+  assert.ok(names('plant(Entities.', { api: L(10).api }).includes('Pumpkin'));
+  assert.ok(!names('plant(Entities.', { api: ['plant'], plants: ['Grass', 'Bush'] }).includes('Pumpkin'));
+  assert.ok(names('def goto(x, y):\n    pass\ngo', lv5).includes('goto'));
+  assert.ok(names('cells = []\ncel', lv5).includes('cells'));
+  assert.deepStrictEqual(names('a = [1]\na.app', lv5), ['append']);
+  assert.deepStrictEqual(names('# har', lv5), []);
+  assert.deepStrictEqual(names('print("har', lv5), []);
+  assert.deepStrictEqual(names('def har', lv5), []);
+  const ins = it => F.insertion(it).text;
+  const pick = (code, n, avail = lv5) => F.complete(code, code.length, avail).items.find(i => i.name === n);
+  assert.strictEqual(ins(pick('har', 'harvest')), 'harvest()');
+  assert.deepStrictEqual(F.insertion(pick('mo', 'move')), { text: 'move()', back: 1 });
+  assert.strictEqual(ins(pick('whi', 'while')), 'while ');
+  assert.strictEqual(F.signature('move(', 5, lv5)[0], 'move(направление)');
+  assert.strictEqual(F.signature('print(len(a), ', 14, lv5)[0], 'print(значение, …)');
+  assert.strictEqual(F.signature('def go(x, y):\n    pass\ngo(1, ', 26, lv5)[0], 'go(x, y)');
+  assert.strictEqual(F.signature('harvest()', 9, lv5), null);
+});
+check('своя ферма: улучшения покупаются за урожай и открывают команды, растения и поле', () => {
+  let save = { t: 0, items: {}, up: {} };
+  const sb = F.sandbox(save);
+  assert.strictEqual(sb.w, 3);
+  assert.ok(!sb.api.includes('plant'));
+  assert.strictEqual(F.buy(save, 'plant'), null);                                  // нечем платить
+  const r = F.simulate({ ...sb, limit: 400 }, L(12).start);
+  assert.ok(r.items.Hay >= 20, 'стартовая программа приносит сено');
+  save = { ...save, items: r.items };
+  assert.strictEqual(F.buy(save, 'trees'), null);                                  // сначала «Посадка»
+  save = F.buy(save, 'plant');
+  assert.ok(save && save.up.plant === 1 && save.items.Hay === r.items.Hay - 20);
+  assert.ok(F.sandbox(save).api.includes('plant'));
+  assert.match(F.simulate({ ...F.sandbox(save), limit: 10 }, 'plant(Entities.Tree)').error, /LockedError.*«Деревья»/);
+  assert.match(F.simulate({ ...F.sandbox(save), limit: 10 }, 'till()').error, /после улучшения «Вспашка»/);
+  save.items.Hay = 1000; save.items.Wood = 1000;
+  save = F.buy(F.buy(save, 'size'), 'size');
+  assert.strictEqual(F.sandbox(save).w, 5);
+  save = F.buy(save, 'grow');
+  assert.ok(F.sandbox(save).grow.Bush < 6);
+  assert.strictEqual(F.upState(save, F.UPGRADES.find(u => u.id === 'sun')).st, 'locked');
+  // все улучшения в итоге покупаются, у каждого «нужно» — существующее улучшение
+  const ids = new Set(F.UPGRADES.map(u => u.id));
+  F.UPGRADES.forEach(u => (u.need || []).forEach(n => assert.ok(ids.has(n), u.id + ' → ' + n)));
+  let rich = { t: 0, items: { Hay: 1e6, Wood: 1e6, Carrot: 1e6, Pumpkin: 1e6, Power: 1e6 }, up: {} };
+  for (let i = 0; i < 40; i++) for (const u of F.UPGRADES) rich = F.buy(rich, u.id) || rich;
+  F.UPGRADES.forEach(u => assert.strictEqual(F.upState(rich, u).st, 'done', u.id));
+  const full = F.sandbox(rich);
+  assert.strictEqual(full.w, F.SIZES[F.SIZES.length - 1]);
+  assert.strictEqual(F.simulate({ ...full, limit: 3000 }, L(11).solution).error, undefined);   // все команды открыты
+});
+
 if (fails) { console.log(`\n${fails} проверок не прошло`); process.exit(1); }
 console.log('\nвсе проверки фермы прошли');

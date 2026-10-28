@@ -2763,7 +2763,14 @@ function stacklyApp() {
   // пройденные уровни фермы: номер → лучшее число ходов (public/farm.js)
   const normFarm = f => Object.fromEntries(Object.entries(f && typeof f === 'object' && !Array.isArray(f) ? f : {}).filter(([k, t]) => /^\d{1,2}$/.test(k) && +k >= 1 && +k <= 50 && Number.isFinite(+t) && +t >= 0).map(([k, t]) => [k, +t]));
   const farmDone = normFarm(store.get('farm', {}));
-  const clearFarm = () => Object.keys(farmDone).forEach(k => delete farmDone[k]);
+  // своя ферма: амбар и купленные улучшения { t, items: {Hay: …}, up: {id: уровень} }; из двух копий берётся более свежая
+  const normFarmX = x => {
+    if (!x || typeof x !== 'object') return null;
+    const nums = o => Object.fromEntries(Object.entries(o && typeof o === 'object' ? o : {}).filter(([k, n]) => /^\w{1,20}$/.test(k) && Number.isFinite(+n) && +n >= 0).map(([k, n]) => [k, Math.floor(+n)]));
+    return { t: +x.t || 0, items: nums(x.items), up: nums(x.up) };
+  };
+  let farmX = normFarmX(store.get('farmx', null));
+  const clearFarm = () => { Object.keys(farmDone).forEach(k => delete farmDone[k]); farmX = null; store.set('farmx', null); };
 
   /* ── иконки (тонкая линия) ── */
   const svg = (d, w = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -4356,7 +4363,7 @@ function stacklyApp() {
     return { att: s.att && typeof s.att === 'object' ? s.att : {}, days: s.days && typeof s.days === 'object' ? s.days : {}, events: Array.isArray(s.events) ? s.events.slice(-120) : [], since: +s.since || Date.now() };
   }
   let stats = normStats(store.get('stats', null));
-  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], mats: [...matsDone], farm: { ...farmDone }, att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
+  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], mats: [...matsDone], farm: { ...farmDone }, farmx: farmX, att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
   function bumpDay() { const d = DAY(Date.now()); stats.days[d] = (stats.days[d] || 0) + 1; }
   /* ── очки за активность: считаются из прогресса по той же формуле, что и на сервере (summary в stackly_api.py) ──
      решённая задача — 10, с первой попытки — ещё 5; изученная тема, разобранное задание, материал — 5; уровень фермы — 10;
@@ -4406,7 +4413,7 @@ function stacklyApp() {
     ptsFx(gain);
   }
   function persist() {
-    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]); store.set('farm', farmDone);
+    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]); store.set('farm', farmDone); store.set('farmx', farmX);
     updHWBadge(); updHWPage();
     if (!acct.cloud || acct.readOnly) return;
     clearTimeout(acct.saveT);
@@ -4441,6 +4448,7 @@ function stacklyApp() {
     (remote.ege || []).forEach(x => egeRead.add(+x));
     (remote.mats || []).forEach(x => matsDone.add(+x));
     for (const [k, t] of Object.entries(normFarm(remote.farm))) farmDone[k] = k in farmDone ? Math.min(farmDone[k], t) : t;
+    const rx = normFarmX(remote.farmx); if (rx && (!farmX || rx.t > farmX.t)) farmX = rx;
     const r = normStats(remote);
     for (const [k, a] of Object.entries(r.att)) {
       const l = stats.att[k];
@@ -4459,7 +4467,7 @@ function stacklyApp() {
       if (acct.created) stats.since = Math.min(stats.since, acct.created);
       acct.cloud = true;
       await loadMats(true);                                  // свои материалы учителей: нужны страницам материалов и ДЗ
-      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]); store.set('farm', farmDone);
+      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]); store.set('farm', farmDone); store.set('farmx', farmX);
       const saved = await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok'; celebrate(saved.rewards);
       renderAcctBtn(); refreshHW();
       if (!silent) { toast(`Вы вошли как ${acct.name}`); loadPolls(); }
@@ -5441,23 +5449,25 @@ function stacklyApp() {
   }
 
   /* ── ферма: Python в игре. public/farm.js грузится при первом заходе на #farm ── */
-  let farmCtl = null, farmReq = null;
+  let farmCtl = null, farmReq = null, farmSeq = 0;
   function farmLib() {
     if (window.StacklyFarm) return Promise.resolve();
     return farmReq || (farmReq = new Promise((ok, no) => {
-      const s = document.createElement('script'); s.src = '/farm.js?v=2';
+      const s = document.createElement('script'); s.src = '/farm.js?v=4';
       s.onload = ok; s.onerror = () => { farmReq = null; s.remove(); no(); };
       document.head.appendChild(s);
     }));
   }
   async function loadFarm(h) {
+    const seq = ++farmSeq;                      // после входа route() зовёт нас ещё раз — монтирует только последний вызов
     try { await farmLib(); }
     catch (e) { const box = $('#farmpage'); if (box) box.innerHTML = tMsg('Игра не загрузилась', 'Проверьте интернет и обновите страницу.'); return; }
     const box = $('#farmpage');
-    if (!box || (location.hash || '#home').slice(1) !== h) return;
+    if (seq !== farmSeq || !box || (location.hash || '#home').slice(1) !== h) return;
     if (farmCtl) farmCtl.destroy();
     const m = h.match(/^farm-(\d+)$/);
-    farmCtl = StacklyFarm.mount(box, { level: m ? +m[1] : 0, done: farmDone, all: isTeacher(), hl, store, points: PTS.farm, onWin: farmWin });
+    farmCtl = StacklyFarm.mount(box, { level: m ? +m[1] : 0, done: farmDone, all: isTeacher(), hl, store, points: PTS.farm, onWin: farmWin,
+      farmSave: () => farmX, onFarmSave: (s, cloud) => { farmX = normFarmX(s); if (cloud) persist(); else store.set('farmx', farmX); } });
   }
   // уровень пройден: лучший результат в прогрессе, баллы — только за первое прохождение
   function farmWin(id, t) {
