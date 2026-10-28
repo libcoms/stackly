@@ -485,9 +485,12 @@ def _ints(xs):
             pass
     return out
 
+FARM_MAX_LEVEL = 50            # номера уровней фермы (public/farm.js) — с запасом; в прогрессе farm: {"номер": лучшее число ходов}
+
 def progress_sets(data):
     solved = {str(x) for x in data.get('solved', []) if isinstance(x, (str, int))} if isinstance(data.get('solved'), list) else set()
-    return {'bank': solved, 'py': _ints(data.get('studied')), 'ege': _ints(data.get('ege')), 'mat': _ints(data.get('mats'))}
+    farm = {int(k) for k in data['farm'] if str(k).isdigit() and 1 <= int(k) <= FARM_MAX_LEVEL} if isinstance(data.get('farm'), dict) else set()
+    return {'bank': solved, 'py': _ints(data.get('studied')), 'ege': _ints(data.get('ege')), 'mat': _ints(data.get('mats')), 'farm': farm}
 
 def hw_progress(items, sets):
     """(сделано пунктов, всего пунктов) по одному ДЗ."""
@@ -514,15 +517,15 @@ def summary(data, updated, uid=None):
     streak, back = 0, (0 if day(0) in days else 1)        # сегодня ещё не занимался — серия считается со вчера
     while day(back) in days or day(back) in frozen:
         streak += day(back) in days; back += 1
-    return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']),
+    return {'solved': len(sets['bank']), 'studied': len(sets['py']), 'ege': len(sets['ege']), 'farm': len(sets['farm']),
             'tries': tries, 'right': right, 'first': first, 'accuracy': round(right / tries * 100) if tries else None,
             'active7': sum(day(i) in days for i in range(7)), 'streak': streak, 'updated': updated,
-            'points': points(len(sets['bank']), first, len(sets['py']) + len(sets['ege']) + len(sets['mat']), len(days))}
+            'points': points(len(sets['bank']), first, len(sets['py']) + len(sets['ege']) + len(sets['mat']), len(days), len(sets['farm']))}
 
-def points(solved, first, studied, days):
+def points(solved, first, studied, days, farm=0):
     """Очки за активность — та же формула, что pointsOf() на сайте: задача 10 (+5 с первой попытки),
-    изученная тема, разбор или материал 5, день с занятиями 5."""
-    return solved * 10 + first * 5 + studied * 5 + days * 5
+    изученная тема, разбор или материал 5, уровень фермы 10, день с занятиями 5."""
+    return solved * 10 + first * 5 + studied * 5 + farm * 10 + days * 5
 
 # ---------------------------------------------------------------- мотивация: начисления, достижения, цель группы
 # Начисления хранятся в spends с отрицательной ценой. Достижения не входят в «баллы за 7 дней»: при запуске механики
@@ -625,7 +628,7 @@ def recent_points(data, uid, days=RATING_DAYS):
             pts += 10 + (5 if a.get('f') or a.get('n') == 1 else 0)
     for e in data.get('events') or [] if isinstance(data.get('events'), list) else ():
         if isinstance(e, dict) and e.get('k') != 'a' and isinstance(e.get('t'), (int, float)) and e['t'] / 1000 >= since:
-            pts += 5 if e.get('ok') else -5
+            pts += (1 if e.get('ok') else -1) * (10 if e.get('k') == 'f' else 5)       # f — уровень фермы
     if isinstance(data.get('days'), dict):
         pts += 5 * sum(1 for k, v in data['days'].items() if v and isinstance(k, str) and k >= first_day)
     pts -= db().execute(f'SELECT COALESCE(SUM(cost), 0) FROM spends WHERE user_id = ? AND kind IN ({",".join("?" * len(WEEK_KINDS))}) AND created >= ?',

@@ -2760,6 +2760,10 @@ function stacklyApp() {
   const studied = new Set(store.get('studied', []));
   const egeRead = new Set(store.get('egeRead', []));          // разобранные задания методички
   const matsDone = new Set(store.get('mats', []));            // изученные свои материалы учителей (id)
+  // пройденные уровни фермы: номер → лучшее число ходов (public/farm.js)
+  const normFarm = f => Object.fromEntries(Object.entries(f && typeof f === 'object' && !Array.isArray(f) ? f : {}).filter(([k, t]) => /^\d{1,2}$/.test(k) && +k >= 1 && +k <= 50 && Number.isFinite(+t) && +t >= 0).map(([k, t]) => [k, +t]));
+  const farmDone = normFarm(store.get('farm', {}));
+  const clearFarm = () => Object.keys(farmDone).forEach(k => delete farmDone[k]);
 
   /* ── иконки (тонкая линия) ── */
   const svg = (d, w = 1.7) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -2791,6 +2795,7 @@ function stacklyApp() {
     tabUsers: svg('<circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5c1.1-3.8 3.9-5.8 7.5-5.8s6.4 2 7.5 5.8"/>'),
     tabAll: svg('<path d="M4 6.5h16M4 12h16M4 17.5h16"/>'),
     tabShared: svg('<path d="M4 7.5 12 3.5l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16.5l8 4 8-4"/>'),
+    tabFarm: svg('<path d="M12 20.5V12"/><path d="M12 12c0-4.2 2.8-6.8 7.5-6.8 0 4.6-2.9 6.8-7.5 6.8z"/><path d="M12 14.5c0-3.4-2.4-5.6-6.5-5.6 0 3.7 2.5 5.6 6.5 5.6z"/><path d="M5.5 20.5h13"/>'),
   };
   const toolKind = t => /^Вручную|^Калькулятор/.test(t.tool) ? 'hand' : /^Таблиц/.test(t.tool) ? 'calc' : 'py';
   const toolName = { py: 'Python', calc: 'Таблицы', hand: 'Вручную' };
@@ -2892,6 +2897,9 @@ function stacklyApp() {
           <p>Здесь собраны материалы, которые открыли ваши преподаватели. Задачи для решения ждут в банке и в домашних заданиях.</p></div></header>
         ${MATS.length ? `<section class="t-sec"><h2 class="sec-h">От преподавателей</h2>${matRows(MATS)}</section>` : ''}
         ${mods.length ? `<section class="t-sec">${MATS.length ? '<h2 class="sec-h">Курс ЕГЭ по информатике</h2>' : ''}<div class="mods">${mods.map(m => modCard(m, false)).join('')}</div></section>` : ''}
+        <section class="t-sec"><h2 class="sec-h">Python в игре</h2><div class="mods"><article class="mod"><div class="mod-top"><h3>Ферма</h3></div>
+          <p>Программируйте дрона-фермера: циклы, условия, функции и списки на настоящем Python. За каждый уровень — ${PTS.farm} баллов.</p>
+          <div class="mod-foot"><span class="muted">${Object.keys(farmDone).length ? `пройдено уровней: ${Object.keys(farmDone).length}` : '12 уровней'}</span><a class="btn small ghost" href="#farm">Играть</a></div></article></div></section>
         ${mods.length || MATS.length ? '' : `<section class="t-sec"><div class="t-empty"><b>Пока пусто</b>Когда преподаватель добавит материалы, они появятся здесь. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.</div></section>`}</div>`;
     }
     const mine = acct.subjects || [];
@@ -4348,16 +4356,18 @@ function stacklyApp() {
     return { att: s.att && typeof s.att === 'object' ? s.att : {}, days: s.days && typeof s.days === 'object' ? s.days : {}, events: Array.isArray(s.events) ? s.events.slice(-120) : [], since: +s.since || Date.now() };
   }
   let stats = normStats(store.get('stats', null));
-  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], mats: [...matsDone], att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
+  const snapshot = () => ({ v: 1, solved: [...solved], studied: [...studied], ege: [...egeRead], mats: [...matsDone], farm: { ...farmDone }, att: stats.att, days: stats.days, events: stats.events.slice(-120), since: stats.since });
   function bumpDay() { const d = DAY(Date.now()); stats.days[d] = (stats.days[d] || 0) + 1; }
   /* ── очки за активность: считаются из прогресса по той же формуле, что и на сервере (summary в stackly_api.py) ──
-     решённая задача — 10, с первой попытки — ещё 5; изученная тема, разобранное задание, материал — 5; день с занятиями — 5 */
-  const PTS = { solve: 10, first: 5, study: 5, day: 5 };
+     решённая задача — 10, с первой попытки — ещё 5; изученная тема, разобранное задание, материал — 5; уровень фермы — 10;
+     день с занятиями — 5 */
+  const PTS = { solve: 10, first: 5, study: 5, farm: 10, day: 5 };
   const firstTry = a => !!(a && a.c && (a.f || a.n === 1));
   function pointsOf() {
     const att = Object.values(stats.att);
     return solved.size * PTS.solve + att.filter(firstTry).length * PTS.first
-      + (studied.size + egeRead.size + matsDone.size) * PTS.study + Object.values(stats.days).filter(n => n > 0).length * PTS.day;
+      + (studied.size + egeRead.size + matsDone.size) * PTS.study + Object.keys(farmDone).length * PTS.farm
+      + Object.values(stats.days).filter(n => n > 0).length * PTS.day;
   }
   // уровень N начинается с 25·N·(N−1) очков: 0, 50, 150, 300, 500…
   const lvlFrom = L => 25 * L * (L - 1);
@@ -4366,7 +4376,7 @@ function stacklyApp() {
     const t = DAY(Date.now());
     let n = stats.days[t] ? PTS.day : 0;
     for (const a of Object.values(stats.att)) if (a.ok && DAY(a.ok) === t) n += PTS.solve + (firstTry(a) ? PTS.first : 0);
-    for (const e of stats.events) if (e.k !== 'a' && DAY(e.t) === t) n += e.ok ? PTS.study : -PTS.study;
+    for (const e of stats.events) if (e.k !== 'a' && DAY(e.t) === t) n += (e.ok ? 1 : -1) * (e.k === 'f' ? PTS.farm : PTS.study);
     return Math.max(0, n);
   }
   // «+15» взлетает от кнопки, которой ученик заработал очки, шар в логотипе подпрыгивает
@@ -4387,7 +4397,7 @@ function stacklyApp() {
     if (kind === 'a') {
       const a = stats.att[id] || (stats.att[id] = { n: 0, c: 0, first: now, ok: 0 });
       a.n++; if (ok) { a.c++; if (!a.ok) a.ok = now; if (a.c === 1) { gain += PTS.solve; if (a.n === 1) { a.f = 1; gain += PTS.first; } } }
-    } else if (ok) gain += PTS.study;
+    } else if (ok) gain += kind === 'f' ? PTS.farm : PTS.study;
     if ((kind === 'a' || ok) && !stats.days[DAY(now)]) gain += PTS.day;
     if (kind === 'a' || ok) bumpDay();
     stats.events.push({ t: now, k: kind, id: String(id), ok: ok ? 1 : 0 });
@@ -4396,7 +4406,7 @@ function stacklyApp() {
     ptsFx(gain);
   }
   function persist() {
-    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]);
+    store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]); store.set('farm', farmDone);
     updHWBadge(); updHWPage();
     if (!acct.cloud || acct.readOnly) return;
     clearTimeout(acct.saveT);
@@ -4430,6 +4440,7 @@ function stacklyApp() {
     (remote.studied || []).forEach(x => studied.add(+x));
     (remote.ege || []).forEach(x => egeRead.add(+x));
     (remote.mats || []).forEach(x => matsDone.add(+x));
+    for (const [k, t] of Object.entries(normFarm(remote.farm))) farmDone[k] = k in farmDone ? Math.min(farmDone[k], t) : t;
     const r = normStats(remote);
     for (const [k, a] of Object.entries(r.att)) {
       const l = stats.att[k];
@@ -4448,7 +4459,7 @@ function stacklyApp() {
       if (acct.created) stats.since = Math.min(stats.since, acct.created);
       acct.cloud = true;
       await loadMats(true);                                  // свои материалы учителей: нужны страницам материалов и ДЗ
-      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]);
+      store.set('stats', stats); store.set('solved', [...solved]); store.set('studied', [...studied]); store.set('egeRead', [...egeRead]); store.set('mats', [...matsDone]); store.set('farm', farmDone);
       const saved = await api('/progress', 'PUT', { data: snapshot() }); acct.sync = 'ok'; celebrate(saved.rewards);
       renderAcctBtn(); refreshHW();
       if (!silent) { toast(`Вы вошли как ${acct.name}`); loadPolls(); }
@@ -4461,13 +4472,13 @@ function stacklyApp() {
     acct.checked = true; renderAcctBtn(); loadPolls();
     $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
-    if (/^#(login|me|teach|admin|hw|start|shop|rating|edit|mat)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
+    if (/^#(login|me|teach|admin|hw|start|shop|rating|edit|mat|farm)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
   }
   // прогресс и материалы прежнего аккаунта не должны попасть в другой
   function forgetLocal() {
     acct.cloud = false; acct.uid = null; acct.role = ''; myHW = [];
-    solved.clear(); studied.clear(); egeRead.clear(); matsDone.clear(); stats = normStats(null);
-    store.set('solved', []); store.set('studied', []); store.set('egeRead', []); store.set('mats', []); store.set('stats', stats); store.set('content', null);
+    solved.clear(); studied.clear(); egeRead.clear(); matsDone.clear(); clearFarm(); stats = normStats(null);
+    store.set('solved', []); store.set('studied', []); store.set('egeRead', []); store.set('mats', []); store.set('farm', {}); store.set('stats', stats); store.set('content', null);
   }
   // открыть сайт заново уже под другим аккаунтом — со стартовой страницы его роли
   const reopen = () => location.replace(location.pathname);
@@ -4553,10 +4564,11 @@ function stacklyApp() {
     if (!acct.cloud) return [];
     const M = { nav: 'materials', href: '#materials', label: 'Материалы', icon: 'tabMaterials', tab: 1 };
     const B = { nav: 'bank', href: '#bank', label: 'Банк задач', short: 'Банк', icon: 'tabBank', tab: 1 };
+    const FM = { nav: 'farm', href: '#farm', label: 'Ферма', icon: 'tabFarm' };
     if (acct.role === 'admin') return [
       { nav: 'admin-home', href: '#admin-home', label: 'Обзор', icon: 'tabHome', tab: 1 },
       { nav: 'teach', href: '#teach', label: 'Мои группы', short: 'Группы', icon: 'tabTeach', tab: 1 },
-      M, B, { nav: 'edit', href: '#edit', label: 'Редактор задач', icon: 'tabEdit' },
+      M, B, FM, { nav: 'edit', href: '#edit', label: 'Редактор задач', icon: 'tabEdit' },
       { nav: 'tshop', href: '#teach-shop', label: 'Награды и эфир', icon: 'tabGift' },
       { h: 'Платформа' },
       { nav: 'admin', href: '#admin', label: 'Пользователи', icon: 'tabUsers', tab: 1 },
@@ -4565,7 +4577,7 @@ function stacklyApp() {
       { nav: 'admin-stats', href: '#admin-stats', label: 'Посещаемость', icon: 'tabStats' },
     ];
     if (acct.role === 'teacher') return [
-      { nav: 'teach', href: '#teach', label: 'Группы', icon: 'tabTeach', tab: 1 }, M, B,
+      { nav: 'teach', href: '#teach', label: 'Группы', icon: 'tabTeach', tab: 1 }, M, B, FM,
       { nav: 'edit', href: '#edit', label: 'Редактор задач', short: 'Редактор', icon: 'tabEdit', tab: 1 },
       { nav: 'tshop', href: '#teach-shop', label: 'Награды и эфир', icon: 'tabGift' },
       { nav: 'pro', href: '#teach-pro', label: 'Тариф', icon: 'tabPro' },
@@ -4573,7 +4585,7 @@ function stacklyApp() {
     ];
     return [
       { nav: 'start', href: '#start', label: 'Главная', icon: 'tabHome', tab: 1 },
-      { nav: 'hw', href: '#hw', label: 'Задания', icon: 'tabHw', tab: 1 }, M, B,
+      { nav: 'hw', href: '#hw', label: 'Задания', icon: 'tabHw', tab: 1 }, M, B, FM,
       { nav: 'rating', href: '#rating', label: 'Рейтинг', icon: 'tabRating', tab: 1 },
       { nav: 'me', href: '#me', label: 'Прогресс', icon: 'tabStats', tab: 1 },
     ];
@@ -4593,6 +4605,7 @@ function stacklyApp() {
     if (/^(hw)(-\d+)?$/.test(h)) return 'hw';
     if (/^(materials|mat-|ege|py-|python|cheat|course)/.test(h)) return 'materials';
     if (/^(bank|p-|set-)/.test(h)) return 'bank';
+    if (/^farm/.test(h)) return 'farm';
     if (h === 'teach-all') return 'teach-all';
     if (h === 'teach-pro') return 'pro';
     if (/^teach/.test(h)) return 'teach';
@@ -4726,7 +4739,7 @@ function stacklyApp() {
     msg.textContent = ''; msg.className = 'form-msg'; btn.disabled = true;
     try {
       if (kind === 'password') { await api('/auth/password', 'POST', { old: v('st-old'), new: v('st-new') }); form.reset(); msg.textContent = 'Пароль изменён. Остальные устройства вышли из аккаунта'; msg.className = 'form-msg ok'; }
-      if (kind === 'delete') { await api('/account/delete', 'POST', { password: v('st-del') }); acct.cloud = false; acct.role = ''; myHW = []; solved.clear(); studied.clear(); egeRead.clear(); stats = normStats(null); persist(); store.set('content', null); renderAcctBtn(); toast('Аккаунт удалён'); location.hash = 'home'; location.reload(); return; }
+      if (kind === 'delete') { await api('/account/delete', 'POST', { password: v('st-del') }); acct.cloud = false; acct.role = ''; myHW = []; solved.clear(); studied.clear(); egeRead.clear(); clearFarm(); stats = normStats(null); persist(); store.set('content', null); renderAcctBtn(); toast('Аккаунт удалён'); location.hash = 'home'; location.reload(); return; }
     } catch (e) { msg.textContent = e.message; msg.className = 'form-msg bad'; }
     btn.disabled = false;
   }
@@ -4909,7 +4922,7 @@ function stacklyApp() {
     </div>`;
   }
   function resetAll() {
-    solved.clear(); studied.clear(); egeRead.clear(); matsDone.clear(); stats = normStats(null); persist();
+    solved.clear(); studied.clear(); egeRead.clear(); matsDone.clear(); clearFarm(); stats = normStats(null); persist();
     toast('Прогресс сброшен'); route();
   }
 
@@ -5427,6 +5440,32 @@ function stacklyApp() {
       <div><b>${mine.place === 1 ? (list.length > 1 ? 'Вы первые в группе' : 'Вы в рейтинге первым') : `До ${mine.place - 1 === 1 ? 'первого' : (mine.place - 1) + '-го'} места — ${ratingFmt(gap, k)}`}</b><span>${next}</span></div></div>`;
   }
 
+  /* ── ферма: Python в игре. public/farm.js грузится при первом заходе на #farm ── */
+  let farmCtl = null, farmReq = null;
+  function farmLib() {
+    if (window.StacklyFarm) return Promise.resolve();
+    return farmReq || (farmReq = new Promise((ok, no) => {
+      const s = document.createElement('script'); s.src = '/farm.js?v=1';
+      s.onload = ok; s.onerror = () => { farmReq = null; s.remove(); no(); };
+      document.head.appendChild(s);
+    }));
+  }
+  async function loadFarm(h) {
+    try { await farmLib(); }
+    catch (e) { const box = $('#farmpage'); if (box) box.innerHTML = tMsg('Игра не загрузилась', 'Проверьте интернет и обновите страницу.'); return; }
+    const box = $('#farmpage');
+    if (!box || (location.hash || '#home').slice(1) !== h) return;
+    if (farmCtl) farmCtl.destroy();
+    const m = h.match(/^farm-(\d+)$/);
+    farmCtl = StacklyFarm.mount(box, { level: m ? +m[1] : 0, done: farmDone, all: isTeacher(), hl, store, points: PTS.farm, onWin: farmWin });
+  }
+  // уровень пройден: лучший результат в прогрессе, баллы — только за первое прохождение
+  function farmWin(id, t) {
+    const k = String(id), first = !(k in farmDone);
+    farmDone[k] = first ? t : Math.min(farmDone[k], t);
+    if (first) track('f', id, true); else persist();
+    return { first, best: farmDone[k], points: first && !isTeacher() ? PTS.farm : 0 };
+  }
   let ratingData = null, ratingSeq = 0, ratingGroup = null;
   async function loadRating() {
     const seq = ++ratingSeq;
@@ -7170,6 +7209,7 @@ function stacklyApp() {
     let m, html, nav = 'home', scrollTo = null;
     landingWait = false;
     codeStore = [];
+    if (farmCtl) { farmCtl.destroy(); farmCtl = null; }
     const gate = LOCKED && GATES.find(g => g[0].test(h));
     if (gate) {
       if (!acct.cloud) { try { sessionStorage.setItem(NEXT, h); } catch (e) { } }
@@ -7201,6 +7241,7 @@ function stacklyApp() {
     }
     else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
+    else if (/^farm(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="farmpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'farm'; }
     else if (h === 'login' || h === 'signup') {
       if (acct.cloud) { location.replace('#me'); return; }
       try { sessionStorage.removeItem(NEXT); } catch (e) { }
@@ -7287,8 +7328,9 @@ function stacklyApp() {
     if (nav === 'start') loadStart();
     if (nav === 'shop') loadShop();
     if (nav === 'rating') loadRating();
+    if (nav === 'farm') loadFarm(h);
     if (nav === 'me') { loadMyClass(); loadTg(); }
-    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
+    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', farm: 'Ферма: Python в игре · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', (nav === 'me' && acct.role !== 'student') || nav === 'login');
   }
 

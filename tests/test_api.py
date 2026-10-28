@@ -275,6 +275,11 @@ class ClassroomTest(ServerCase):
         m1 = next(m for m in grp['members'] if m['id'] == sid1)
         self.assertEqual((m1['stats']['solved'], m1['stats']['accuracy']), (1, 50))
         self.assertEqual(m1['stats']['points'], 10 + 5)          # задача со второй попытки и одна тема, дней нет
+        # уровни фермы — по 10 баллов; номера вне игры не считаются
+        s1.call('PUT', '/progress', {'data': {'solved': ['b1'], 'studied': [3], 'ege': [], 'att': {'b1': {'n': 2, 'c': 1}},
+                                              'farm': {'1': 1, '2': 10, '99': 3, 'x': 1}}})
+        m1 = next(m for m in t.call('GET', f'/teach/group?id={g["id"]}')[1]['members'] if m['id'] == sid1)
+        self.assertEqual((m1['stats']['points'], m1['stats']['farm']), (10 + 5 + 2 * 10, 2))
         s1.call('PUT', '/progress', {'data': {'solved': ['b1', 'b2'], 'studied': [3], 'ege': [1]}})
         mine = {h['id']: h for h in s1.call('GET', '/me/homework')[1]['homework']}
         self.assertIsNotNone(mine[hid]['done_at'])
