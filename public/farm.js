@@ -1481,9 +1481,11 @@
   class Run {
     constructor(lv, code, opt = {}) {
       this.lv = lv; this.out = []; this.notes = new Set();
-      this.world = new World(lv, opt.seed ?? lv.id * 7919 + 13);
+      // игра (ферма по умолчанию, склад — sklad.js): мир, команды и свои проверки цели
+      const G = this.game = opt.game || FARM_CORE;
+      this.world = G.world(lv, opt.seed ?? lv.id * 7919 + 13);
       this.ip = new Interp({ print: s => this.print(s), rng: this.world.rng });
-      installGame(this.ip, this.world, lv, this);
+      G.install(this.ip, this.world, lv, this);
       this.state = 'run';
       this.code = code;
       try { this.gen = this.ip.exec(parse(code)); }
@@ -1509,13 +1511,11 @@
       return r.value;
     }
   }
-  const endCheck = lv => !!(lv.out || lv.pattern || lv.exact || lv.codeHas);
+  const endCheck = lv => !!(lv.out || lv.pattern || lv.exact || lv.codeHas || lv.check);
   const outLines = out => out.filter(o => o.k === 'out').map(o => o.s).join('').replace(/\n$/, '').split('\n');
   // что не выполнено после программы — понятными фразами; пустой список — уровень пройден
   Run.prototype.final = function () {
-    const lv = this.lv, w = this.world, miss = [];
-    for (const [k, n] of Object.entries(lv.goal || {})) if ((w.items[k] || 0) < n) miss.push(`${ITEMS[k]}: собрано ${w.items[k] || 0}, а нужно ${n}.`);
-    for (const [k, n] of Object.entries(lv.exact || {})) if ((w.items[k] || 0) !== n) miss.push(`${ITEMS[k]}: нужно ровно ${n}, а собрано ${w.items[k] || 0}.`);
+    const lv = this.lv, miss = [...this.game.misses(this)];
     if (lv.out) {
       const got = this.out.some(o => o.k === 'out') ? outLines(this.out) : [];
       if (got.length !== lv.out.length || got.some((l, i) => l.trimEnd() !== lv.out[i])) {
@@ -1523,16 +1523,25 @@
         miss.push(`В журнале должно быть: ${q(lv.out)}. А программа вывела: ${q(got)}.`);
       }
     }
+    if (lv.check) miss.push(...lv.check(this));
+    for (const [re, msg] of lv.codeHas || []) if (!re.test(this.code.replace(/#.*$/gm, ''))) miss.push(msg);
+    this.misses = miss;
+    return !miss.length;
+  };
+  // проверки фермы: урожай, «ровно столько», образец поля
+  function farmMisses(run) {
+    const lv = run.lv, w = run.world, miss = [];
+    for (const [k, n] of Object.entries(lv.goal || {})) if ((w.items[k] || 0) < n) miss.push(`${ITEMS[k]}: собрано ${w.items[k] || 0}, а нужно ${n}.`);
+    for (const [k, n] of Object.entries(lv.exact || {})) if ((w.items[k] || 0) !== n) miss.push(`${ITEMS[k]}: нужно ровно ${n}, а собрано ${w.items[k] || 0}.`);
     if (lv.pattern) {
       for (let i = 0; i < lv.pattern.length; i++) {
         const x = i % w.w, y = Math.floor(i / w.w), want = lv.pattern[i], k = w.kind(x, y), has = k === 'Grass' ? null : k;
         if ((want || null) !== has) { miss.push(`Поле не совпадает с образцом: в клетке x = ${x} должно быть «${want ? ENT[want].ru.toLowerCase() : 'пусто'}», а там «${has ? ENT[has].ru.toLowerCase() : 'пусто'}».`); break; }
       }
     }
-    for (const [re, msg] of lv.codeHas || []) if (!re.test(this.code.replace(/#.*$/gm, ''))) miss.push(msg);
-    this.misses = miss;
-    return !miss.length;
-  };
+    return miss;
+  }
+  const FARM_CORE = { world: (lv, seed) => new World(lv, seed), install: installGame, misses: farmMisses };
   // без экрана: прогнать программу до конца (тест уровней)
   function simulate(lv, code, opt) {
     const r = new Run(lv, code, opt);
@@ -1867,11 +1876,11 @@
     if (!inCodePart(line)) return null;
     const m = /(?:([A-Za-z_]\w*|\)|\])\.)?([A-Za-z_]\w*)?$/.exec(line), obj = m[1], pre = m[2] || '';
     if (/\b(def|for|global)\s+[A-Za-z_]*$/.test(line) && !obj) return null;      // здесь пишут новое имя
-    const api = avail.api || GAME, has = n => api.includes(n);
+    const api = avail.api || avail.all || GAME, has = n => api.includes(n), NSX = avail.ns || NS_RU, CD = avail.cdoc || CDOC;
     let items = [];
     if (obj !== undefined) {
-      if (NS_RU[obj]) {
-        const ru = NS_RU[obj];
+      if (NSX[obj]) {
+        const ru = NSX[obj];
         items = Object.keys(ru).filter(n => obj !== 'Entities' || !avail.plants || avail.plants.includes(n === 'Dead_Pumpkin' ? 'Pumpkin' : n))
           .map(n => ({ name: n, kind: obj, doc: [`${obj}.${n}`, typeof ru[n] === 'string' ? ru[n] : ru[n].ru] }));
       } else if (/^\d+$/.test(obj)) return null;
@@ -1880,10 +1889,11 @@
       if (!pre) return null;
       const user = userNames(code.slice(0, caret - pre.length) + code.slice(caret));
       items = [
-        ...GAME.filter(has).map(n => ({ name: n, kind: 'дрон', doc: CDOC[n], call: true, args: ['move', 'plant', 'num_items'].includes(n) })),
+        ...(avail.all || GAME).filter(has).map(n => ({ name: n, kind: avail.actor || 'дрон', doc: CD[n], call: true, args: ['move', 'plant', 'num_items'].includes(n) })),
         ...(has('move') ? Object.keys(DIRS).map(n => ({ name: n, kind: 'направление', doc: [n, `направление: ${DIRS[n][2]}`] })) : []),
-        ...Object.keys(NS_RU).filter(n => n !== 'Grounds' || has('get_ground_type')).filter(n => n !== 'Items' || has('num_items')).filter(n => n !== 'Entities' || has('plant') || has('get_entity_type'))
-          .map(n => ({ name: n, kind: 'набор', doc: [n + '.…', n === 'Entities' ? 'растения' : n === 'Items' ? 'виды урожая' : 'виды земли'], ns: true })),
+        ...(avail.ns ? Object.keys(avail.ns).map(n => ({ name: n, kind: 'набор', doc: [n + '.…', avail.nsDoc[n]], ns: true }))
+          : Object.keys(NS_RU).filter(n => n !== 'Grounds' || has('get_ground_type')).filter(n => n !== 'Items' || has('num_items')).filter(n => n !== 'Entities' || has('plant') || has('get_entity_type'))
+            .map(n => ({ name: n, kind: 'набор', doc: [n + '.…', n === 'Entities' ? 'растения' : n === 'Items' ? 'виды урожая' : 'виды земли'], ns: true }))),
         ...[...user].map(([n, u]) => ({ name: n, kind: u.kind, doc: u.doc || [n, u.kind === 'параметр' ? 'параметр функции' : 'ваша переменная'], call: u.kind === 'функция', args: u.args })),
         ...Object.keys(BDOC).map(n => ({ name: n, kind: 'Python', doc: BDOC[n], call: true, args: !/^\w+\(\)$/.test(BDOC[n][0]) })),
         ...Object.keys(KWDOC).map(n => ({ name: n, kind: 'слово', doc: [n, KWDOC[n]], kw: true })),
@@ -1916,13 +1926,15 @@
         const n = m[2];
         if (m[1]) return MDOC[n] || null;
         const u = userNames(code).get(n);
-        return ((avail.api || GAME).includes(n) && CDOC[n]) || BDOC[n] || (u && u.doc) || null;
+        return ((avail.api || avail.all || GAME).includes(n) && (avail.cdoc || CDOC)[n]) || BDOC[n] || (u && u.doc) || null;
       }
     }
     return null;
   }
 
-  const api = { PyError, parse, tokenize, Interp, Run, World, simulate, LEVELS, CHAPTERS, ORDER, pystr, repr, UPGRADES, SIZES, upState, buy, sandbox, complete, signature, insertion };
+  // для других игр (sklad.js): значения Python, ошибки, направления
+  const kit = { NS, Const, Bi, E, needArgs, eq, repr, pystr, rng32, Dirs: C.Dirs, DIRS, endCheck, outLines };
+  const api = { ...kit, PyError, parse, tokenize, Interp, Run, World, simulate, LEVELS, CHAPTERS, ORDER, UPGRADES, SIZES, upState, buy, sandbox, complete, signature, insertion };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
   /* ═════════════ ЭКРАН ИГРЫ: островок в 3D (Three.js), поверх — окна с заданием и кодом ═════════════ */
@@ -1936,17 +1948,19 @@
   /* ── сцена: парящий островок, грядки, растения, дрон ── */
   function scene3d(THREE, host, lv) {
     const W = lv.w, H = lv.h;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
     host.appendChild(renderer.domElement);
     const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, 0.1, 300);
-    scene.add(new THREE.HemisphereLight(0xe6eef4, 0x7a5a3c, 1.3));
-    const sun = new THREE.DirectionalLight(0xffe4bd, 2.5), R = Math.max(W, H) * 0.8 + 1.6;
+    scene.add(new THREE.HemisphereLight(0xeaf2f8, 0x6e5a40, 1.5));
+    const sun = new THREE.DirectionalLight(0xffe2b4, 2.8), R = Math.max(W, H) * 0.8 + 1.6;
     sun.position.set(-R * 0.7, R * 2.2, R * 1.3); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
     Object.assign(sun.shadow.camera, { left: -R, right: R, top: R, bottom: -R, near: 0.5, far: R * 7 });
-    sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03;
+    sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.03; sun.shadow.radius = 4;
     scene.add(sun);
+    const rim = new THREE.DirectionalLight(0xbcd6ff, 0.7); rim.position.set(R, R * 0.8, -R * 1.5); scene.add(rim);   // контровой свет — силуэты читаются
     const mats = new Map(), geos = [];
     const mat = c => { if (!mats.has(c)) mats.set(c, new THREE.MeshLambertMaterial({ color: c, flatShading: true })); return mats.get(c); };
     const G = g => (geos.push(g), g);
@@ -1985,11 +1999,38 @@
     rocks(W, (r, t, y) => r.position.set(t * W, y, H / 2 + 0.07));
     rocks(H, (r, t, y) => r.position.set(W / 2 + 0.07, y, t * H));
     rocks(H, (r, t, y) => r.position.set(-W / 2 - 0.07, y, t * H));
+    // парящий остров: скалистое основание конусом вниз и пара камней под ним
+    const span0 = Math.max(W, H);
+    const cliff = mesh(G(new THREE.ConeGeometry(span0 * 0.6, span0 * 0.8 + 0.6, 7).rotateX(Math.PI)), 0x8A6A48, 0, -0.8 - (span0 * 0.8 + 0.6) / 2, 0);
+    cliff.rotation.y = 0.3; island.add(cliff);
+    const cliff2 = mesh(G(new THREE.ConeGeometry(span0 * 0.38, span0 * 0.55 + 0.4, 6).rotateX(Math.PI)), 0x7A5D40, span0 * 0.14, -0.9 - (span0 * 0.55 + 0.4) / 2, -span0 * 0.08);
+    island.add(cliff2);
+    for (let i = 0; i < 3; i++) { const r = mesh(geo.rock, 0x8F7C66, (rr() - 0.5) * span0, -1.4 - rr() * span0 * 0.6, (rr() - 0.5) * span0 * 0.6); r.scale.setScalar(0.12 + rr() * 0.12); island.add(r); }
+    // облака плывут вокруг
+    const clouds = [];
+    for (let i = 0; i < 5; i++) {
+      const c = new THREE.Group(), n = 3 + Math.floor(rr() * 2);
+      for (let k = 0; k < n; k++) { const b = mesh(geo.ico, 0xFFFFFF, k * 0.32 - n * 0.16, rr() * 0.1, (rr() - 0.5) * 0.25); b.scale.setScalar(0.18 + rr() * 0.16); b.castShadow = false; b.receiveShadow = false; c.add(b); }
+      c.position.set((rr() < 0.5 ? -1 : 1) * span0 * (0.75 + rr() * 0.7), -1.6 - rr() * 1.6, -span0 * (0.2 + rr() * 0.9));
+      c.userData.v = 0.08 + rr() * 0.12; clouds.push(c); scene.add(c);
+    }
+    const parts = [];          // частицы при сборе урожая
+    const PART_COLOR = { Grass: 0xE8BC52, Bush: 0x8DB33A, Tree: 0x5B9A3C, Carrot: 0xEE8A2E, Pumpkin: 0xEE9A34, Sunflower: 0xF3C431, Dead_Pumpkin: 0x8E7A5B };
+    const partG = G(new THREE.BoxGeometry(0.07, 0.07, 0.07));
+    function burst(x, z, kind) {
+      for (let i = 0; i < 9; i++) {
+        const m = new THREE.Mesh(partG, new THREE.MeshLambertMaterial({ color: PART_COLOR[kind] || 0xE8BC52, transparent: true }));
+        m.position.set(x + (Math.random() - 0.5) * 0.3, 0.3, z + (Math.random() - 0.5) * 0.3);
+        m.userData = { vx: (Math.random() - 0.5) * 1.6, vy: 1.6 + Math.random() * 1.4, vz: (Math.random() - 0.5) * 1.6, life: 0.75, age: 0 };
+        scene.add(m); parts.push(m);
+      }
+    }
+    const dying = [];          // сорванное растение не исчезает мгновенно, а сжимается
 
     const cells = [];
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const g = new THREE.Group(); g.position.set(cx(x), 0, cz(y)); island.add(g);
-      cells.push({ g, ground: null, groundKind: '', plant: null, sig: '', cur: 0.3, target: 1, grass: false, x, y });
+      cells.push({ g, ground: null, groundKind: '', plant: null, sig: '', cur: 0.3, vel: 0, target: 1, grass: false, sway: x * 1.7 + y * 2.3, x, y });
     }
     function setGround(c, soil) {
       if (c.ground) c.g.remove(c.ground);
@@ -2056,25 +2097,48 @@
     drone.scale.setScalar(0.95);
     scene.add(drone);
 
-    const st = { fx: cx(0), fz: cz(0), tx: cx(0), tz: cz(0), t0: 0, dur: 0, act: -1e9, wx: 0, wy: 0 };
+    // дрон догоняет цель плавно (экспоненциальное сглаживание по времени шага) и наклоняется по ходу движения
+    const st = { tx: cx(0), tz: cz(0), tau: 0.08, act: -1e9, actDur: 280, wx: 0, wy: 0, vx: 0, vz: 0 };
     drone.position.set(st.tx, 1.05, st.tz);
     let raf = 0, last = 0, size = { w: 1, h: 1 };
-    function frame(t) {
+    function frame() {
       raf = requestAnimationFrame(frame);
+      const t = performance.now();                               // одно время с t0 событий: метка кадра бывает раньше
       const dt = Math.min(0.1, (t - last) / 1000 || 0); last = t;
       const calm = reduceMotion();
-      const k = st.dur ? Math.max(0, Math.min(1, (t - st.t0) / st.dur)) : 1, e = 1 - Math.pow(1 - k, 3);     // t кадра бывает чуть раньше t0
-      drone.position.x = st.fx + (st.tx - st.fx) * e; drone.position.z = st.fz + (st.tz - st.fz) * e;
-      const da = t - st.act, dip = da > 0 && da < 280 ? Math.sin(da / 280 * Math.PI) * 0.28 : 0;
+      const a = st.tau > 0 && !calm ? 1 - Math.exp(-dt / st.tau) : 1;
+      const px = drone.position.x, pz = drone.position.z;
+      drone.position.x += (st.tx - px) * a; drone.position.z += (st.tz - pz) * a;
+      if (dt > 0) { st.vx += ((drone.position.x - px) / dt - st.vx) * Math.min(1, dt * 10); st.vz += ((drone.position.z - pz) / dt - st.vz) * Math.min(1, dt * 10); }
+      const da = t - st.act, dip = da > 0 && da < st.actDur ? Math.sin(da / st.actDur * Math.PI) * 0.28 : 0;
       drone.position.y = 1.05 + (calm ? 0 : Math.sin(t / 420) * 0.035) - dip;
       drone.rotation.y = calm ? 0 : Math.sin(t / 900) * 0.08;
-      for (const b of blades) b.rotation.y += calm ? 0.05 : 0.55;
+      drone.rotation.z = calm ? 0 : Math.max(-0.35, Math.min(0.35, -st.vx * 0.06));
+      drone.rotation.x = calm ? 0 : Math.max(-0.35, Math.min(0.35, st.vz * 0.06));
+      for (const b of blades) b.rotation.y += calm ? 0.05 : 0.45 + Math.hypot(st.vx, st.vz) * 0.08;
       for (const c of cells) {
         if (!c.plant) continue;
-        c.cur += (c.target - c.cur) * Math.min(1, dt * 7);
-        if (c.grass) c.plant.scale.set(1, 0.12 + 0.88 * c.cur, 1);
-        else c.plant.scale.setScalar(0.28 + 0.72 * c.cur);
+        // рост — пружиной: новое растение выскакивает с лёгким отскоком
+        const acc = 70 * (c.target - c.cur) - 10 * c.vel;
+        c.vel += acc * dt; c.cur += c.vel * dt;
+        if (calm) { c.cur = c.target; c.vel = 0; }
+        const k = Math.max(0, c.cur);
+        if (c.grass) c.plant.scale.set(1, 0.12 + 0.88 * k, 1);
+        else c.plant.scale.setScalar(0.28 + 0.72 * k);
+        c.plant.rotation.z = calm ? 0 : Math.sin(t / 900 + c.sway) * (c.grass ? 0.07 : 0.035);
       }
+      for (let i = dying.length - 1; i >= 0; i--) {
+        const d = dying[i], k = Math.max(0, (t - d.t0) / 220);
+        if (k >= 1 || calm) { d.parent.remove(d.g); dying.splice(i, 1); continue; }
+        d.g.scale.multiplyScalar(0.82); d.g.position.y = 0.1 + k * 0.15;
+      }
+      for (let i = parts.length - 1; i >= 0; i--) {
+        const m = parts[i], u = m.userData; u.age += dt;
+        if (u.age >= u.life) { scene.remove(m); m.material.dispose(); parts.splice(i, 1); continue; }
+        u.vy -= 6 * dt; m.position.x += u.vx * dt; m.position.y += u.vy * dt; m.position.z += u.vz * dt;
+        m.rotation.x += dt * 6; m.rotation.y += dt * 5; m.material.opacity = 1 - u.age / u.life;
+      }
+      for (const c of clouds) { c.position.x += c.userData.v * dt; if (c.position.x > span0 * 1.8) c.position.x = -span0 * 1.8; }
       renderer.render(scene, cam);
     }
     raf = requestAnimationFrame(frame);
@@ -2088,21 +2152,25 @@
           if (sig !== c.sig) {
             const was = c.sig.split(':')[0];
             c.sig = sig;
-            if (c.plant) c.g.remove(c.plant);
+            if (c.plant) {
+              if (dur && was !== k) { dying.push({ g: c.plant, parent: c.g, t0: performance.now() }); if (ev && ev.a === 'harvest' && ev.x === c.x && ev.y === c.y) burst(cx(c.x), cz(c.y), was); }
+              else c.g.remove(c.plant);
+            }
             c.plant = k ? plant(k, c.x * 97 + c.y * 13 + (cell.e ? cell.e.at : 0), petals) : null;
             if (c.plant) c.g.add(c.plant);
             c.grass = k === 'Grass';
-            c.cur = was === k && k !== 'Dead_Pumpkin' ? c.cur : 0.15;
+            if (!(was === k && k !== 'Dead_Pumpkin')) { c.cur = dur ? 0 : w.progress(c.x, c.y); c.vel = 0; }
           }
           c.target = k === 'Dead_Pumpkin' ? 1 : w.progress(c.x, c.y);
         }
         if (w.x !== st.wx || w.y !== st.wy) {
-          const now = performance.now(), snap = !ev || ev.wrap || !dur;
-          st.fx = snap ? cx(w.x) : drone.position.x; st.fz = snap ? cz(w.y) : drone.position.z;
-          st.tx = cx(w.x); st.tz = cz(w.y); st.t0 = now; st.dur = snap ? 0 : dur;
+          const snap = !ev || ev.wrap || !dur;
+          st.tx = cx(w.x); st.tz = cz(w.y);
+          if (snap) { drone.position.x = st.tx; drone.position.z = st.tz; st.vx = st.vz = 0; }
           st.wx = w.x; st.wy = w.y;
         }
-        if (ev && dur && ev.a !== 'move' && ev.a !== 'look') st.act = performance.now();
+        st.tau = dur ? dur / 1000 / 3.2 : 0;           // к концу шага дрон почти на месте, следующий шаг подхватывает движение
+        if (ev && dur && ev.a !== 'move' && ev.a !== 'look') { st.act = performance.now(); st.actDur = Math.max(160, Math.min(320, dur)); }
       },
       fit(free, far) {
         const w = host.clientWidth || 1, h = host.clientHeight || 1;
@@ -2229,7 +2297,7 @@
 .fg-win.min { height: auto !important; resize: none !important; }
 .fg-task h3 { margin: 0 0 6px; font: 650 18px/1.25 var(--f-display); letter-spacing: -.01em; color: #fff; }
 .fg-task p { margin: 0 0 10px; color: #CDD2D8; }
-.fg-task code, .fg-help code, .fg-out code { font: 500 .9em var(--f-mono); background: #34363C; border: 0; border-radius: 3px; padding: 1px 4px; color: #F1F3F5; }
+.fg-task code, .fg-help code, .fg-out code { font: 500 .9em var(--f-mono); font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; background: #34363C; border: 0; border-radius: 3px; padding: 1px 4px; color: #F1F3F5; }
 .fg-chip { display: inline-block; margin-bottom: 8px; padding: 2px 8px; border-radius: 3px; background: #4B5A18; color: #E3EEB0; font: 600 12px/1.5 var(--f-body); }
 .fg-goal { display: grid; gap: 7px; margin: 4px 0 12px; }
 .fg-goal div { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
@@ -2352,6 +2420,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
 .fg-done .pts { color: #A9D35A; font-weight: 700; }
 .fg-done .fg-nav { justify-content: center; }
 .fg-fly { position: absolute; display: flex; align-items: center; gap: 3px; transform: translate(-50%, -100%); font: 800 15px/1 var(--f-body); color: #fff; text-shadow: 0 1px 3px rgb(0 0 0 / .55); white-space: nowrap; animation: fgFly 1s var(--ease) forwards; }
+.fg-tag { pointer-events: none; }
 .fg-pet { position: absolute; transform: translate(-50%, -50%); padding: 1px 5px; border-radius: 3px; background: rgb(30 31 35 / .82); color: #F3C431; font: 700 11px/1.4 var(--f-mono); }
 @keyframes fgFly { from { opacity: 0; margin-top: 6px; } 15% { opacity: 1; } to { opacity: 0; margin-top: -34px; } }
 @keyframes fgIn { from { opacity: 0; transform: translate(-50%, -44%); } }
@@ -2377,15 +2446,15 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
   const hodov = n => `${n.toLocaleString('ru-RU')} ${plural(n, 'ход', 'хода', 'ходов')}`;
   const shortN = n => n >= 10000 ? Math.round(n / 1000) + 'k' : n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'k' : String(n);
 
-  function levelsHTML(ctx, cur, note) {
+  function levelsHTML(G, ctx, cur, note) {
     const row = l => {
       const best = ctx.done[l.id], open = unlocked(l, ctx), done = best != null;
       const st = done ? `${l.par && best <= l.par ? `<span class="star" title="Уложились в норму">${ICON.star}</span>` : ''}${l.goal && !endCheck(l) ? `<span>${hodov(best)}</span>` : ''}<span class="ok">${ICON.check}</span>`
-        : open ? '' : `<span title="Откроется после уровня ${numOf(l.need)}">${ICON.lock}</span>`;
+        : open ? '' : `<span title="Откроется после уровня ${G.numOf(l.need)}">${ICON.lock}</span>`;
       const inner = `<span class="n">${l.num}</span><span><b>${esc(l.title)}</b><small>${esc(l.concept)}</small></span><span class="st">${st}</span>`;
-      return `<li>${open ? `<a href="#farm-${l.id}" class="${done ? 'done' : ''} ${l === cur ? 'cur' : ''}">${inner}</a>` : `<span class="row">${inner}</span>`}</li>`;
+      return `<li>${open ? `<a href="#${G.route}-${l.id}" class="${done ? 'done' : ''} ${l === cur ? 'cur' : ''}">${inner}</a>` : `<span class="row">${inner}</span>`}</li>`;
     };
-    return (note ? `<p class="fg-note">${note}</p>` : '') + CHAPTERS.map(c => `<h5 class="fg-chap"><span>Глава ${c.id}</span>${esc(c.title)}</h5><ul class="fg-lv">${c.levels.map(id => row(LEVELS.find(l => l.id === id))).join('')}</ul>`).join('');
+    return (note ? `<p class="fg-note">${note}</p>` : '') + G.chapters.map(c => `<h5 class="fg-chap"><span>Глава ${c.id}</span>${esc(c.title)}</h5><ul class="fg-lv">${c.levels.map(id => row(G.levels.find(l => l.id === id))).join('')}</ul>`).join('');
   }
 
   // что нужно сделать: строки журнала, образец поля, «ровно»; полоски сбора рисует draw()
@@ -2397,59 +2466,87 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
     if (lv.pattern) parts.push(`<div class="fg-want"><span>Поле должно стать таким:</span><div class="fg-pattern" style="--w:${lv.w}">${lv.pattern.map(t => `<i>${t ? `<svg viewBox="0 0 40 40">${GL[t]}</svg>` : ''}</i>`).join('')}</div></div>`);
     return parts.join('');
   }
+  /* описание игры для экрана: ферма. Склад (sklad.js) передаёт своё в ctx.game */
+  const FARM_UI = {
+    key: 'farm', route: 'farm', title: 'Ферма', actor: 'дрон', loading: 'Загружаем ферму…', cmdTitle: 'Команды дрона', winTitle: 'Урожай собран!',
+    stepTitle: 'Выполнить до следующей команды дрону',
+    levels: LEVELS, chapters: CHAPTERS, order: ORDER, numOf, core: FARM_CORE, scene: scene3d, flat: sceneFlat,
+    doc: DOC, cdoc: CDOC, ns: null, cmds: GAME, seedFor: lv => lv.id * 7919 + 13,
+    helpNote: '<p>Каждая команда дрону — один ход. <code>get_pos_x()</code>, <code>get_world_size()</code> и <code>num_items()</code> бесплатны. Работает и обычный Python: <code>print()</code>, <code>range()</code>, <code>len()</code>, <code>min()</code>, <code>max()</code>, списки, словари, свои функции.</p>',
+    intro: ctx => `Дрон-фермер слушается только программы на Python. Знать Python заранее не нужно: каждый уровень объясняет одну новую вещь. За первое прохождение — ${ctx.points || 10} баллов.`,
+    goalHTML,
+    hud(w, lv) {
+      const goal = lv.goal ? Object.keys(lv.goal) : [], items = [...new Set([...goal, ...Object.keys(w.items)])];
+      return items.map(k => `<div title="${ITEMS[k]}">${itemIcon(k, 34)}<span>${shortN(w.items[k] || 0)}</span></div>`).join('');
+    },
+    goalBars(w, lv) {
+      return Object.keys(lv.goal || {}).map(k => {
+        const n = lv.goal[k], h = Math.min(n, w.items[k] || 0);
+        return `<div class="${h >= n ? 'ok' : ''}">${itemIcon(k, 20)}<i style="--p:${h / n}"></i><span>${h} / ${n}</span></div>`;
+      }).join('');
+    },
+    fly: ev => ev.got ? { x: ev.x, y: ev.y, h: 0.9, html: `+${ev.got.n}${itemIcon(ev.got.item, 18)}` } : null,
+    tags(w, lv) {
+      if (lv.api && !lv.api.includes('measure')) return [];
+      const out = [];
+      for (let y = 0; y < lv.h; y++) for (let x = 0; x < lv.w; x++) { const c = w.cell(x, y); if (c.e && c.e.type === 'Sunflower') out.push({ x, y, h: 0.95, cls: 'fg-pet', text: c.e.petals }); }
+      return out;
+    },
+    retag: ev => ev.a === 'plant' || ev.a === 'harvest' || ev.a === 'till',
+  };
   function mount(box, ctx) {
+    const G = ctx.game || FARM_UI;
     injectCSS();
     box.classList.add('fm-host');
     const ctl = { destroy() { } }, off = new AbortController();      // обработчики снимаются вместе с игрой
-    const wanted = ctx.level ? LEVELS.find(l => l.id === ctx.level) : null;
-    const firstOpen = ORDER.map(id => LEVELS.find(l => l.id === id)).find(l => !l.sandbox && ctx.done[l.id] == null && unlocked(l, ctx));
-    const base = wanted && unlocked(wanted, ctx) ? wanted : firstOpen || LEVELS[LEVELS.length - 1];
+    const wanted = ctx.level ? G.levels.find(l => l.id === ctx.level) : null;
+    const firstOpen = G.order.map(id => G.levels.find(l => l.id === id)).find(l => !l.sandbox && ctx.done[l.id] == null && unlocked(l, ctx));
+    const base = wanted && unlocked(wanted, ctx) ? wanted : firstOpen || G.levels[G.levels.length - 1];
     // своя ферма: амбар и купленные улучшения — из прогресса
     let save = base.sandbox ? JSON.parse(JSON.stringify((ctx.farmSave && ctx.farmSave()) || { t: 0, items: {}, up: {} })) : null;
     let lv = base.sandbox ? sandbox(save) : base;
     let note = '';
-    if (wanted && !unlocked(wanted, ctx)) note = `Уровень ${wanted.num} откроется, когда вы пройдёте уровень ${numOf(wanted.need)}.`;
+    if (wanted && !unlocked(wanted, ctx)) note = `Уровень ${wanted.num} откроется, когда вы пройдёте уровень ${G.numOf(wanted.need)}.`;
     else if (ctx.level && !wanted) note = 'Такого уровня нет — выберите из списка.';
     const openLevels = !ctx.level || !!note;
     const hl = ctx.hl || esc;
-    const codeKey = 'farm-code-' + lv.id;
+    const codeKey = G.key + '-code-' + lv.id;
     let code = ctx.store.get(codeKey, null) ?? lv.start;
-    let speed = Math.min(lv.sandbox ? 2 : 3, Math.max(0, +ctx.store.get('farm-speed', 1) || 0));        // в своей ферме время идёт по-настоящему
-    const oi = ORDER.indexOf(lv.id), prev = LEVELS.find(l => l.id === ORDER[oi - 1]), next = LEVELS.find(l => l.id === ORDER[oi + 1]);
-    const showPet = !lv.api || lv.api.includes('measure');
-    const helpHTML = () => `<ul>${(lv.api || Object.keys(DOC)).filter(n => DOC[n] && n !== 'get_pos_y').map(n => `<li><b>${esc(DOC[n][0])}</b> — ${DOC[n][1]}</li>`).join('')}</ul>
-          <p>Каждая команда дрону — один ход. <code>get_pos_x()</code>, <code>get_world_size()</code> и <code>num_items()</code> бесплатны. Работает и обычный Python: <code>print()</code>, <code>range()</code>, <code>len()</code>, <code>min()</code>, <code>max()</code>, списки, словари, свои функции.</p>
+    let speed = Math.min(lv.sandbox ? 2 : 3, Math.max(0, +ctx.store.get(G.key + '-speed', 1) || 0));        // в своей ферме время идёт по-настоящему
+    const oi = G.order.indexOf(lv.id), prev = G.levels.find(l => l.id === G.order[oi - 1]), next = G.levels.find(l => l.id === G.order[oi + 1]);
+    // данные уровня (коробки склада) — из сида: то, что видно на поле до запуска, совпадает с тем, что получит программа
+    let seed = G.seedFor(lv);
+    const helpHTML = () => `<ul>${(lv.api || Object.keys(G.doc)).filter(n => G.doc[n] && n !== 'get_pos_y').map(n => `<li><b>${esc(G.doc[n][0])}</b> — ${G.doc[n][1]}</li>`).join('')}</ul>
+          ${G.helpNote}
           <p>В редакторе при наборе появляются подсказки: ↑ ↓ — выбрать, Tab или Enter — вставить, Esc — закрыть. Tab — отступ, Shift+Tab — убрать отступ, Ctrl+Enter — запуск, Esc и затем Tab — выйти из редактора. Окна можно перетаскивать за заголовок и сворачивать.</p>`;
-    const goalItems = lv.goal ? Object.keys(lv.goal) : [];
 
-    box.innerHTML = `<div class="fg" role="application" aria-label="Ферма: уровень ${lv.num}">
-      <div class="fg-stage"><div class="fg-view"><div class="fg-loading">Загружаем ферму…</div></div>
+    box.innerHTML = `<div class="fg" role="application" aria-label="${G.title}: уровень ${lv.num}">
+      <div class="fg-stage"><div class="fg-view"><div class="fg-loading">${G.loading}</div></div>
       <div class="fg-labels"></div>
       <div class="fg-res" aria-label="Урожай"></div>
       <div class="fg-turn">Ход <b>0</b>${lv.goal ? ` / ${lv.limit.toLocaleString('ru-RU')}` : ''}</div>
-      <div class="fg-tools">${lv.sandbox ? `<button type="button" class="fg-tb" data-fg="tree" title="Улучшения" aria-label="Улучшения">${ICON.plus}</button>` : ''}<button type="button" class="fg-tb" data-fg="levels" title="Уровни" aria-label="Уровни">${ICON.grid}</button><button type="button" class="fg-tb" data-fg="help" title="Команды дрона" aria-label="Команды дрона">${ICON.info}</button></div>
+      <div class="fg-tools">${lv.sandbox ? `<button type="button" class="fg-tb" data-fg="tree" title="Улучшения" aria-label="Улучшения">${ICON.plus}</button>` : ''}<button type="button" class="fg-tb" data-fg="levels" title="Уровни" aria-label="Уровни">${ICON.grid}</button><button type="button" class="fg-tb" data-fg="help" title="${G.cmdTitle}" aria-label="${G.cmdTitle}">${ICON.info}</button></div>
       <div class="fg-speed" role="group" aria-label="Скорость">${SPEEDS.map((s, i) => `<button type="button" data-speed="${i}" class="${i === speed ? 'on' : ''}" aria-pressed="${i === speed}" ${i === 3 && lv.sandbox ? 'disabled title="В своей ферме время идёт по-настоящему"' : ''}>${s[0]}</button>`).join('')}</div></div>
       <section class="fg-win fg-task" data-win="task" aria-label="Задание"><div class="fg-bar"><b>Уровень ${lv.num} · ${esc(lv.title)}</b><button type="button" class="fg-b" data-fg="min" aria-label="Свернуть">${ICON.min}</button></div>
         <div class="fg-body"><span class="fg-chip">${esc(lv.concept)}</span><h3>${esc(lv.title)}</h3><p>${lv.text}</p>
-          ${goalHTML(lv)}
-          ${lv.goal ? '<div class="fg-goal"></div>' : ''}
+          ${G.goalHTML(lv)}
           <div class="fg-learn"><h4>${esc(lv.learn[0])}</h4><pre>${hl(lv.learn[1])}</pre><p>${lv.learn[2]}</p></div>
           ${lv.py && lv.py.length && ctx.topic ? `<p class="fg-py">Подробнее в учебнике: ${lv.py.map(id => `<a href="#py-${id}">${esc(ctx.topic(id) || 'тема ' + id)}</a>`).join(' · ')}</p>` : ''}
           <details><summary>Подсказка</summary><div>${lv.hint}</div></details>
           ${lv.solution ? '<div class="fg-sol" hidden></div>' : ''}
-          <div class="fg-nav">${prev ? `<a href="#farm-${prev.id}">${ICON.chevL}Уровень ${prev.num}</a>` : ''}${next && unlocked(next, ctx) ? `<a href="#farm-${next.id}">Уровень ${next.num}${ICON.chev}</a>` : ''}<button type="button" data-fg="restore">Начать код заново</button></div></div></section>
+          <div class="fg-nav">${prev ? `<a href="#${G.route}-${prev.id}">${ICON.chevL}Уровень ${prev.num}</a>` : ''}${next && unlocked(next, ctx) ? `<a href="#${G.route}-${next.id}">Уровень ${next.num}${ICON.chev}</a>` : ''}<button type="button" data-fg="restore">Начать код заново</button></div></div></section>
       <section class="fg-win fg-code" data-win="code" aria-label="Программа"><div class="fg-bar">
           <button type="button" class="fg-b go" data-fg="run" aria-label="Запустить" title="Запустить (Ctrl+Enter)">${ICON.play}</button>
-          <button type="button" class="fg-b go" data-fg="step" aria-label="Шаг" title="Выполнить до следующей команды дрону">${ICON.step}</button>
+          <button type="button" class="fg-b go" data-fg="step" aria-label="Шаг" title="${G.stepTitle}">${ICON.step}</button>
           <button type="button" class="fg-b" data-fg="reset" aria-label="Заново" title="Вернуть поле в начало">${ICON.reset}</button>
           <b>уровень_${lv.num}.py</b><button type="button" class="fg-b" data-fg="min" aria-label="Свернуть">${ICON.min}</button></div>
         <div class="fg-ed"><div class="fg-ed-in"><div class="fg-gut" aria-hidden="true"></div><div class="fg-src"><div class="fg-hl"></div><pre aria-hidden="true"><code></code></pre>
           <textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Программа на Python" aria-autocomplete="list"></textarea><span class="fg-cw" aria-hidden="true">xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span></div></div></div>
         <div class="fg-out" aria-live="polite"></div><div class="fg-ac" role="listbox" aria-label="Подсказки" hidden></div></section>
       ${lv.sandbox ? `<section class="fg-win fg-pop fg-tree" data-win="tree" aria-label="Улучшения" hidden><div class="fg-bar"><b>Улучшения</b><button type="button" class="fg-b" data-fg="tree" aria-label="Закрыть">${ICON.close}</button></div><div class="fg-body"></div></section>` : ''}
-      <section class="fg-win fg-pop" data-win="levels" aria-label="Уровни" ${openLevels ? '' : 'hidden'}><div class="fg-bar"><b>Ферма · уровни</b><button type="button" class="fg-b" data-fg="levels" aria-label="Закрыть">${ICON.close}</button></div>
-        <div class="fg-body">${levelsHTML(ctx, lv, note || `Дрон-фермер слушается только программы на Python. Знать Python заранее не нужно: каждый уровень объясняет одну новую вещь. За первое прохождение — ${ctx.points || 10} баллов.`)}</div></section>
-      <section class="fg-win fg-pop fg-help" data-win="help" aria-label="Команды" hidden><div class="fg-bar"><b>Команды дрона</b><button type="button" class="fg-b" data-fg="help" aria-label="Закрыть">${ICON.close}</button></div>
+      <section class="fg-win fg-pop" data-win="levels" aria-label="Уровни" ${openLevels ? '' : 'hidden'}><div class="fg-bar"><b>${G.title} · уровни</b><button type="button" class="fg-b" data-fg="levels" aria-label="Закрыть">${ICON.close}</button></div>
+        <div class="fg-body">${levelsHTML(G, ctx, lv, note || G.intro(ctx))}</div></section>
+      <section class="fg-win fg-pop fg-help" data-win="help" aria-label="Команды" hidden><div class="fg-bar"><b>${G.cmdTitle}</b><button type="button" class="fg-b" data-fg="help" aria-label="Закрыть">${ICON.close}</button></div>
         <div class="fg-body">${helpHTML()}</div></section>
     </div>`;
     const $ = s => box.querySelector(s);
@@ -2458,10 +2555,10 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
     const ta = $('textarea'), pre = $('.fg-src pre code'), gut = $('.fg-gut'), hlLine = $('.fg-hl'), out = $('.fg-out'), src = $('.fg-src');
     const runB = $('[data-fg="run"]'), stepB = $('[data-fg="step"]');
     ta.value = code;
-    let run = null, world = new World(lv, 0), mode = 'idle', timer = 0, outN = 0, mark = null, saveT = 0, view = null, dead = false, narrow = false;
+    let run = null, world = G.core.world(lv, seed), mode = 'idle', timer = 0, outN = 0, mark = null, saveT = 0, view = null, dead = false, narrow = false;
 
     /* окна: положение и размер помнятся в браузере */
-    const ui = ctx.store.get('farm-ui', {}) || {};
+    const ui = ctx.store.get(G.key + '-ui', {}) || {};
     let zTop = 12;
     function place() {
       const W = fg.clientWidth, H = fg.clientHeight;
@@ -2483,7 +2580,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
         ui[name] = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, min: el.classList.contains('min') ? 1 : 0 };
         if (name === 'code' && !el.classList.contains('min')) ui[name].h = el.offsetHeight;
       }
-      ctx.store.set('farm-ui', ui);
+      ctx.store.set(G.key + '-ui', ui);
     }
     function freeZone() {
       if (narrow) return null;
@@ -2538,16 +2635,15 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
     }
     let THREE_ = null;
     // сцена пересоздаётся, когда поле выросло
-    const build = () => { if (view) { view.dispose(); view = null; } if (THREE_) { try { attach(() => scene3d(THREE_, stage, lv)); return; } catch (e) { } } attach(() => sceneFlat(stage, lv)); };
+    const build = () => { if (view) { view.dispose(); view = null; } if (THREE_) { try { attach(() => G.scene(THREE_, stage, lv)); return; } catch (e) { } } attach(() => G.flat(stage, lv)); };
     loadThree().then(T => { THREE_ = T; build(); }, build);
+    // подписи над клетками (лепестки подсолнухов и т. п.) — их список даёт игра
     function petals() {
-      labels.querySelectorAll('.fg-pet').forEach(x => x.remove());
-      if (!view || !showPet) return;
-      for (let y = 0; y < lv.h; y++) for (let x = 0; x < lv.w; x++) {
-        const c = world.cell(x, y);
-        if (!c.e || c.e.type !== 'Sunflower') continue;
-        const p = view.project(x, y, 0.95), d = document.createElement('span');
-        d.className = 'fg-pet'; d.textContent = c.e.petals; d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
+      labels.querySelectorAll('.fg-tag').forEach(x => x.remove());
+      if (!view || !G.tags) return;
+      for (const g of G.tags(world, lv)) {
+        const p = view.project(g.x, g.y, g.h), d = document.createElement('span');
+        d.className = 'fg-tag ' + g.cls; d.textContent = g.text; d.style.left = p.x + 'px'; d.style.top = p.y + 'px';
         labels.appendChild(d);
       }
     }
@@ -2615,21 +2711,19 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
     function draw(ev) {
       const w = world;
       if (view) {
-        view.sync(w, ev, speed === 3 ? 0 : Math.min(SPEEDS[speed][1], 260));
-        if (ev && ev.got && speed < 3) fly(ev);
-        if (ev && (ev.a === 'plant' || ev.a === 'harvest' || ev.a === 'till')) petals();
+        // длительность шага анимации — весь интервал выбранной скорости: движение идёт без остановок между командами
+        view.sync(w, ev, speed === 3 ? 0 : SPEEDS[speed][1]);
+        const fl = ev && speed < 3 && G.fly && G.fly(ev);
+        if (fl) fly(fl);
+        if (ev && G.retag && G.retag(ev)) petals();
       }
       $('.fg-turn b').textContent = w.t.toLocaleString('ru-RU');
-      const items = [...new Set([...goalItems, ...Object.keys(w.items)])];
-      $('.fg-res').innerHTML = items.map(k => `<div title="${ITEMS[k]}">${itemIcon(k, 34)}<span>${shortN(w.items[k] || 0)}</span></div>`).join('');
-      if (lv.goal && $('.fg-goal')) $('.fg-goal').innerHTML = goalItems.map(k => {
-        const n = lv.goal[k], h = Math.min(n, w.items[k] || 0);
-        return `<div class="${h >= n ? 'ok' : ''}">${itemIcon(k, 20)}<i style="--p:${h / n}"></i><span>${h} / ${n}</span></div>`;
-      }).join('');
+      $('.fg-res').innerHTML = G.hud(w, lv);
+      const gb = $('.fg-goal'); if (gb && G.goalBars) gb.innerHTML = G.goalBars(w, lv);
     }
-    function fly(ev) {
-      const p = view.project(ev.x, ev.y, 0.9), f = document.createElement('span');
-      f.className = 'fg-fly'; f.innerHTML = `+${ev.got.n}${itemIcon(ev.got.item, 18)}`;
+    function fly(fl) {
+      const p = view.project(fl.x, fl.y, fl.h), f = document.createElement('span');
+      f.className = 'fg-fly'; f.innerHTML = fl.html;
       f.style.left = p.x + 'px'; f.style.top = p.y + 'px';
       labels.appendChild(f); setTimeout(() => f.remove(), 1000);
     }
@@ -2653,7 +2747,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       runB.setAttribute('aria-label', on ? 'Остановить' : m === 'pause' ? 'Продолжить' : 'Запустить');
       runB.title = on ? 'Остановить' : m === 'pause' ? 'Продолжить' : 'Запустить (Ctrl+Enter)';
       stepB.className = 'fg-b ' + (on ? 'pause' : 'go'); stepB.innerHTML = on ? ICON.pause : ICON.step;
-      stepB.setAttribute('aria-label', on ? 'Пауза' : 'Шаг'); stepB.title = on ? 'Пауза' : 'Выполнить до следующей команды дрону';
+      stepB.setAttribute('aria-label', on ? 'Пауза' : 'Шаг'); stepB.title = on ? 'Пауза' : G.stepTitle;
       ta.readOnly = m === 'run' || m === 'pause';
     }
     // амбар своей фермы: собранное сохраняется во время работы (в браузере) и после остановки (в аккаунте)
@@ -2669,7 +2763,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       fg.querySelector('.fg-done')?.remove();
       out.innerHTML = ''; outN = 0;
       if (lv.sandbox) lv = sandbox(save);
-      run = new Run(lv, ta.value); run.outI = 0;
+      run = new Run(lv, ta.value, { game: G.core, seed }); run.outI = 0;
       world = run.world; draw(); petals();
       if (run.state === 'error') { finish(); return false; }
       return true;
@@ -2730,7 +2824,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       if (st === 'win') return win(t);
       fails++; offerSolution();
       if (st === 'end' && run.misses && run.misses.length) { run.misses.forEach(m => log('e', esc(m))); return; }
-      if (st === 'limit') log('e', `Закончились ходы: на уровне их ${lv.limit.toLocaleString('ru-RU')}. Цель не выполнена — посмотрите, где дрон тратит ходы зря.`);
+      if (st === 'limit') log('e', `Закончились ходы: на уровне их ${lv.limit.toLocaleString('ru-RU')}. Цель не выполнена — посмотрите, где ${G.actor} тратит ходы зря.`);
       else if (st === 'end') log('s', lv.goal ? (lv.id > 1 && !/while/.test(ta.value) ? 'Программа закончилась, а цель ещё не выполнена. Чтобы дрон работал, пока цель не выполнена, поместите команды в цикл <code>while True:</code>.' : 'Программа закончилась, а цель ещё не выполнена.') : `Программа закончилась за ${hodov(t)}.`);
     }
     function win(t) {
@@ -2738,13 +2832,13 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       const star = lv.par && t <= lv.par;
       log('w', `Цель выполнена за ${hodov(t)}.`);
       const d = document.createElement('section'); d.className = 'fg-win fg-done'; d.setAttribute('aria-label', 'Уровень пройден');
-      d.innerHTML = `<div class="fg-bar"><b>Уровень ${lv.num} пройден</b></div><div class="fg-body"><h3>Урожай собран!</h3>
+      d.innerHTML = `<div class="fg-bar"><b>Уровень ${lv.num} пройден</b></div><div class="fg-body"><h3>${G.winTitle}</h3>
         <p>Цель выполнена за ${hodov(t)}.${res.best < t ? ` Ваш рекорд — ${hodov(res.best)}.` : ''}</p>
         ${lv.par ? (star ? `<p class="stars">${ICON.star}Уложились в норму: ${hodov(lv.par)}</p>` : `<p>Норма для звезды — ${hodov(lv.par)}. Можно короче!</p>`) : ''}
         ${res.points ? `<p class="pts">+${res.points} баллов</p>` : ''}
-        <div class="fg-nav">${next ? `<a class="next" href="#farm-${next.id}">Следующий уровень${ICON.chev}</a>` : `<button type="button" data-fg="levels">Все уровни</button>`}<button type="button" data-fg="again">Ещё раз</button></div></div>`;
+        <div class="fg-nav">${next ? `<a class="next" href="#${G.route}-${next.id}">Следующий уровень${ICON.chev}</a>` : `<button type="button" data-fg="levels">Все уровни</button>`}<button type="button" data-fg="again">Ещё раз</button></div></div>`;
       fg.appendChild(d);
-      $('[data-win="levels"] .fg-body').innerHTML = levelsHTML(ctx, lv, '');
+      $('[data-win="levels"] .fg-body').innerHTML = levelsHTML(G, ctx, lv, '');
     }
     // новичку: после двух неудачных запусков — решение, которое можно разобрать и вставить
     let fails = 0;
@@ -2753,7 +2847,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       el.hidden = false;
       el.innerHTML = `<details><summary>Показать решение</summary><div><p>Сначала прочитайте его и попробуйте понять каждую строку — потом можно вставить в редактор.</p><pre>${hl(lv.solution)}</pre><button type="button" data-fg="usesol">Вставить в редактор</button></div></details>`;
     }
-    function resetField() { stop(); fg.querySelector('.fg-done')?.remove(); out.innerHTML = ''; outN = 0; run = null; if (lv.sandbox) lv = sandbox(save); world = new World(lv, 0); draw(); petals(); }
+    function resetField() { stop(); fg.querySelector('.fg-done')?.remove(); out.innerHTML = ''; outN = 0; run = null; if (lv.sandbox) lv = sandbox(save); world = G.core.world(lv, seed); draw(); petals(); }
 
     /* дерево улучшений */
     const UP_ICON = {
@@ -2782,7 +2876,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       const old = lv;
       save = ns; lv = sandbox(save);
       if (ctx.onFarmSave) ctx.onFarmSave(save, true);
-      run = null; world = new World(lv, 0);
+      run = null; world = G.core.world(lv, seed);
       if (old.w !== lv.w && view) build();
       $('[data-win="help"] .fg-body').innerHTML = helpHTML();
       treeRender(); draw(); petals();
@@ -2794,7 +2888,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
     /* подсказки при наборе */
     const acEl = $('.fg-ac'), cwEl = $('.fg-cw'), edEl = $('.fg-ed');
     let ac = null;
-    const avail = () => ({ api: lv.api || GAME, plants: lv.plants || null });
+    const avail = () => ({ api: lv.api || G.cmds, all: G.cmds, plants: lv.plants || null, cdoc: G.cdoc, ns: G.ns, nsDoc: G.nsDoc, actor: G.actor });
     function acHide() { ac = null; acEl.hidden = true; }
     function acPlace(pos) {
       const cw = cwEl.offsetWidth / 40 || 8.1, v = ta.value.slice(0, pos), line = v.split('\n').length - 1, col = v.length - v.lastIndexOf('\n') - 1;
@@ -2839,7 +2933,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       const b = e.target.closest('[data-fg],[data-speed],[data-line],[data-buy]');
       if (!b) return;
       if (b.dataset.speed) {
-        speed = +b.dataset.speed; ctx.store.set('farm-speed', speed);
+        speed = +b.dataset.speed; ctx.store.set(G.key + '-speed', speed);
         box.querySelectorAll('[data-speed]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', x === b); });
         return;
       }
@@ -2848,7 +2942,8 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       const a = b.dataset.fg;
       if (a === 'run') { acHide(); start(); }
       else if (a === 'step') stepOnce();
-      else if (a === 'reset' || a === 'again') resetField();
+      else if (a === 'reset') resetField();
+      else if (a === 'again') { if (G.newSeed) seed = G.newSeed(); resetField(); }
       else if (a === 'min') {
         const w = b.closest('.fg-win'); w.classList.toggle('min');
         b.innerHTML = w.classList.contains('min') ? ICON.plus : ICON.min; b.setAttribute('aria-label', w.classList.contains('min') ? 'Развернуть' : 'Свернуть');
@@ -2883,5 +2978,5 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
     return ctl;
   }
 
-  root.StacklyFarm = { ...api, mount };
+  root.StacklyFarm = { ...api, mount, ui: { esc, ICON, plural, reduceMotion, shortN, hl: null } };
 })(typeof window !== 'undefined' ? window : globalThis);
