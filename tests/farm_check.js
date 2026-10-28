@@ -51,7 +51,7 @@ check('ошибки с номером строки', () => {
   };
   for (const [code, want] of Object.entries(cases)) assert.strictEqual(pyErr(code), want, JSON.stringify(code));
   assert.match(F.simulate(L(1), 'harvst()').error, /имелось в виду «harvest»/);
-  assert.match(F.simulate(L(1), 'move(East)').error, /откроется на уровне 3/);
+  assert.match(F.simulate(L(1), 'move(East)').error, /откроется на уровне 2/);
 });
 check('длинные числа, побитовые операции, форматы, множества, словари — как в Python', () => {
   // ожидаемый вывод получен запуском того же кода в CPython 3.14
@@ -73,45 +73,37 @@ check('import, itertools, lru_cache, глубокая рекурсия', () => {
   assert.strictEqual(pyErr('import numpy'), 'ImportError:1');
   assert.strictEqual(py("import math\nprint(math.isqrt(10 ** 20 + 5), math.sqrt(16), math.gcd(12, 18), math.ceil(2.1), math.floor(-2.1))"), '10000000000 4.0 6 3 -3\n');
 });
-const TASKS = F.ORDER.map(id => L(id)).filter(l => l.answer);
-for (const lv of TASKS) {
-  check(`задача ${lv.id} «${lv.title}» (ЕГЭ №${lv.ege.join(', ') || '—'}): эталон верен на 5 наборах данных, стартовый код и неверный ответ — нет`, () => {
-    for (const seed of [11, 22, 33, 44, 55]) {
-      const data = new F.Run(lv, '', { seed }).data, r = F.simulate(lv, F.solutionFor(lv, data), { seed });
-      assert.strictEqual(r.state, 'win', `seed ${seed}: ${r.state} ${r.error || ''} ${r.wrong || ''}`);
-    }
-    const st = F.simulate(lv, lv.start, { seed: 7, maxOps: 400000 });
-    assert.notStrictEqual(st.state, 'win', 'стартовый код уже решает задачу');
-    const n = new F.Run(lv, '', { seed: 7 }).data.expect.length;
-    const wrong = F.simulate(lv, 'answer(' + Array(n).fill('-1').join(', ') + ')', { seed: 7 });
-    assert.strictEqual(wrong.state, 'wrong');
-  });
-}
-check('без кэша рекурсия упирается в лимит и подсказывает @lru_cache', () => {
-  const r = F.simulate(L(31), L(31).start, { seed: 3, maxOps: 300000 });
-  assert.match(r.error, /TimeoutError.*lru_cache/);
+check('главы: каждый уровень ровно в одной, номера идут подряд, уровень открывается после предыдущего', () => {
+  assert.deepStrictEqual([...F.ORDER].sort((a, b) => a - b), F.LEVELS.map(l => l.id).sort((a, b) => a - b));
+  F.ORDER.forEach((id, i) => { const l = L(id); assert.strictEqual(l.num, i + 1); if (!l.sandbox) assert.strictEqual(l.need, i ? F.ORDER[i - 1] : 0); });
 });
-check('уровни покрывают все 43 темы учебника и все задания ЕГЭ, которые решаются кодом', () => {
-  const py = new Set(F.LEVELS.flatMap(l => l.py)), ege = new Set(F.LEVELS.flatMap(l => l.ege));
-  for (let t = 1; t <= 43; t++) assert.ok(py.has(t), 'тема ' + t);
-  for (const n of [2, 5, 8, 9, 12, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26]) assert.ok(ege.has(n), 'ЕГЭ №' + n);
-  assert.deepStrictEqual([...F.ORDER].sort((a, b) => a - b), F.LEVELS.map(l => l.id).sort((a, b) => a - b));     // каждый уровень в одной главе
+check('первые шаги: типичные ошибки новичка объясняются, а не просто «не пройдено»', () => {
+  const miss = (id, code) => { const r = F.simulate(L(id), code); assert.notStrictEqual(r.state, 'win', code); return r.misses.join(' ') || r.error || r.state; };
+  assert.match(miss(36, "print('Привет, ферма!')\nprint(56)"), /Пусть умножает Python/);
+  assert.match(miss(36, "print('Привет ферма')\nprint(7 * 8)"), /В журнале должно быть: «Привет, ферма!», «56»\. А программа вывела: «Привет ферма», «56»/);
+  assert.match(miss(37, 'print(12)\nprint(24)'), /bags = 12/);
+  assert.match(miss(38, 'harvest()\nmove(East)\nharvest()\nmove(East)\nharvest()\nprint(3)'), /count = count \+ 1/);
+  assert.match(miss(39, L(35).solution + 'move(East)\nharvest()\nmove(East)\nharvest()\n'), /цикл(ом)? for/);
+  assert.match(miss(40, L(40).start), /А программа вывела: «0», «1», «2», «3», «4»/);
+  assert.strictEqual(F.simulate(L(41), L(41).start).state, 'limit');                      // while True не кончается
+  assert.match(miss(41, "while num_items(Items.Hay) <= 7:\n    harvest()\nprint('Готово')"), /ровно 7, а собрано 8/);
+  assert.match(miss(42, 'for i in range(6):\n    if can_harvest():\n        harvest()\n    move(East)'), /должно быть «куст», а там «пусто»/);
+  assert.match(miss(43, 'for i in range(8):\n    plant(Entities.Tree)\n    move(East)'), /x = 3 должно быть «куст», а там «дерево»/);
 });
-check('карта уровней в index.html (ссылки из учебника и методички) совпадает с farm.js', () => {
+check('карта уровней в index.html (ссылки из учебника) совпадает с farm.js', () => {
   const html = require('fs').readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const m = /const FARM_LV = (\[.*\]);/.exec(html);
   assert.ok(m, 'в index.html нет FARM_LV');
   const got = JSON.parse(m[1].replace(/'/g, '"'));
-  const want = F.ORDER.map(id => L(id)).map(l => [l.id, l.title, l.py, l.ege]);
+  const want = F.ORDER.map(id => L(id)).map(l => [l.id, l.num, l.title, l.py]);
   assert.deepStrictEqual(got, want, 'обновите FARM_LV в index.html по LEVELS из farm.js');
 });
 for (const lv of F.LEVELS) {
-  if (!lv.solution || lv.answer) continue;
-  check(`уровень ${lv.id} «${lv.title}»: решение проходит, стартовый код — нет`, () => {
+  if (!lv.solution) continue;
+  check(`уровень ${lv.num} «${lv.title}»: решение проходит, стартовый код — нет`, () => {
     const r = F.simulate(lv, lv.solution);
     assert.strictEqual(r.state, 'win', `решение: ${r.state} ${r.error || ''} ${JSON.stringify(r.items)}`);
-    assert.ok(r.t <= lv.par, `решение за ${r.t} ходов, норма ${lv.par}`);
-    assert.ok(lv.par <= lv.limit);
+    if (lv.par) assert.ok(r.t <= lv.par && lv.par <= lv.limit, `решение за ${r.t} ходов, норма ${lv.par}`);
     const s = F.simulate(lv, lv.start);
     assert.notStrictEqual(s.state, 'win', 'стартовый код уже проходит уровень');
   });
