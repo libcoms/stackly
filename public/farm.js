@@ -207,7 +207,7 @@
       if (r !== null) return r;
     }
     const NAMES = { '+': 'сложить', '-': 'вычесть', '*': 'умножить', '/': 'разделить', '//': 'разделить', '%': 'взять остаток от', '**': 'возвести в степень' };
-    throw E('TypeError', NAMES[op] ? `нельзя ${NAMES[op]} значения типов ${tn(a)} и ${tn(b)} (операция «${op}»)` : `операция «${op}» не работает со значениями типов ${tn(a)} и ${tn(b)}`);
+    throw E('TypeError', (NAMES[op] ? `нельзя ${NAMES[op]} значения типов ${tn(a)} и ${tn(b)} (операция «${op}»)` : `операция «${op}» не работает со значениями типов ${tn(a)} и ${tn(b)}`) + (a === null || b === null ? '. None — это «ничего»: так бывает, если функция не вернула значение через return' : ''));
   }
   function index(len, i) {
     if (!isInt(i)) throw E('TypeError', `индекс должен быть целым числом, а не ${tn(i)}`);
@@ -796,6 +796,7 @@
       this.globals = new Map(); this.builtins = new Map();
       this.ops = 0; this.lastAct = 0; this.idleOps = opt.idleOps || 1500000; this.maxOps = opt.maxOps || Infinity; this.depth = 0; this.line = 0;
       this.maxDepth = 1000; this.hardDepth = 20000; this.files = opt.files || {};
+      this.watch = null;                                         // игра может смотреть на каждый шаг программы (мастерская переменных)
       this.print = opt.print || (() => { });
       this.rng = opt.rng || Math.random;
       this.top = { vars: this.globals, isGlobal: true };
@@ -819,6 +820,8 @@
       else sc.vars.set(name, v);
     }
     *run(body, sc) { for (const s of body) yield* this.stmt(s, sc); }
+    // сообщить наблюдателю о шаге; если он вернул событие — отдать его наверх, как ход дрона
+    *seen(kind, s, sc, v, i) { const ev = this.watch(kind, s, sc, v, i); if (ev) yield ev; }
     *stmt(s, sc) {
       this.line = s.line;
       if (++this.ops % 20000 === 0) {
@@ -827,31 +830,40 @@
         yield IDLE;
       }
       switch (s.k) {
-        case 'expr': yield* this.ev(s.e, sc); return;
-        case 'assign': { const v = yield* this.ev(s.value, sc); for (const t of s.targets) yield* this.store(t, v, sc); return; }
+        case 'expr': yield* this.ev(s.e, sc); if (this.watch) yield* this.seen('expr', s, sc); return;
+        case 'assign': { const v = yield* this.ev(s.value, sc); for (const t of s.targets) yield* this.store(t, v, sc); if (this.watch) yield* this.seen('set', s, sc, v); return; }
         case 'aug': {
           const cur = yield* this.ev(s.target, sc), v = yield* this.ev(s.value, sc);
           if (Array.isArray(cur) && s.op === '+') { cur.push(...iter(v)); return; }
           this.line = s.line;
           yield* this.store(s.target, binop(s.op, cur, v), sc);
+          if (this.watch) yield* this.seen('set', s, sc);
           return;
         }
         case 'if':
-          for (const [test, body] of s.branches) if (truthy(yield* this.ev(test, sc))) return yield* this.run(body, sc);
+          for (let i = 0; i < s.branches.length; i++) {
+            const [test, body] = s.branches[i], ok = truthy(yield* this.ev(test, sc));
+            if (this.watch) yield* this.seen('if', s, sc, ok, i);
+            if (ok) return yield* this.run(body, sc);
+          }
           if (s.orelse) yield* this.run(s.orelse, sc);
           return;
         case 'while':
-          for (;;) {
+          for (let i = 0; ; i++) {
             this.line = s.line;
-            if (!truthy(yield* this.ev(s.test, sc))) return;
+            const ok = truthy(yield* this.ev(s.test, sc));
+            if (this.watch) yield* this.seen('while', s, sc, ok, i);
+            if (!ok) return;
             try { yield* this.run(s.body, sc); }
             catch (e) { if (e === BREAK) return; if (e !== CONT) throw e; }
           }
         case 'for': {
           const it = iter(yield* this.ev(s.iter, sc));
+          let i = 0;
           for (const x of it) {
             this.line = s.line;
             yield* this.store(s.target, x, sc);
+            if (this.watch) yield* this.seen('for', s, sc, x, i++);
             try { yield* this.run(s.body, sc); }
             catch (e) { if (e === BREAK) return; if (e !== CONT) throw e; }
           }
@@ -1013,13 +1025,16 @@
         }
         for (const k of Object.keys(kw)) if (!d.params.includes(k)) throw E('TypeError', `у функции ${d.name}() нет параметра «${k}»`);
         if (++this.depth > this.maxDepth) { this.depth = 0; throw E('RecursionError', `слишком глубокая рекурсия: больше ${this.maxDepth} вызовов подряд. Проверьте, что у рекурсии есть условие остановки`); }
-        try { yield* this.run(d.body, sc); return null; }
+        if (this.watch) yield* this.seen('call', d, sc, args);
+        let rv = null;
+        try { yield* this.run(d.body, sc); }
         catch (e) {
-          if (e instanceof Ret) return e.v;
-          if (e instanceof PyError && e.line == null) e.line = this.line;
-          throw e;
+          if (e instanceof Ret) rv = e.v;
+          else { if (e instanceof PyError && e.line == null) e.line = this.line; throw e; }
         }
         finally { this.depth = Math.max(0, this.depth - 1); this.line = line; }
+        if (this.watch) yield* this.seen('ret', d, sc, rv);
+        return rv;
       }
     }
     // «батут»: выполняет программу, держа кадры функций в своём стеке — рекурсия в тысячи вызовов не переполняет стек JS.
@@ -1933,7 +1948,7 @@
   }
 
   // для других игр (sklad.js): значения Python, ошибки, направления
-  const kit = { NS, Const, Bi, E, needArgs, eq, repr, pystr, rng32, Dirs: C.Dirs, DIRS, endCheck, outLines };
+  const kit = { NS, Const, Bi, Fn, F, Tup, E, tn, needArgs, eq, repr, pystr, rng32, Dirs: C.Dirs, DIRS, endCheck, outLines };
   const api = { ...kit, PyError, parse, tokenize, Interp, Run, World, simulate, LEVELS, CHAPTERS, ORDER, UPGRADES, SIZES, upState, buy, sandbox, complete, signature, insertion };
   if (typeof module !== 'undefined' && module.exports) { module.exports = api; return; }
 
@@ -2512,7 +2527,8 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
     const hl = ctx.hl || esc;
     const codeKey = G.key + '-code-' + lv.id;
     let code = ctx.store.get(codeKey, null) ?? lv.start;
-    let speed = Math.min(lv.sandbox ? 2 : 3, Math.max(0, +ctx.store.get(G.key + '-speed', 1) || 0));        // в своей ферме время идёт по-настоящему
+    const hodov = n => `${n.toLocaleString('ru-RU')} ${plural(n, ...(G.unit || ['ход', 'хода', 'ходов']))}`;
+    let speed = Math.min(lv.sandbox ? 2 : 3, Math.max(0, +ctx.store.get(G.key + '-speed', G.speed ?? 1) || 0));        // в своей ферме время идёт по-настоящему
     const oi = G.order.indexOf(lv.id), prev = G.levels.find(l => l.id === G.order[oi - 1]), next = G.levels.find(l => l.id === G.order[oi + 1]);
     // данные уровня (коробки склада) — из сида: то, что видно на поле до запуска, совпадает с тем, что получит программа
     let seed = G.seedFor(lv);
@@ -2524,7 +2540,7 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       <div class="fg-stage"><div class="fg-view"><div class="fg-loading">${G.loading}</div></div>
       <div class="fg-labels"></div>
       <div class="fg-res" aria-label="Урожай"></div>
-      <div class="fg-turn">Ход <b>0</b>${lv.goal ? ` / ${lv.limit.toLocaleString('ru-RU')}` : ''}</div>
+      <div class="fg-turn">${G.turn || 'Ход'} <b>0</b>${lv.goal ? ` / ${lv.limit.toLocaleString('ru-RU')}` : ''}</div>
       <div class="fg-tools">${lv.sandbox ? `<button type="button" class="fg-tb" data-fg="tree" title="Улучшения" aria-label="Улучшения">${ICON.plus}</button>` : ''}<button type="button" class="fg-tb" data-fg="levels" title="Уровни" aria-label="Уровни">${ICON.grid}</button><button type="button" class="fg-tb" data-fg="help" title="${G.cmdTitle}" aria-label="${G.cmdTitle}">${ICON.info}</button></div>
       <div class="fg-speed" role="group" aria-label="Скорость">${SPEEDS.map((s, i) => `<button type="button" data-speed="${i}" class="${i === speed ? 'on' : ''}" aria-pressed="${i === speed}" ${i === 3 && lv.sandbox ? 'disabled title="В своей ферме время идёт по-настоящему"' : ''}>${s[0]}</button>`).join('')}</div></div>
       <section class="fg-win fg-task" data-win="task" aria-label="Задание"><div class="fg-bar"><b>Уровень ${lv.num} · ${esc(lv.title)}</b><button type="button" class="fg-b" data-fg="min" aria-label="Свернуть">${ICON.min}</button></div>
@@ -2824,7 +2840,8 @@ p.fg-want { display: flex; align-items: center; gap: 6px; color: #F5D46A !import
       if (st === 'win') return win(t);
       fails++; offerSolution();
       if (st === 'end' && run.misses && run.misses.length) { run.misses.forEach(m => log('e', esc(m))); return; }
-      if (st === 'limit') log('e', `Закончились ходы: на уровне их ${lv.limit.toLocaleString('ru-RU')}. Цель не выполнена — посмотрите, где ${G.actor} тратит ходы зря.`);
+      if (st === 'limit' && G.limitMsg) log('e', G.limitMsg(lv));
+      else if (st === 'limit') log('e', `Закончились ходы: на уровне их ${lv.limit.toLocaleString('ru-RU')}. Цель не выполнена — посмотрите, где ${G.actor} тратит ходы зря.`);
       else if (st === 'end') log('s', lv.goal ? (lv.id > 1 && !/while/.test(ta.value) ? 'Программа закончилась, а цель ещё не выполнена. Чтобы дрон работал, пока цель не выполнена, поместите команды в цикл <code>while True:</code>.' : 'Программа закончилась, а цель ещё не выполнена.') : `Программа закончилась за ${hodov(t)}.`);
     }
     function win(t) {

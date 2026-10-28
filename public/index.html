@@ -2774,7 +2774,7 @@ function stacklyApp() {
   const egeRead = new Set(store.get('egeRead', []));          // разобранные задания методички
   const matsDone = new Set(store.get('mats', []));            // изученные свои материалы учителей (id)
   // пройденные уровни фермы: номер → лучшее число ходов (public/farm.js)
-  const normFarm = f => Object.fromEntries(Object.entries(f && typeof f === 'object' && !Array.isArray(f) ? f : {}).filter(([k, t]) => /^\d{1,3}$/.test(k) && +k >= 1 && +k <= 200 && Number.isFinite(+t) && +t >= 0).map(([k, t]) => [k, +t]));
+  const normFarm = f => Object.fromEntries(Object.entries(f && typeof f === 'object' && !Array.isArray(f) ? f : {}).filter(([k, t]) => /^\d{1,3}$/.test(k) && +k >= 1 && +k <= 300 && Number.isFinite(+t) && +t >= 0).map(([k, t]) => [k, +t]));
   const farmDone = normFarm(store.get('farm', {}));
   // своя ферма: амбар и купленные улучшения { t, items: {Hay: …}, up: {id: уровень} }; из двух копий берётся более свежая
   const normFarmX = x => {
@@ -2786,23 +2786,27 @@ function stacklyApp() {
   const clearFarm = () => { Object.keys(farmDone).forEach(k => delete farmDone[k]); farmX = null; store.set('farmx', null); };
   // уровни игры «Ферма»: [id, номер по порядку, название, темы учебника] — копия из public/farm.js, сверяется в tests/farm_check.js
   const FARM_LV = [[1,1,'Первый урожай',[1]], [34,2,'Шаг вправо',[1]], [35,3,'Ряд грядок',[1]], [36,4,'Дрон говорит',[2,4]], [37,5,'Коробка с именем',[3]], [38,6,'Счётчик урожая',[3,4]], [39,7,'Повтори шесть раз',[11]], [40,8,'Что считает range',[12]], [2,9,'Снова и снова',[14]], [3,10,'Шаг в сторону',[14]], [41,11,'Пока не наберётся',[14]], [4,12,'Сначала проверь',[6]], [42,13,'Иначе',[6]], [43,14,'Сравнения',[6,7]], [5,15,'Обход поля',[17]], [6,16,'Кусты',[35]], [7,17,'Морковь',[6]], [8,18,'Шахматный лес',[5]], [9,19,'Свои функции',[34,35,36]], [10,20,'Тыквы',[6,8]], [11,21,'Подсолнухи',[27,29,31]], [12,22,'Своя ферма',[]]];
-  // пройденные уровни по играм: id ферменных уровней — из FARM_LV, склада — 101…200 (удалённые уровни не считаются)
-  const SKLAD_TOTAL = 10;
-  const gamesOf = ids => { ids = (ids || []).map(Number); return { farm: ids.filter(id => FARM_LV.some(l => l[0] === id)).length, sklad: ids.filter(id => id >= 101 && id <= 200).length }; };
-  const gamesCell = s => { const g = gamesOf(s.games); return g.farm || g.sklad ? `<span title="Ферма: ${g.farm} из ${FARM_LV.length} · Склад: ${g.sklad} из ${SKLAD_TOTAL}">${g.farm} · ${g.sklad}</span>` : '—'; };
-  const gamesKpi = s => { const g = gamesOf(s.games); return `<div class="kpi"><span class="k-l">Игры на Python</span><b>${g.farm + g.sklad}<small> ${plural(g.farm + g.sklad, 'уровень', 'уровня', 'уровней')}</small></b>${barHTML(g.farm + g.sklad, FARM_LV.length + SKLAD_TOTAL)}<span class="k-s">Ферма: ${g.farm} из ${FARM_LV.length} · Склад: ${g.sklad} из ${SKLAD_TOTAL}</span></div>`; };
+  // пройденные уровни по играм: id ферменных уровней — из FARM_LV, склада — 101…200, мастерской — 201…300 (удалённые уровни не считаются)
+  const SKLAD_TOTAL = 10, VARS_TOTAL = 25;
+  const gamesOf = ids => { ids = (ids || []).map(Number); return { vars: ids.filter(id => id >= 201 && id < 201 + VARS_TOTAL).length, farm: ids.filter(id => FARM_LV.some(l => l[0] === id)).length, sklad: ids.filter(id => id >= 101 && id <= 200).length }; };
+  const gamesSum = g => g.vars + g.farm + g.sklad;
+  const gamesTip = g => `Мастерская: ${g.vars} из ${VARS_TOTAL} · Ферма: ${g.farm} из ${FARM_LV.length} · Склад: ${g.sklad} из ${SKLAD_TOTAL}`;
+  const gamesCell = s => { const g = gamesOf(s.games); return gamesSum(g) ? `<span title="${gamesTip(g)}">${g.vars} · ${g.farm} · ${g.sklad}</span>` : '—'; };
+  const gamesKpi = s => { const g = gamesOf(s.games), n = gamesSum(g); return `<div class="kpi"><span class="k-l">Игры на Python</span><b>${n}<small> ${plural(n, 'уровень', 'уровня', 'уровней')}</small></b>${barHTML(n, VARS_TOTAL + FARM_LV.length + SKLAD_TOTAL)}<span class="k-s">${gamesTip(g)}</span></div>`; };
   function pageGames() {
     const g = gamesOf(Object.keys(farmDone));
     const card = (href, title, text, done, total, art) => `<a class="game-card" href="${href}"><span class="game-art" aria-hidden="true">${art}</span><span class="game-txt"><b>${title}</b><span>${text}</span>
         <span class="game-prog">${barHTML(done, total)}<small>${done ? `пройдено ${done} из ${total}` : `${total} ${plural(total, 'уровень', 'уровня', 'уровней')}`}</small></span></span><span class="btn small">${done ? 'Продолжить' : 'Играть'} <span class="arr">${I.arrow}</span></span></a>`;
     return `<div class="page wrap t-page"><header class="t-head"><div><h1>Игры на Python</h1><p>Программируйте героя игры на настоящем Python: каждый уровень объясняет одну новую вещь. Знать Python заранее не нужно. За первое прохождение уровня — ${PTS.farm} баллов.</p></div></header>
       <section class="t-sec games">
+        ${card('#vars', 'Мастерская переменных', 'Программа изнутри: переменные — ящики на полке, значения — жетоны. Для тех, кто начинает с нуля: типы, условия, циклы, списки, функции.', g.vars, VARS_TOTAL, GAME_ART.vars)}
         ${card('#farm', 'Ферма', 'Дрон-фермер собирает урожай. С нуля: команды, переменные, циклы, условия, функции, списки.', g.farm, FARM_LV.length, GAME_ART.farm)}
         ${card('#sklad', 'Склад', 'Робот-погрузчик раскладывает коробки по стеллажам: циклы, условия, функции и сортировка на деле.', g.sklad, SKLAD_TOTAL, GAME_ART.sklad)}
       </section></div>`;
   }
-  // картинки карточек игр: парящий остров с дроном и стеллаж с погрузчиком
+  // картинки карточек игр: полка с ящиками и роботом, парящий остров с дроном, стеллаж с погрузчиком
   const GAME_ART = {
+    vars: '<svg viewBox="0 0 160 110"><rect width="160" height="110" rx="10" fill="#E9E1D3"/><rect x="10" y="14" width="140" height="34" fill="#C79A63" opacity=".55"/><rect x="8" y="72" width="144" height="7" fill="#A9774A"/><path d="M14 79v24M146 79v24" stroke="#7A5232" stroke-width="5"/><g><rect x="18" y="56" width="30" height="16" fill="#C79A63"/><rect x="22" y="64" width="22" height="6" rx="1.5" fill="#F7F3EA"/><circle cx="33" cy="52" r="9" fill="#2F6FD6"/><text x="33" y="55.5" font-size="10" font-family="monospace" font-weight="700" fill="#fff" text-anchor="middle">5</text></g><g><rect x="56" y="56" width="34" height="16" fill="#C79A63"/><rect x="60" y="64" width="26" height="6" rx="1.5" fill="#F7F3EA"/><rect x="58" y="42" width="30" height="14" rx="1.5" fill="#F2C14E"/><text x="73" y="52" font-size="8" font-family="monospace" font-weight="700" fill="#3A2A05" text-anchor="middle">&quot;кот&quot;</text></g><g><rect x="98" y="56" width="44" height="16" fill="#C79A63"/><rect x="102" y="64" width="36" height="6" rx="1.5" fill="#F7F3EA"/><rect x="100" y="42" width="40" height="14" rx="1.5" fill="#F4F1E8"/><path d="M110 42v14M120 42v14M130 42v14" stroke="#C9D3E0"/></g><rect x="18" y="18" width="28" height="24" rx="2" fill="#20232A"/><circle cx="32" cy="27" r="5" fill="#2EE06F"/><rect x="58" y="18" width="40" height="20" rx="2" fill="#0E1A14"/><path d="M63 25h22M63 31h14" stroke="#8CFFB4" stroke-width="2"/><g transform="translate(124 27)"><circle r="10" fill="#F08A3C"/><rect x="-6.5" y="-4" width="13" height="7" rx="3" fill="#14181F"/><circle cx="-3" cy="-.5" r="1.4" fill="#8FF3FF"/><circle cx="3" cy="-.5" r="1.4" fill="#8FF3FF"/><path d="M0-10v-5" stroke="#22252B" stroke-width="1.2"/><circle cy="-16" r="2" fill="#FFD166"/></g></svg>',
     farm: '<svg viewBox="0 0 160 110"><rect width="160" height="110" rx="10" fill="#86A3B8"/><path d="M38 66h84l-10 26H48z" fill="#8A6A48"/><path d="M30 56h100v12H30z" fill="#D88A40"/><path d="M30 50h100v8H30z" fill="#7E9C35"/><g stroke="#E8BC52" stroke-width="2.4" stroke-linecap="round"><path d="M44 50v-12M50 50v-15M56 50v-11M62 50v-14"/></g><circle cx="84" cy="42" r="8" fill="#95BC44"/><circle cx="92" cy="45" r="6" fill="#7FA636"/><path d="M108 50v-8" stroke="#7B5432" stroke-width="3"/><circle cx="108" cy="36" r="8" fill="#4F8F3A"/><g transform="translate(80 20)"><path d="M-22-4 22 4M-22 4 22-4" stroke="#5A5236" stroke-width="2.5"/><ellipse cx="0" cy="0" rx="11" ry="5" fill="#E9A94C"/><ellipse cx="0" cy="-3" rx="5" ry="3.5" fill="#E09A3F"/></g></svg>',
     sklad: '<svg viewBox="0 0 160 110"><rect width="160" height="110" rx="10" fill="#86A3B8"/><rect x="14" y="14" width="132" height="60" fill="#7D8B99"/><rect x="10" y="74" width="140" height="24" fill="#BFC4CB"/><path d="M10 98h140" stroke="#E8B322" stroke-width="3"/><g stroke="#2F5FA8" stroke-width="3"><path d="M84 30v48M120 30v48"/></g><g stroke="#E8762B" stroke-width="3"><path d="M84 52h36M84 76h36"/></g><rect x="88" y="40" width="12" height="11" fill="#C8955A"/><rect x="104" y="64" width="12" height="11" fill="#C8955A"/><rect x="88" y="64" width="12" height="11" fill="#C8955A"/><rect x="107" y="67" width="6" height="5" rx="1" fill="#D8483B"/><g transform="translate(40 62)"><rect x="-14" y="0" width="26" height="14" rx="2" fill="#F2B12E"/><rect x="-10" y="-10" width="16" height="11" rx="2" fill="#F2B12E"/><rect x="-8" y="-7" width="12" height="6" rx="1" fill="#14181F"/><circle cx="-4" cy="-4" r="1.2" fill="#8FF3FF"/><circle cx="1" cy="-4" r="1.2" fill="#8FF3FF"/><path d="M14-20v34M14 12h12" stroke="#3A3F47" stroke-width="2.5"/><circle cx="-8" cy="16" r="3.5" fill="#22252B"/><circle cx="6" cy="16" r="3.5" fill="#22252B"/></g></svg>',
   };
@@ -2947,12 +2951,15 @@ function stacklyApp() {
           <p>Здесь собраны материалы, которые открыли ваши преподаватели. Задачи для решения ждут в банке и в домашних заданиях.</p></div></header>
         ${MATS.length ? `<section class="t-sec"><h2 class="sec-h">От преподавателей</h2>${matRows(MATS)}</section>` : ''}
         ${mods.length ? `<section class="t-sec">${MATS.length ? '<h2 class="sec-h">Курс ЕГЭ по информатике</h2>' : ''}<div class="mods">${mods.map(m => modCard(m, false)).join('')}</div></section>` : ''}
-        <section class="t-sec"><h2 class="sec-h">Python в игре</h2><div class="mods"><article class="mod"><div class="mod-top"><h3>Ферма</h3></div>
+        <section class="t-sec"><h2 class="sec-h">Python в игре</h2><div class="mods"><article class="mod"><div class="mod-top"><h3>Мастерская переменных</h3></div>
+          <p>Для тех, кто начинает с нуля: программа видна изнутри — переменные лежат в ящиках, условия зажигают лампу, циклы крутят счётчик. За каждый уровень — ${PTS.farm} баллов.</p>
+          <div class="mod-foot"><span class="muted">${gamesOf(Object.keys(farmDone)).vars ? `пройдено уровней: ${gamesOf(Object.keys(farmDone)).vars}` : `${VARS_TOTAL} уровней`}</span><a class="btn small ghost" href="#vars">Играть</a></div></article>
+          <article class="mod"><div class="mod-top"><h3>Ферма</h3></div>
           <p>Python с нуля: программируйте дрона-фермера и шаг за шагом узнайте, что такое переменные, циклы, условия, функции и списки. За каждый уровень — ${PTS.farm} баллов.</p>
-          <div class="mod-foot"><span class="muted">${Object.keys(farmDone).filter(k => +k < 101).length ? `пройдено уровней: ${Object.keys(farmDone).filter(k => +k < 101).length}` : `${FARM_LV.length} ${plural(FARM_LV.length, 'уровень', 'уровня', 'уровней')}`}</span><a class="btn small ghost" href="#farm">Играть</a></div></article>
+          <div class="mod-foot"><span class="muted">${gamesOf(Object.keys(farmDone)).farm ? `пройдено уровней: ${gamesOf(Object.keys(farmDone)).farm}` : `${FARM_LV.length} ${plural(FARM_LV.length, 'уровень', 'уровня', 'уровней')}`}</span><a class="btn small ghost" href="#farm">Играть</a></div></article>
           <article class="mod"><div class="mod-top"><h3>Склад</h3></div>
           <p>Робот-погрузчик раскладывает коробки с конвейера по стеллажам: циклы, условия, функции, списки и сортировка — на деле. За каждый уровень — ${PTS.farm} баллов.</p>
-          <div class="mod-foot"><span class="muted">${Object.keys(farmDone).filter(k => +k >= 101).length ? `пройдено уровней: ${Object.keys(farmDone).filter(k => +k >= 101).length}` : '10 уровней'}</span><a class="btn small ghost" href="#sklad">Играть</a></div></article></div></section>
+          <div class="mod-foot"><span class="muted">${gamesOf(Object.keys(farmDone)).sklad ? `пройдено уровней: ${gamesOf(Object.keys(farmDone)).sklad}` : `${SKLAD_TOTAL} уровней`}</span><a class="btn small ghost" href="#sklad">Играть</a></div></article></div></section>
         ${mods.length || MATS.length ? '' : `<section class="t-sec"><div class="t-empty"><b>Пока пусто</b>Когда преподаватель добавит материалы, они появятся здесь. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.</div></section>`}</div>`;
     }
     const mine = acct.subjects || [];
@@ -4526,7 +4533,7 @@ function stacklyApp() {
     acct.checked = true; renderAcctBtn(); loadPolls();
     $$('.hcta').forEach(el => { el.outerHTML = homeCta(); });          // кнопки главной: гостю, ученику и учителю — свои
     // учителю перерисовываем и открытую страницу: на задачах и разборах у него есть кнопки редактора
-    if (/^#(login|me|teach|admin|hw|start|shop|rating|edit|mat|farm|sklad|games)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
+    if (/^#(login|me|teach|admin|hw|start|shop|rating|edit|mat|farm|sklad|vars|games)/.test(location.hash) || isTeacher() || landingWait) { curNav = ''; route(); }
   }
   // прогресс и материалы прежнего аккаунта не должны попасть в другой
   function forgetLocal() {
@@ -4659,7 +4666,7 @@ function stacklyApp() {
     if (/^(hw)(-\d+)?$/.test(h)) return 'hw';
     if (/^(materials|mat-|ege|py-|python|cheat|course)/.test(h)) return 'materials';
     if (/^(bank|p-|set-)/.test(h)) return 'bank';
-    if (/^(games|farm|sklad)/.test(h)) return 'games';
+    if (/^(games|farm|sklad|vars)/.test(h)) return 'games';
     if (h === 'teach-all') return 'teach-all';
     if (h === 'teach-pro') return 'pro';
     if (/^teach/.test(h)) return 'teach';
@@ -5494,8 +5501,8 @@ function stacklyApp() {
       <div><b>${mine.place === 1 ? (list.length > 1 ? 'Вы первые в группе' : 'Вы в рейтинге первым') : `До ${mine.place - 1 === 1 ? 'первого' : (mine.place - 1) + '-го'} места — ${ratingFmt(gap, k)}`}</b><span>${next}</span></div></div>`;
   }
 
-  /* ── игры на Python: ферма (#farm) и склад (#sklad). public/farm.js — движок и ферма, public/sklad.js — склад;
-     грузятся при первом заходе. Прогресс и баллы общие: уровни склада — с id 101 ── */
+  /* ── игры на Python: ферма (#farm), склад (#sklad) и мастерская переменных (#vars). public/farm.js — движок и ферма,
+     public/sklad.js — склад, public/workshop.js — мастерская; грузятся при первом заходе. Прогресс и баллы общие: уровни склада — с id 101, мастерской — с 201 ── */
   let farmCtl = null, farmSeq = 0;
   const libs = {};
   function lib(src, ready) {
@@ -5507,14 +5514,14 @@ function stacklyApp() {
     }));
   }
   async function loadFarm(h) {
-    const seq = ++farmSeq, sklad = /^sklad/.test(h);           // после входа route() зовёт нас ещё раз — монтирует только последний вызов
-    try { await lib('/farm.js?v=7', () => window.StacklyFarm); if (sklad) await lib('/sklad.js?v=1', () => window.StacklySklad); }
+    const seq = ++farmSeq, sklad = /^sklad/.test(h), vars = /^vars/.test(h);   // после входа route() зовёт нас ещё раз — монтирует только последний вызов
+    try { await lib('/farm.js?v=8', () => window.StacklyFarm); if (sklad) await lib('/sklad.js?v=1', () => window.StacklySklad); if (vars) await lib('/workshop.js?v=1', () => window.StacklyWorkshop); }
     catch (e) { const box = $('#farmpage'); if (box) box.innerHTML = tMsg('Игра не загрузилась', 'Проверьте интернет и обновите страницу.'); return; }
     const box = $('#farmpage');
     if (seq !== farmSeq || !box || (location.hash || '#home').slice(1) !== h) return;
     if (farmCtl) farmCtl.destroy();
-    const m = h.match(/^(?:farm|sklad)-(\d+)$/);
-    farmCtl = StacklyFarm.mount(box, { level: m ? +m[1] : 0, done: farmDone, all: isTeacher(), hl, store, points: PTS.farm, onWin: farmWin, game: sklad ? StacklySklad.game : undefined,
+    const m = h.match(/^(?:farm|sklad|vars)-(\d+)$/);
+    farmCtl = StacklyFarm.mount(box, { level: m ? +m[1] : 0, done: farmDone, all: isTeacher(), hl, store, points: PTS.farm, onWin: farmWin, game: sklad ? StacklySklad.game : vars ? StacklyWorkshop.game : undefined,
       topic: id => pyBy[id] && pyBy[id].title,
       farmSave: () => farmX, onFarmSave: (s, cloud) => { farmX = normFarmX(s); if (cloud) persist(); else store.set('farmx', farmX); } });
   }
@@ -7303,7 +7310,7 @@ function stacklyApp() {
     else if (/^hw(-\d+)?$/.test(h)) { html = `<div class="page wrap t-page" id="hwpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = 'hw'; }
     else if (h === 'cheat') { html = pageCheat(); nav = 'cheat'; }
     else if (h === 'games') { html = pageGames(); nav = 'games'; }
-    else if ((m = h.match(/^(farm|sklad)(-\d+)?$/))) { html = `<div class="page fm-host" id="farmpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = m[1]; }
+    else if ((m = h.match(/^(farm|sklad|vars)(-\d+)?$/))) { html = `<div class="page fm-host" id="farmpage"><div class="loading-row"><span class="ball"></span>Загрузка…</div></div>`; nav = m[1]; }
     else if (h === 'login' || h === 'signup') {
       if (acct.cloud) { location.replace('#me'); return; }
       try { sessionStorage.removeItem(NEXT); } catch (e) { }
@@ -7390,9 +7397,9 @@ function stacklyApp() {
     if (nav === 'start') loadStart();
     if (nav === 'shop') loadShop();
     if (nav === 'rating') loadRating();
-    if (nav === 'farm' || nav === 'sklad') loadFarm(h);
+    if (nav === 'farm' || nav === 'sklad' || nav === 'vars') loadFarm(h);
     if (nav === 'me') { loadMyClass(); loadTg(); }
-    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', games: 'Игры · stackly', farm: 'Ферма · stackly', sklad: 'Склад · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
+    document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', games: 'Игры · stackly', farm: 'Ферма · stackly', sklad: 'Склад · stackly', vars: 'Мастерская переменных · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', (nav === 'me' && acct.role !== 'student') || nav === 'login');
   }
 

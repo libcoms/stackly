@@ -485,7 +485,7 @@ def _ints(xs):
             pass
     return out
 
-FARM_MAX_LEVEL = 200           # номера уровней игр: ферма (public/farm.js) — до 100, склад (public/sklad.js) — с 101; в прогрессе farm: {"номер": лучшее число ходов}
+FARM_MAX_LEVEL = 300           # номера уровней игр: ферма (public/farm.js) — до 100, склад (public/sklad.js) — с 101, мастерская (public/workshop.js) — с 201; в прогрессе farm: {"номер": лучшее число ходов}
 
 def progress_sets(data):
     solved = {str(x) for x in data.get('solved', []) if isinstance(x, (str, int))} if isinstance(data.get('solved'), list) else set()
