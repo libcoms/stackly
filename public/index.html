@@ -1059,7 +1059,8 @@ table.mapping td, table.mapping th { text-align: left; }
 .gsvg .ga { fill: var(--ink-2); }
 .gsvg .gt { fill: var(--ink); font: 600 13px var(--f-body); text-anchor: middle; }
 /* формулы ($…$ → public/tex.js): дроби, корни, векторы — разметкой, без шрифтов и библиотек */
-.tx { white-space: nowrap; font-variant-numeric: lining-nums; }
+.tx { font-variant-numeric: lining-nums; }
+.tx .fr, .tx .sq, .tx sup, .tx sub, .tx .vec, .tx .ovl, .tx .dl { white-space: nowrap; }   /* перенос — только после «=», «<», … (<wbr>) */
 .tx i { font-family: "Times New Roman", Georgia, serif; font-size: 1.12em; line-height: 1; padding: 0 .02em; }
 .tx .fn, .tx .tt { font-style: normal; }
 .tx .bin { margin: 0 .22em; }
@@ -1075,11 +1076,17 @@ table.mapping td, table.mapping th { text-align: left; }
 .tx .sq .rad { font-size: 1.1em; line-height: 1; }
 .tx .sq .ra { border-top: 1px solid currentColor; padding: .06em .12em 0; margin-left: -.02em; }
 .tx .sq .ri { font-size: .6em; vertical-align: .9em; margin-right: -.35em; }
+.tx .bop { font-size: 1.35em; line-height: 1; vertical-align: -.12em; margin-right: .08em; }
 .tx .dl { display: inline-block; font-size: 1.55em; line-height: 1; vertical-align: -.2em; font-weight: 300; transform: scaleX(.8); }
 .tx .vec, .tx .ovl { display: inline-block; position: relative; }
 .tx .vec::after { content: "→"; position: absolute; left: 0; right: 0; top: -.72em; text-align: center; font-size: .78em; font-style: normal; line-height: 1; }
 .tx .ovl { border-top: 1px solid currentColor; padding-top: .05em; }
 .txd { display: block; margin: 8px 0; text-align: center; }
+.formula-row .f.mf { font-family: var(--f-body); background: none; padding: 0; }
+.mex { padding: 14px 16px; border-radius: var(--r-s); background: var(--paper-2); margin: 0 0 12px; }
+.mex p { margin: 0 0 8px; }
+.mex .mex-s { color: var(--ink-2); }
+.mex .mex-a { margin: 0; }
 .txerr { color: var(--bad); }
 /* чертежи математики (генераторы банка) */
 .msvg { width: 100%; max-width: 340px; height: auto; display: block; margin: 6px 0 4px; }
@@ -2073,7 +2080,7 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 <main id="app"></main>
 <!-- на телефоне разделы из шапки переезжают сюда, под большой палец; пункты собирает syncTabbar() -->
 <nav class="tabbar" id="tabbar" aria-label="Разделы сайта"></nav>
-<script src="/tex.js?v=1"></script>
+<script src="/tex.js?v=2"></script>
 <script src="/voice.js?v=1"></script>
 <footer class="foot" hidden><div class="wrap">
   <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
@@ -2968,6 +2975,7 @@ function stacklyApp() {
     { id: 'inf-ege', subj: 'Информатика', title: 'ЕГЭ: разборы 27 заданий', text: 'Типы заданий, теория, формулы, ход решения и код на Python.', href: '#ege-1', n: () => '27 разборов' },
     { id: 'inf-py', subj: 'Информатика', title: 'Учебник Python', text: 'Шесть блоков от print() до словарей. У каждой темы пример и вывод.', href: '#python', n: () => `${PY.length} тем` },
     { id: 'inf-cheat', subj: 'Информатика', title: 'Шпаргалка ЕГЭ', text: 'Формулы и главные конструкции Python на одной странице.', href: '#cheat', n: () => '1 страница' },
+    { id: 'math-ege', subj: 'Математика', title: 'ЕГЭ по математике: разборы заданий 1–13', text: 'Профильный уровень, формат 2027 года: типы заданий, теория, формулы, ход решения и разобранные примеры.', href: '#math-1', n: () => `${MEGE.length} разборов` },
     { id: 'inf-course', subj: 'Информатика', title: 'Обзор экзамена', text: 'Карта 27 заданий, время на каждое и изменения 2027 года.', href: '#course', n: () => 'карта ЕГЭ' },
   ];
   // материалы платформы входят в тариф Про: ученику их уже отфильтровал сервер, учителю нужен действующий Про
@@ -3597,6 +3605,43 @@ function stacklyApp() {
       </div></div>`;
   }
 
+  /* ═════════════ МЕТОДИЧКА ПО МАТЕМАТИКЕ (профиль, ЕГЭ-2027, задания 1–13) ═════════════
+     Разборы — window.MATH_EGE из content/ege.js; формулы $…$ раскрывает public/tex.js. Задачи — банк «Математика». */
+  const MEGE = window.MATH_EGE || [], mathBy = Object.fromEntries(MEGE.map(t => [t.n, t]));
+  const mtx = s => window.StacklyTex ? window.StacklyTex.texify(String(s)) : esc(s);   // текст разбора — свой, не от пользователей
+  const MATH_PTS = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1 };
+  function pageMath(n) {
+    const t = mathBy[n] || MEGE[0];
+    if (!t) return pageNoContent();
+    n = t.n;
+    const prev = mathBy[n - 1], next = mathBy[n + 1];
+    const bankN = BANK.filter(p => !p.task && psubj(p) === 'Математика' && psnum(p) === n).length;
+    const side = `<ul>${MEGE.map(e => `<li><a href="#math-${e.n}" class="${e.n === n ? 'on' : ''}"><span class="n">${e.n}</span><span>${esc(e.title)}</span><span class="lvl lvl-${e.level}">${e.level}</span></a></li>`).join('')}</ul>`;
+    return `<div class="page wrap study">
+      <aside class="side" aria-label="Задания"><p class="eyebrow" style="padding:4px 10px 8px">Математика · профиль</p><div>${side}</div></aside>
+      <div>
+        <nav class="numbar" aria-label="Номер задания">${MEGE.map(e => `<a href="#math-${e.n}" class="${e.n === n ? 'on' : ''}">${e.n}</a>`).join('')}</nav>
+        <article class="task-view" key="m${n}">
+          <header class="task-head">
+            <div class="task-num"><span class="ball"></span>${n}</div>
+            <div><span class="eyebrow">Математика (профиль) · задание ${n} · ${esc(t.sect)}</span><h1>${esc(t.title)}</h1>
+              <div class="task-meta"><span class="tag"><span class="lvl lvl-${t.level}">${t.level}</span>${lvName[t.level]} уровень</span><span class="tag">${MATH_PTS[n] || 1} балл</span><span class="tag">≈ ${t.time} мин</span><span class="tag">краткий ответ</span></div></div>
+          </header>
+          <p class="task-goal">${mtx(t.lead)}</p>
+          ${t.changed ? `<div class="changed"><span class="newbadge">${t.isNew ? 'new' : '2027'}</span><span>${mtx(t.changed)}</span></div>` : ''}
+          <section class="block"><h2><span class="ball"></span>Типы заданий</h2><div class="types">${t.types.map(([a, b]) => `<div class="type"><h3>${esc(a)}</h3><p>${mtx(b)}</p></div>`).join('')}</div></section>
+          <section class="block"><h2><span class="ball"></span>Теория</h2><div class="prose">${mtx(t.theory)}</div></section>
+          <section class="block"><h2><span class="ball"></span>Формулы и правила</h2><div class="formulas">${t.formulas.map(([f, d]) => `<div class="formula-row"><div class="f mf">${mtx(f)}</div><div class="d">${mtx(d)}</div></div>`).join('')}</div></section>
+          <section class="block"><h2><span class="ball"></span>Ход решения</h2><ol class="steps">${t.steps.map(x => `<li><span>${mtx(x)}</span></li>`).join('')}</ol></section>
+          <section class="block"><h2><span class="ball"></span>Разбор примеров</h2>${t.examples.map((e, i) => `<div class="mex"><p class="mex-q"><b>Пример ${i + 1}.</b> ${mtx(e.q)}</p><p class="mex-s">${mtx(e.s)}</p><p class="mex-a">Ответ: <b>${esc(e.a)}</b></p></div>`).join('')}</section>
+          <section class="block"><h2><span class="ball"></span>Частые ошибки</h2><div class="traps">${t.traps.map(x => `<div class="trap"><span>${mtx(x)}</span></div>`).join('')}</div></section>
+          <section class="block"><div class="tipbox"><span class="ball"></span><div><b>Совет</b>${mtx(t.tip)}</div></div></section>
+          ${bankN ? `<div class="practice"><b>${bankN} ${plural(bankN, 'задача', 'задачи', 'задач')} на задание ${n} в банке</b><a class="btn" href="${subjHref('Математика', n)}">Потренироваться <span class="arr">${I.arrow}</span></a></div>` : ''}
+          <nav class="task-foot">${prev ? `<a href="#math-${prev.n}"><small>← Задание ${prev.n}</small><b>${esc(prev.title)}</b></a>` : '<span></span>'}${next ? `<a class="nx" href="#math-${next.n}"><small>Задание ${next.n} →</small><b>${esc(next.title)}</b></a>` : ''}</nav>
+        </article>
+      </div></div>`;
+  }
+
   /* ═════════════ PYTHON ═════════════ */
   function topicHTML(t) {
     const on = studied.has(t.id);
@@ -3797,6 +3842,7 @@ function stacklyApp() {
         ${sn && isTeacher() ? `<a class="bk-link" href="${newTaskHref(g.subj, g.n)}">Добавить задачу${g.n ? ' в задание ' + g.n : ''} ${I.chev}</a>` : ''}
         ${bankSum(all)}
         ${t && (isTeacher() || canSee('inf-ege')) ? `<a class="bk-link" href="#ege-${t.n}">Теория к заданию ${t.n} ${I.chev}</a>` : ''}
+        ${sn && g.subj === 'Математика' && mathBy[g.n] && (isTeacher() || canSee('math-ege')) ? `<a class="bk-link" href="#math-${g.n}">Теория к заданию ${g.n} ${I.chev}</a>` : ''}
         <div class="bk-filters">${srcSeg()}${segHTML('level', 'Сложность', [['', 'Любая'], ['Б', 'Базовая'], ['П', 'Средняя'], ['В', 'Сложная']])}${segHTML('status', 'Статус', [['', 'Все'], ['todo', 'Не решённые'], ['done', 'Решённые']])}</div>
       </header>
       <div id="bklist">${listHTML(groupList(g))}</div>
@@ -4771,7 +4817,7 @@ function stacklyApp() {
   }
   // закрытые разделы: гость видит вход, а после входа возвращается туда, куда шёл
   const GATES = [
-    [/^ege/, 'Методичка', 'методичку'], [/^(bank|p-)/, 'Банк задач', 'банк задач'], [/^cheat$/, 'Шпаргалка', 'шпаргалку'],
+    [/^(ege|math)/, 'Методичка', 'методичку'], [/^(bank|p-)/, 'Банк задач', 'банк задач'], [/^cheat$/, 'Шпаргалка', 'шпаргалку'],
     [/^hw/, 'Домашние задания', 'домашние задания'], [/^(teach|admin|edit)/, 'Учителю', 'раздел учителя'], [/^(materials$|mat-)/, 'Материалы', 'материалы'],
   ];
   const NEXT = 'stackly_next';
@@ -7337,6 +7383,7 @@ function stacklyApp() {
       html = acct.cloud ? pageNoContent() : pageLogin(gate); nav = 'login';
     }
     else if ((m = h.match(/^ege(?:-(\d+))?$/))) { html = pageEge(m[1] ? +m[1] : 1); nav = 'ege'; }
+    else if ((m = h.match(/^math(?:-(\d+))?$/))) { html = pageMath(m[1] ? +m[1] : 1); nav = 'materials'; }
     else if ((m = h.match(/^py-(\d+)$/)) || h === 'python') { html = pagePython(); nav = 'python'; scrollTo = m ? +m[1] : null; }
     else if ((m = h.match(/^bank(?:-(\d+))?$/))) { html = m[1] ? pageBankList({ task: +m[1] }) : pageBankHome(); nav = 'bank'; }
     else if ((m = h.match(/^bank-s-([^/]+)(?:\/(\d+))?$/))) {

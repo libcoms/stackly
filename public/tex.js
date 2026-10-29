@@ -13,7 +13,7 @@
     cdot: '·', times: '×', le: '≤', leqslant: '≤', ge: '≥', geqslant: '≥', ne: '≠', neq: '≠', approx: '≈', pm: '±', mp: '∓',
     infty: '∞', in: '∈', notin: '∉', cup: '∪', cap: '∩', angle: '∠', triangle: '△', parallel: '∥', perp: '⊥', to: '→',
     Rightarrow: '⇒', Leftrightarrow: '⇔', ldots: '…', cdots: '⋯', circ: '∘', prime: '′', emptyset: '∅', varnothing: '∅',
-    lt: '<', gt: '>', '%': '%', '{': '{', '}': '}', '|': '‖', ',': ' ', ';': ' ', ':': ' ', '!': '', ' ': ' ',
+    lt: '<', gt: '>', '%': '%', '{': '{', '}': '}', '|': '‖', ',': ' ', ';': ' ', ':': ' ', '!': '', ' ': ' ',
     quad: ' ', qquad: '  ',
   };
   const FN = new Set(['sin', 'cos', 'tg', 'ctg', 'tan', 'cot', 'log', 'ln', 'lg', 'exp', 'arcsin', 'arccos', 'arctg', 'arcctg', 'min', 'max', 'sgn']);
@@ -51,7 +51,8 @@
         return ch ? `<span class="dl">${esc(ch)}</span>` : '';
       }
       if (FN.has(c)) return `<span class="fn">${c}</span>`;
-      if (c in SYM) { const v = SYM[c]; return REL.has(v) ? `<span class="rel">${v}</span>` : BIN.has(v) ? `<span class="bin">${v}</span>` : esc(v); }
+      if (c === 'sum' || c === 'int') return `<span class="bop">${c === 'sum' ? '∑' : '∫'}</span>`;
+      if (c in SYM) { const v = SYM[c]; return REL.has(v) ? `<span class="rel">${v}</span><wbr>` : BIN.has(v) ? `<span class="bin">${v}</span>` : esc(v); }
       return fail(`неизвестная команда \\${c}`);
     }
     function atom() {
@@ -63,16 +64,19 @@
       i++;
       if (ch === '-' || ch === '−') return '<span class="bin">−</span>';
       if (ch === '+' || ch === '*') return `<span class="bin">${ch === '*' ? '·' : '+'}</span>`;
-      if (ch === '=' || ch === '<' || ch === '>') return `<span class="rel">${esc(ch)}</span>`;
+      if (ch === '=' || ch === '<' || ch === '>') return `<span class="rel">${esc(ch)}</span><wbr>`;   // длинная формула переносится после знака
       if (ch === '}' ) fail('лишняя }');
       if (ch === '^' || ch === '_') fail('индекс без основания');
       if (ch === "'") return '′';
+      if (ch === ';' || ch === ',') return ch + ' ';     // (3; −4), x₁, x₂ — десятичная запятая разобрана в числе выше
       return esc(ch);
     }
     function seq(stop) {
       let h = '';
       while (i < s.length && s[i] !== stop) {
         if (s[i] === ' ') { i++; continue; }                // пробелы в TeX не значат ничего — отступы дают знаки
+        // унарный минус (в начале, после знака, скобки, «;») — без отступов: −3, (−4; 2), = −0,2
+        if ((s[i] === '-' || s[i] === '−') && (!h || /(?:class="(?:rel|bin)">[^<]*<\/span>(?:<wbr>)?|[([]|[;,] |<span class="dl">[([]<\/span>)$/.test(h))) { i++; h += '−'; continue; }
         let a = atom();
         // степени и индексы: x^2, x_{n}, x_1^{2}, 30^\circ → 30°
         for (;;) {
@@ -84,7 +88,7 @@
           } else if (s[i] === '_') { i++; a = `${a}<sub>${arg()}</sub>`; }
           else break;
         }
-        if (a.startsWith('<span class="fn">') && i < s.length && s[i] !== stop && !/^\s*[()[\]]/.test(s.slice(i))) a += ' ';   // log₂ 8, sin x
+        if (a.startsWith('<span class="fn">') && i < s.length && s[i] !== stop && !/^\s*[()[\]]/.test(s.slice(i))) a += ' ';   // log₂ 8, sin x
         h += a;
       }
       return h;

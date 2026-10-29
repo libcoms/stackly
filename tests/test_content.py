@@ -48,9 +48,9 @@ class ContentSplitTest(unittest.TestCase):
             self.assertNotIn(p['text'].strip()[:80], self.public, p['id'])
 
     def test_public_has_no_methodology(self):
-        # 24 разбора со своей теорией и общая GAME_THEORY для заданий 19–21
+        # информатика: 24 разбора со своей теорией и общая GAME_THEORY для заданий 19–21; математика: 13 разборов (MATH_EGE)
         theories = re.findall(r'\n  theory: R`([^`]{40,})', self.content) + re.findall(r'GAME_THEORY = R`([^`]{40,})', self.content)
-        self.assertEqual(len(theories), 25)
+        self.assertEqual(len(theories), 25 + 13)
         for t in theories:
             self.assertNotIn(t[:80], self.public)
 

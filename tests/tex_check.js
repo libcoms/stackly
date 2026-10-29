@@ -19,6 +19,21 @@ for (const p of bank) {
     if ((s.match(/\$/g) || []).length % 2) { fails++; console.log(`FAIL ${p.id} ${key}: непарный $`); }
   }
 }
+// разборы методички по математике (window.MATH_EGE): все строки, кроме названий, проходят через texify
+const vm = require('vm');
+const ctx = { window: {} };
+vm.runInNewContext(src, ctx);
+const guide = ctx.window.MATH_EGE || [];
+if (guide.length < 13) { fails++; console.log(`FAIL разборов математики ${guide.length}, ожидалось 13`); }
+const walk = (v, where) => {
+  if (typeof v === 'string') {
+    if (/[\f\v\b]/.test(v)) { fails++; console.log(`FAIL ${where}: управляющий символ — TeX в обычных кавычках?`); }
+    if ((v.match(/\$/g) || []).length % 2) { fails++; console.log(`FAIL ${where}: непарный $`); }
+    for (const f of v.matchAll(/\$([^$]+)\$/g)) { formulas++; try { T.parse(f[1]); } catch (e) { fails++; console.log(`FAIL ${where}: ${e.message}`); } }
+  } else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${where}[${i}]`));
+  else if (v && typeof v === 'object') for (const k in v) walk(v[k], `${where}.${k}`);
+};
+guide.forEach(t => walk(t, `разбор ${t.n}`));
 // сам рендерер
 const must = [[String.raw`\frac{1}{2}`, 'class="fr"'], [String.raw`30^\circ`, '30°'], [String.raw`\sqrt[3]{8}`, 'class="ri"'], [String.raw`\log_{2} 8`, '<sub>2</sub>']];
 for (const [f, part] of must) if (!T.parse(f).includes(part)) { fails++; console.log(`FAIL рендер ${f}`); }
