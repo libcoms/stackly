@@ -412,11 +412,11 @@ def teacher_assigned_ids(user_id):
 
 def subject_builtin_ids(u, items):
     """Встроенные задачи общего банка по предметам преподавателя: предмет отмечен у него в «Материалах»,
-    опубликован, сама задача не снята."""
+    опубликован, сама задача не снята. Предмет встроенной задачи — её поле subject (математика),
+    без него — информатика (задачи с номером ЕГЭ task)."""
     off, subj_off = bank_rules()
-    subs = set(json.loads(u['subjects'] or '[]'))
-    open_ = EGE_SUBJECT in subs and EGE_SUBJECT not in subj_off
-    return {p['id'] for p in items if open_ and p['id'] not in off}
+    subs = set(json.loads(u['subjects'] or '[]')) - subj_off
+    return {p['id'] for p in items if (p.get('subject') or EGE_SUBJECT) in subs and p['id'] not in off}
 
 def teacher_builtin_ids(u, items):
     """Встроенные задачи, которые видит преподаватель: общий банк по его предметам и задачи из его выданных ДЗ."""

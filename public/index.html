@@ -1058,6 +1058,40 @@ table.mapping td, table.mapping th { text-align: left; }
 .gsvg .gn { fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
 .gsvg .ga { fill: var(--ink-2); }
 .gsvg .gt { fill: var(--ink); font: 600 13px var(--f-body); text-anchor: middle; }
+/* формулы ($…$ → public/tex.js): дроби, корни, векторы — разметкой, без шрифтов и библиотек */
+.tx { white-space: nowrap; font-variant-numeric: lining-nums; }
+.tx i { font-family: "Times New Roman", Georgia, serif; font-size: 1.12em; line-height: 1; padding: 0 .02em; }
+.tx .fn, .tx .tt { font-style: normal; }
+.tx .bin { margin: 0 .22em; }
+.tx .rel { margin: 0 .3em; }
+.tx sup, .tx sub { font-size: .72em; line-height: 0; }
+.tx sup { vertical-align: .62em; }
+.tx sub { vertical-align: -.25em; }
+.tx .fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: .92em; margin: 0 .12em; line-height: 1.15; }
+.tx .fr > span { display: block; padding: 0 .18em; text-align: center; }
+.tx .fr > span:first-child { border-bottom: 1px solid currentColor; padding-bottom: .08em; }
+.tx .fr > span:last-child { padding-top: .08em; }
+.tx .sq { display: inline-flex; align-items: flex-end; }
+.tx .sq .rad { font-size: 1.1em; line-height: 1; }
+.tx .sq .ra { border-top: 1px solid currentColor; padding: .06em .12em 0; margin-left: -.02em; }
+.tx .sq .ri { font-size: .6em; vertical-align: .9em; margin-right: -.35em; }
+.tx .dl { display: inline-block; font-size: 1.55em; line-height: 1; vertical-align: -.2em; font-weight: 300; transform: scaleX(.8); }
+.tx .vec, .tx .ovl { display: inline-block; position: relative; }
+.tx .vec::after { content: "→"; position: absolute; left: 0; right: 0; top: -.72em; text-align: center; font-size: .78em; font-style: normal; line-height: 1; }
+.tx .ovl { border-top: 1px solid currentColor; padding-top: .05em; }
+.txd { display: block; margin: 8px 0; text-align: center; }
+.txerr { color: var(--bad); }
+/* чертежи математики (генераторы банка) */
+.msvg { width: 100%; max-width: 340px; height: auto; display: block; margin: 6px 0 4px; }
+.msvg .ln { stroke: var(--ink); stroke-width: 1.8; fill: none; stroke-linejoin: round; }
+.msvg .hd { stroke: var(--ink-2); stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; }
+.msvg .ax { stroke: var(--ink-2); stroke-width: 1.2; fill: none; }
+.msvg .gr { stroke: var(--line); stroke-width: 1; fill: none; }
+.msvg .cv { stroke: var(--blue); stroke-width: 2.2; fill: none; }
+.msvg .cv2 { stroke: var(--ink); stroke-width: 2; fill: none; }
+.msvg .dt { fill: var(--ink); }
+.msvg .lb { fill: var(--ink); font: italic 15px "Times New Roman", Georgia, serif; text-anchor: middle; dominant-baseline: middle; }
+.msvg .nb { fill: var(--ink-2); font: 12px var(--f-body); text-anchor: middle; dominant-baseline: middle; }
 .dbgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
 .f { font-family: var(--f-mono); color: var(--ink); background: var(--paper-2); padding: .1em .4em; border-radius: 4px; overflow-wrap: anywhere; }
 .f.block { display: block; padding: 10px 14px; margin: 10px 0; }
@@ -2039,6 +2073,7 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 <main id="app"></main>
 <!-- на телефоне разделы из шапки переезжают сюда, под большой палец; пункты собирает syncTabbar() -->
 <nav class="tabbar" id="tabbar" aria-label="Разделы сайта"></nav>
+<script src="/tex.js?v=1"></script>
 <script src="/voice.js?v=1"></script>
 <footer class="foot" hidden><div class="wrap">
   <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
@@ -2051,7 +2086,7 @@ window.LOOP_PATH = 'M-80.0 288.4 L-75.7 292.0 L-71.2 295.3 L-66.6 298.5 L-61.9 3
    Здесь — краткие карточки 27 заданий для главной, поиска и учебника Python, без разборов.
    Их проверяет тест tests/test_content.py: при правке заданий в content/ege.js обновите и карточки. */
 window.BANK = [];
-window.BANK_TOTAL = 1124;
+window.BANK_TOTAL = 1624;
 window.EGE = [
   {"n": 1, "title": "Графы и весовые матрицы", "short": "Граф ↔ таблица", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Вручную", "lead": "Дана схема дорог (граф с буквами) и таблица расстояний (с номерами). Нумерации не связаны. Нужно сопоставить вершины и найти длину дороги, сумму длин или количество вершин с каким-то свойством."},
   {"n": 2, "title": "Таблицы истинности", "short": "Логические функции", "sect": "Теоретические основы информатики", "level": "Б", "time": 3, "tool": "Python", "lead": "Дана логическая функция от 3–4 переменных и фрагмент её таблицы истинности, где часть клеток пуста, а столбцы не подписаны. Нужно определить, какой переменной соответствует каждый столбец."},
@@ -2739,6 +2774,7 @@ function stacklyApp() {
   const EGE = window.EGE, PY = window.PY, BLOCKS = window.PY_BLOCKS, BANK = window.BANK, LOOP = window.LOOP_PATH;
   // гость: методички, шпаргалки и банка нет — только карточки заданий и учебник Python
   const LOCKED = !window.STACKLY_CONTENT;
+  BANK.forEach(prepBuiltin);
   const BANK_TOTAL = BANK.length || window.BANK_TOTAL || 0;
   const egeBy = Object.fromEntries(EGE.map(t => [t.n, t]));
   const pyBy = Object.fromEntries(PY.map(t => [t.id, t]));
@@ -3587,10 +3623,20 @@ function stacklyApp() {
   const bankF = { level: '', status: '', q: '', src: '' };     // фильтры и поиск банка — живут, пока открыта вкладка
   // задача из ЕГЭ по информатике — с номером задания; любая другая (task = 0) — с предметом и темой от преподавателя
   const EGE_SUBJ = 'ЕГЭ · информатика';
-  const psubj = p => p.task ? EGE_SUBJ : (p.src && p.src.subject) || 'Без предмета';
+  // встроенные задачи других предметов (математика): формулы $…$ в условии, чертеже и решении → разметка public/tex.js
+  function prepBuiltin(p) {
+    const T = window.StacklyTex;
+    if (p.subject && !p.task && T && !p.tx) {
+      p.text = T.texify(p.text); p.extra = T.texify(p.extra || '');
+      if (p.sol) p.sol = T.texify(p.sol);
+      p.tx = 1;
+    }
+    return p;
+  }
+  const psubj = p => p.task ? EGE_SUBJ : (p.src || p).subject || 'Без предмета';
   // у задач других предметов свой номер задания (snum): 1, 2, … — как номера ЕГЭ; 0 — без номера
-  const psnum = p => p.task ? 0 : +(p.src && p.src.snum) || 0;
-  const ptag = p => p.task ? '№' + p.task : psnum(p) ? '№' + psnum(p) + (p.src.topic ? ' · ' + p.src.topic : '') : (p.src && (p.src.topic || p.src.subject)) || 'задача';
+  const psnum = p => p.task ? 0 : +(p.src || p).snum || 0;
+  const ptag = p => p.task ? '№' + p.task : psnum(p) ? '№' + psnum(p) + ((p.src || p).topic ? ' · ' + (p.src || p).topic : '') : ((p.src || p).topic || (p.src || p).subject) || 'задача';
   // platform — общий банк (встроенные и задачи администратора), mine — свои, teachers — других преподавателей
   const psrc = p => !p.src || p.src.builtin || p.src.vis === 'platform' ? 'platform' : p.src.author_id === acct.uid ? 'mine' : 'teachers';
   const subjList = list => {
@@ -3599,6 +3645,11 @@ function stacklyApp() {
   };
   const lvDots = { 'Б': 1, 'П': 2, 'В': 3 }, lvWord = { 'Б': 'базовая', 'П': 'средняя', 'В': 'сложная' };
   const norm = s => String(s).trim().toLowerCase().replace(/[,;]/g, ' ').split(/\s+/).filter(Boolean).join(' ');
+  // одно число с дробной частью или минусом сравниваем как число: «0,25» = «0.25», «−3» = «-3»; «007» ≠ «7» не трогаем
+  const NUM_ANS = /^[-−–]?\d+(?:[.,]\d+)?$/;
+  const numAns = s => +String(s).trim().replace(/[−–]/, '-').replace(',', '.');
+  const sameAnswer = (a, b) => NUM_ANS.test(String(b).trim()) && /[-−–.,]/.test(String(b)) && NUM_ANS.test(String(a).trim())
+    ? numAns(a) === numAns(b) : norm(a) === norm(b);
   // 19–21 — комплект, как на экзамене: игра описана в задании 19, а 20 и 21 спрашивают о той же игре.
   // Задачи комплекта узнаём по id: 19-x, 20-x, 21-x
   function gameSet(p) {
@@ -3642,7 +3693,7 @@ function stacklyApp() {
   const newTaskHref = (sj, n) => '#edit-p-new-s-' + encodeURIComponent(sj) + (n ? '/' + n : '');
   // название номера в предмете — самая частая тема его задач
   function numTitle(ps) {
-    const c = new Map(); ps.forEach(p => { const t = p.src && p.src.topic; if (t) c.set(t, (c.get(t) || 0) + 1); });
+    const c = new Map(); ps.forEach(p => { const t = (p.src || p).topic; if (t) c.set(t, (c.get(t) || 0) + 1); });
     return [...c].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
   }
   // сетка номеров предмета: как у ЕГЭ по информатике; учителю — пустые номера и «+» для следующего
@@ -3792,7 +3843,7 @@ function stacklyApp() {
     const box = form.closest('.prob'), inp = form.querySelector('input, textarea'), vd = form.querySelector('.verdict');
     if (!inp.value.trim()) { vd.className = 'verdict bad'; vd.textContent = 'Сначала введи ответ.'; return; }
     inp.classList.remove('ok', 'bad'); void inp.offsetWidth;
-    if (norm(inp.value) === norm(p.answer)) {
+    if (sameAnswer(inp.value, p.answer)) {
       solved.add(id); track('a', id, true);
       inp.classList.add('ok'); box.classList.add('solved');
       vd.className = 'verdict ok'; vd.textContent = 'Верно! Задача отмечена как решённая.';
@@ -3827,9 +3878,11 @@ function stacklyApp() {
   // Простая разметка → безопасный HTML: сначала всё экранируется, потом разбирается разметка.
   //   **жирный**  *курсив*  `код`  x^2^  a~1~  - список  1. список  | таблица |  ```алгоритм```  ![подпись](media:ID)
   function mdInline(s) {
-    // код и экранированные символы (\* \^ \~ \` \| \\) откладываем, чтобы разметка их не трогала
+    // код и экранированные символы (\* \^ \~ \` \| \\ \$) откладываем, чтобы разметка их не трогала
     const keep = [], hold = h => `\u0000${keep.push(h) - 1}\u0000`;
-    s = String(s).replace(/`([^`\n]+)`/g, (_, c) => hold(`<code>${esc(c)}</code>`)).replace(/\\([\\*^~`|])/g, (_, c) => hold(esc(c)));
+    s = String(s).replace(/`([^`\n]+)`/g, (_, c) => hold(`<code>${esc(c)}</code>`)).replace(/\\([\\*^~`|$])/g, (_, c) => hold(esc(c)));
+    // формулы $…$ (public/tex.js); формула, которая не разобралась, остаётся как написана
+    if (window.StacklyTex) s = s.replace(/\$(\S(?:[^$\n]*?\S)?)\$/g, (m, c) => { try { return hold(window.StacklyTex.tex(c)); } catch (e) { return m; } });
     const out = esc(s)
       .replace(/!\[([^\]\n]*)\]\(media:([A-Za-z0-9_-]{8,40})\)/g, (_, alt, id) => `<img class="mimg" src="/api/media/${id}" alt="${alt}" loading="lazy">`)
       .replace(/\*\*(\S(?:[^*\n]*?\S)?)\*\*/g, '<b>$1</b>')
@@ -4392,7 +4445,7 @@ function stacklyApp() {
       const r = await fetch(API + '/content/ege.js', { credentials: 'same-origin', cache: 'no-cache' });
       const m = r.ok && /^window\.BANK = (\[.*\]);\r?$/m.exec(await r.text());
       if (!m) return;
-      ORIG.bank = JSON.parse(m[1]);
+      ORIG.bank = JSON.parse(m[1]).map(prepBuiltin);
       contentReq = null;
       await loadContent(true);
     } catch (e) { }
@@ -6355,7 +6408,7 @@ function stacklyApp() {
      Снятое с публикации сервер не отдаёт преподавателям; в уже выданных ДЗ задачи остаются. */
   const abank = { off: new Set(), soff: new Set(), subjects: [], ege: 'Информатика', subj: '', q: '', st: '', task: 0 };
   const abShared = p => !p.src || p.src.builtin || p.src.vis === 'platform' || p.src.vis === 'public';
-  const abSubj = p => p.task ? abank.ege : (p.src && p.src.subject) || 'Без предмета';
+  const abSubj = p => p.task ? abank.ege : (p.src || p).subject || 'Без предмета';
   const abPool = () => BANK.filter(abShared);
   const abSw = (attr, on, label) => `<label class="sw"><input type="checkbox" ${attr} ${on ? 'checked' : ''}><i></i><span>${label}</span></label>`;
   function tAdminBankHTML() {
@@ -6375,7 +6428,7 @@ function stacklyApp() {
   function abFound() {
     const q = abank.q.trim().toLowerCase(), nums = parseNums(q);
     return abAll().filter(p => (!abank.task || p.task === abank.task) && (!abank.st || (abank.st === 'off') === abank.off.has(p.id))
-      && (!q || (nums ? nums.has(pnum[p.id]) : (p.title + ' ' + strip(p.text) + ' ' + ((p.src && p.src.topic) || '')).toLowerCase().includes(q))));
+      && (!q || (nums ? nums.has(pnum[p.id]) : (p.title + ' ' + strip(p.text) + ' ' + ((p.src || p).topic || '')).toLowerCase().includes(q))));
   }
   function tAdminBankSubj() {
     const n = abank.subj, all = abAll(), on = !abank.soff.has(n), tasks = [...new Set(all.map(p => p.task).filter(Boolean))].sort((a, b) => a - b);
@@ -6399,7 +6452,7 @@ function stacklyApp() {
       + (offN ? `<button type="button" class="btn small" data-abbulk="1">Опубликовать найденные (${offN})</button>` : '');
     const shown = list.slice(0, 300);
     box.innerHTML = list.length ? `<ul class="adm-list ab-list ab-tasks">${shown.map(p => { const on = !abank.off.has(p.id); return `<li class="${on ? '' : 'ab-off'}"><span><a href="#p-${p.id}"><b>#${pnum[p.id]} ${esc(p.title)}</b></a>
-        <small>${p.task ? 'задание ' + p.task : (psnum(p) ? 'задание ' + psnum(p) + ' · ' : '') + esc((p.src && p.src.topic) || 'без темы')} · ${lvWord[p.level]} · ${!p.src || p.src.builtin ? 'встроенная' : `${p.src.vis === 'platform' ? 'для платформы' : 'для всех'}, ${esc(p.src.author || 'учитель')}`}</small></span>
+        <small>${p.task ? 'задание ' + p.task : (psnum(p) ? 'задание ' + psnum(p) + ' · ' : '') + esc((p.src || p).topic || 'без темы')} · ${lvWord[p.level]} · ${!p.src || p.src.builtin ? 'встроенная' : `${p.src.vis === 'platform' ? 'для платформы' : 'для всех'}, ${esc(p.src.author || 'учитель')}`}</small></span>
         ${abSw(`data-abid="${esc(p.id)}"`, on, on ? 'Опубликована' : 'Снята')}<span></span></li>`; }).join('')}</ul>${list.length > shown.length ? `<p class="muted">Показаны первые ${shown.length}. Уточните поиск, чтобы увидеть остальные; кнопки выше действуют на все найденные.</p>` : ''}`
       : '<div class="t-empty"><b>Задач не найдено</b>Сбросьте фильтры или поищите по-другому.</div>';
   }
@@ -6566,7 +6619,7 @@ function stacklyApp() {
     const nums = parseNums(eF.q), q = eF.q.trim().toLowerCase();
     const list = BANK.filter(p => nums ? nums.has(pnum[p.id]) : (!eF.task || (eF.task < 0 ? !p.task : p.task === eF.task)) && (!q || (p.title + ' ' + strip(p.text)).toLowerCase().includes(q))
       && (eF.scope === 'all' || (eF.scope === 'mine' ? isOwnProblem(p) : eF.scope === 'custom' ? p.src && !p.src.builtin : !p.src || p.src.builtin)));
-    return list.length ? list.map(p => `<div class="ed-row"><span class="pnum">#${pnum[p.id]}</span><span class="ed-t"><b>${esc(p.title)}</b><small>${esc(p.task ? '№' + p.task : psubj(p) + (psnum(p) ? ' · №' + psnum(p) : '') + (p.src.topic ? ' · ' + p.src.topic : ''))} · ${lvWord[p.level]} ${problemBadge(p)}</small></span>
+    return list.length ? list.map(p => `<div class="ed-row"><span class="pnum">#${pnum[p.id]}</span><span class="ed-t"><b>${esc(p.title)}</b><small>${esc(p.task ? '№' + p.task : psubj(p) + (psnum(p) ? ' · №' + psnum(p) : '') + ((p.src || p).topic ? ' · ' + p.src.topic : ''))} · ${lvWord[p.level]} ${problemBadge(p)}</small></span>
         <span class="ed-acts"><a class="btn small ghost" href="#p-${p.id}">Открыть</a>${canEditProblem(p) ? `<a class="btn small" href="#edit-p-${p.id}">Изменить</a>` : ''}<a class="btn small ghost" href="#edit-p-copy-${p.id}" title="Новая задача на основе этой">Копия</a></span></div>`).join('')
       : '<div class="t-empty"><b>Ничего не найдено</b>Проверьте номер или сбросьте фильтры.</div>';
   }
@@ -6605,7 +6658,7 @@ function stacklyApp() {
         subject: (src && src.subject) || '', topic: (src && src.topic) || '', snum: psnum(p) || '', vis: mode === 'edit' && src && src.vis || '' }
       : { task: pre ? 0 : Math.max(eF.task, 0), level: 'Б', title: '', answer: '', sol: '', note: '', data: '', dname: '', subject: pre ? pre.subject : '', snum: pre && pre.snum || '', vis: '',
           topic: pre && pre.snum ? numTitle(BANK.filter(x => !x.task && psubj(x) === pre.subject && psnum(x) === pre.snum)) : '' };
-    const subjects = [...new Set(BANK.map(x => x.src && x.src.subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
+    const subjects = [...new Set(BANK.map(x => (x.src || x).subject).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
     const visOpts = [...(acct.role === 'admin' ? [['platform', 'Общий банк платформы']] : []), ['private', 'Я и ученики моих групп'], ['public', 'Все пользователи']];
     const vis = v.vis || (acct.role === 'admin' ? 'platform' : 'private');
     const builtin = p && !p.id.startsWith('u') && mode !== 'copy';
@@ -7454,7 +7507,7 @@ function stacklyApp() {
     else if ((b = t.closest('[data-show]'))) {
       const p = BANK.find(x => x.id === b.dataset.p), rv = $('.reveal', b.closest('.prob'));
       rv.innerHTML = b.dataset.show === 'ans' ? `<div class="ansbox">${esc(p.answer)}</div>`
-        : (p.task ? codeBlock([{ t: 'Решение', c: p.code }], `solution_${p.task}.py`) : `<div class="prob-body sol-md">${md(p.code)}</div>`) + (p.note ? `<p class="muted" style="font-size:13.5px;margin:8px 0 0">${esc(p.note)}</p>` : '');
+        : (p.task ? codeBlock([{ t: 'Решение', c: p.code }], `solution_${p.task}.py`) : `<div class="prob-body sol-md">${!p.src && p.sol ? p.sol : md(p.code)}</div>`) + (p.note ? `<p class="muted" style="font-size:13.5px;margin:8px 0 0">${esc(p.note)}</p>` : '');
     } else if ((b = t.closest('[data-copydata]'))) { copyText(BANK.find(x => x.id === b.dataset.copydata).data, null); }
     else if ((b = t.closest('[data-preview]'))) {
       const p = BANK.find(x => x.id === b.dataset.preview), pv = $('.pv', b.closest('.prob'));

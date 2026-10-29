@@ -1017,10 +1017,14 @@ class ContentAccessTest(ServerCase):
         pids = lambda c: [x['id'] for x in c.call('GET', '/content')[1]['problems']]
         full = ids(a)
         self.assertGreater(len(full), 100)                  # администратору — весь банк
+        # встроенные задачи по предметам: у задач математики поле subject, остальные — информатика
+        math_ids = [p['id'] for p in self.bank(a) if p.get('subject') == 'Математика']
+        inf = [i for i in full if i not in set(math_ids)]
+        self.assertGreater(len(math_ids), 100)
         self.assertEqual(ids(t), [])                        # без отмеченных предметов общего банка нет
-        self.assertEqual(ids(m), [])                        # встроенный банк — информатика
+        self.assertEqual(ids(m), math_ids)                  # учитель математики видит только математику
         t.call('POST', '/me/teaching', {'subjects': ['Информатика']})
-        self.assertEqual(ids(t), full)
+        self.assertEqual(ids(t), inf)
         # управлять общим банком может только администратор
         self.assertEqual(t.call('POST', '/admin/bank', {'ids': [full[0]], 'on': False})[0], 403)
         self.assertEqual(t.call('GET', '/admin/bank')[0], 403)
@@ -1032,7 +1036,7 @@ class ContentAccessTest(ServerCase):
         st, r = a.call('POST', '/admin/bank', {'ids': full[:2], 'on': False})
         self.assertEqual((st, r['off']), (200, sorted(full[:2])))
         got = ids(t)
-        self.assertNotIn(full[0], got); self.assertIn(full[1], got); self.assertEqual(len(got), len(full) - 1)
+        self.assertNotIn(full[0], got); self.assertIn(full[1], got); self.assertEqual(len(got), len(inf) - 1)
         self.assertEqual(ids(a), full)                      # администратор видит и снятые
         # снятый предмет закрывает весь встроенный банк, кроме выданного
         self.assertEqual(a.call('POST', '/admin/bank', {'subject': 'Информатика', 'on': False})[1]['subjects_off'], ['Информатика'])
@@ -1040,7 +1044,7 @@ class ContentAccessTest(ServerCase):
         self.assertEqual(a.call('GET', '/admin/bank')[1]['subjects_off'], ['Информатика'])
         a.call('POST', '/admin/bank', {'subject': 'Информатика', 'on': True})
         self.assertEqual(a.call('POST', '/admin/bank', {'ids': [full[0]], 'on': True})[1]['off'], [full[1]])
-        self.assertEqual(len(ids(t)), len(full))
+        self.assertEqual(len(ids(t)), len(inf))
         # задачи других предметов: открытые видят преподаватели с этим предметом, свои автор видит всегда
         math = {'task': 0, 'subject': 'Математика', 'level': 'Б', 'title': 'Дроби', 'body': '1/2 + 1/3', 'answer': '5/6'}
         plat = a.call('POST', '/content/problem', dict(math, vis='platform'))[1]['id']
@@ -1054,6 +1058,7 @@ class ContentAccessTest(ServerCase):
         a.call('POST', '/admin/bank', {'subject': 'Математика', 'on': False})
         self.assertNotIn(plat, pids(m))
         self.assertIn(plat, pids(a))
+        self.assertEqual(ids(m), [])                        # снятый предмет закрывает и встроенные задачи математики
         a.call('POST', '/admin/bank', {'subject': 'Математика', 'on': True})
         a.call('POST', '/admin/bank', {'ids': full[:2], 'on': True})
 
