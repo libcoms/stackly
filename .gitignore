@@ -9,3 +9,6 @@ stackly.env
 
 # выгрузка открытого банка ФИПИ — только для внутреннего использования (tools/fipi_bank.py)
 tools/fipi/
+
+# то же для профильной математики (tools/fipi_math.py)
+tools/fipi_math/
