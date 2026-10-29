@@ -76,6 +76,13 @@ def db():
         _local.con = con
     return con
 
+def close_db():
+    # каждый запрос — отдельный поток; без явного закрытия соединения копятся и съедают лимит открытых файлов
+    con = getattr(_local, 'con', None)
+    if con is not None:
+        _local.con = None
+        con.close()
+
 def migrate():
     os.makedirs(os.path.dirname(DB_PATH) or '.', exist_ok=True)
     db().executescript('''
@@ -1178,6 +1185,8 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             log.exception('ошибка обработки %s %s', method, path)
             self.send_json(500, {'error': 'server', 'message': 'Ошибка на сервере, попробуйте позже'})
+        finally:
+            close_db()
 
     # --- обработчики
     def health(self):
