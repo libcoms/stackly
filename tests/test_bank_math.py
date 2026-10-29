@@ -579,7 +579,204 @@ def v3(sp, x):
         raise AssertionError(k)
 
 
-VERIFY = {1: v1, 2: v2, 3: v3, 4: v4, 5: v5, 6: v6, 7: v7, 8: v8, 9: v9, 10: v_check, 11: v_check, 12: v12, 13: v13}
+# ------------------------------------------------------------------ №14: все корни на [−5π; 5π] численно
+def num_roots(f, lo, hi, step):
+    """Корни f на [lo; hi]: локальные минимумы |f| около нуля (ловит и касания, где знак не меняется), уточнённые
+    золотым сечением."""
+    xs = [lo + i * step for i in range(int((hi - lo) / step) + 1)]
+    vs = [abs(f(x)) for x in xs]
+    out = []
+    for i in range(1, len(xs) - 1):
+        if vs[i] <= vs[i - 1] and vs[i] <= vs[i + 1] and vs[i] < 1e-2:
+            a, b = xs[i - 1], xs[i + 1]
+            g = (math.sqrt(5) - 1) / 2
+            for _ in range(80):
+                c, d = b - g * (b - a), a + g * (b - a)
+                if abs(f(c)) < abs(f(d)):
+                    b = d
+                else:
+                    a = c
+            x = (a + b) / 2
+            if abs(f(x)) < 1e-7 and not any(abs(x - y) < 1e-6 for y in out):
+                out.append(x)
+    return out
+
+
+def v14(sp, x):
+    f = lambda t: eval(sp['py'], {'math': math, 'x': t, '__builtins__': {}})
+    ser = [(float(a), float(d)) for a, d in sp['series']]
+    exact = {round(a + d * k, 9): (a + d * k) * math.pi for a, d in ser for k in range(-14, 15) if abs(a + d * k) <= 5}
+    pts = sorted(exact.values())
+    for p in pts:
+        assert abs(f(p)) < 1e-9, ('серия даёт не корень', p)
+    found = num_roots(f, -5 * math.pi, 5 * math.pi, math.pi / 1500)
+    for r in found:
+        assert any(abs(r - p) < 1e-5 for p in pts), ('корень вне серий', r / math.pi)
+    assert len(found) == len([p for p in pts if -5 * math.pi + 1e-6 < p < 5 * math.pi - 1e-6]) or len(found) >= len(pts) - 2
+    L, R = float(sp['seg'][0]), float(sp['seg'][1])
+    on_seg = sorted(r / math.pi for r in found if L * math.pi - 1e-7 <= r <= R * math.pi + 1e-7)
+    assert len(on_seg) == len(sp['roots']) and all(abs(a - float(b)) < 1e-6 for a, b in zip(on_seg, sp['roots'])), (on_seg, sp['roots'])
+
+
+# ------------------------------------------------------------------ №16: ответ-промежутки против неравенства в точках
+def v16(sp, x):
+    def holds(t):
+        try:
+            if not eval(sp['dom'], {'x': t, '__builtins__': {}}):
+                return False
+            g = eval(sp['g'], {'math': math, 'x': t, '__builtins__': {}})
+        except (ValueError, ZeroDivisionError, OverflowError):
+            return False
+        eps = 1e-9 * max(1.0, abs(g))
+        return {'<=': g <= eps, '>=': g >= -eps, '<': g < -eps, '>': g > eps}[sp['op']]
+
+    ivs = [(-math.inf if lo == '-inf' else float(lo), math.inf if hi == 'inf' else float(hi), lc, hc) for lo, hi, lc, hc in sp['iv']]
+    inside = lambda t: any((lo < t or (lc and t == lo)) and (t < hi or (hc and t == hi)) for lo, hi, lc, hc in ivs)
+    pts = [i / 37 for i in range(-20 * 37, 40 * 37)]                 # сетка с «неудобным» шагом
+    for lo, hi, _, _ in ivs:                                          # концы и окрестности концов
+        for e in (lo, hi):
+            if math.isfinite(e):
+                pts += [e, e - 1e-6, e + 1e-6, e - 0.3, e + 0.3]
+    for t in pts:
+        assert holds(t) == inside(t), (t, holds(t), inside(t), sp['iv'])
+
+
+# ------------------------------------------------------------------ №17: экстремум перебором по сетке с уточнением
+def v17(sp, x):
+    f = lambda t: eval(sp['f'], {'math': math, 'x': t, '__builtins__': {}})
+    lo, hi = float(sp['lo']), float(sp['hi'])
+    sign = 1 if sp['ask'] in ('max', 'argmax') else -1
+    N = 20000
+    best = max((lo + (hi - lo) * (i + 0.5) / N for i in range(N)), key=lambda t: sign * f(t))
+    a, b = best - (hi - lo) / N, best + (hi - lo) / N
+    for _ in range(100):                                  # тернарный поиск около найденной точки
+        m1, m2 = a + (b - a) / 3, b - (b - a) / 3
+        if sign * f(m1) < sign * f(m2):
+            a = m1
+        else:
+            b = m2
+    t = (a + b) / 2
+    got = t if sp['ask'].startswith('arg') else f(t)
+    assert abs(got - float(x)) < 1e-6 * max(1, abs(float(x))), (got, x)
+
+
+# ------------------------------------------------------------------ №19: точное число решений при каждом a
+def qroots(A, B, C):
+    """Различные действительные корни Ax² + Bx + C = 0 (A ≠ 0) — точно в дробях, если корни рациональны, иначе float."""
+    D = B * B - 4 * A * C
+    if D < 0:
+        return []
+    if D == 0:
+        return [F(-B) / (2 * A)]
+    r = math.isqrt(int(D)) if D.denominator == 1 and D >= 0 else None
+    sq = F(r) if r is not None and r * r == D else F(math.sqrt(float(D)))
+    return [(-B - sq) / (2 * A), (-B + sq) / (2 * A)]
+
+
+def count19(sp, a):
+    k = sp['kind']
+    if k == 'absq':                                       # |x² − 2mx| = a  ⇔  x² − 2mx = ±a
+        if a < 0:
+            return 0
+        m = sp['m']
+        return len({*qroots(F(1), -2 * m, -a), *qroots(F(1), -2 * m, a)})
+    if k == 'cubic':                                      # x³ + px + q = 0: знак дискриминанта −4p³ − 27q²
+        p, q = -3 * sp['m'] ** 2, -a
+        D = -4 * p ** 3 - 27 * q ** 2
+        return 3 if D > 0 else 2 if D == 0 else 1
+    if k == 'hyp':
+        return len([x for x in qroots(F(1), -a, sp['k']) if x != 0])
+    if k == 'circle':                                     # x² + (x + a)² = 2m²
+        return len(qroots(F(2), 2 * a, a * a - 2 * sp['m'] ** 2))
+    d, p, q = sp['d'], sp['p'], sp['q']
+    rs = qroots(F(1), -2 * a, a * a - d * d)
+    return 2 if len(rs) == 2 and all(p <= r <= q for r in rs) else 0
+
+
+def v19(sp, x):
+    ivs = [(None if lo == '-inf' else F(lo), None if hi == 'inf' else F(hi), lc, hc) for lo, hi, lc, hc in sp['iv']]
+    inside = lambda t: any((lo is None or lo < t or (lc and t == lo)) and (hi is None or t < hi or (hc and t == hi)) for lo, hi, lc, hc in ivs)
+    want = sp['N']
+    pts = [F(i, 7) for i in range(-80 * 7, 80 * 7 + 1, 3)]
+    for lo, hi, _, _ in ivs:
+        for e in (lo, hi):
+            if e is not None:
+                pts += [e, e - F(1, 1000), e + F(1, 1000)]
+    for t in pts:
+        assert (count19(sp, t) == want) == inside(t), (t, count19(sp, t), inside(t), sp['iv'])
+
+
+# ------------------------------------------------------------------ №15, №18: координаты; №20: перебор
+def v15(sp, x):
+    k = sp['kind']
+    if k == 'pyr':                                        # двугранный угол: нормали граней в координатах
+        a, h = float(sp['a']), float(sp['h'])
+        C, D, S = (a / 2, a / 2, 0), (-a / 2, a / 2, 0), (0, 0, h)
+        M = ((C[0] + D[0]) / 2, (C[1] + D[1]) / 2, 0)
+        close(S[2] / math.dist((0, 0, 0), M), x)
+    elif k == 'cube':
+        a = float(sp['k']) * math.sqrt(3)
+        B, D, C1, C = (a, 0, 0), (0, a, 0), (a, a, a), (a, a, 0)
+        u = [D[i] - B[i] for i in range(3)]; v = [C1[i] - B[i] for i in range(3)]
+        nrm = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]
+        close(abs(sum(nrm[i] * (C[i] - B[i]) for i in range(3))) / math.hypot(*nrm), x)
+    elif k == 'box':
+        close(float(sp['c']) / float(sp['dg']), x)        # BD — диагональ основания, BB₁ ⊥ основанию
+    else:
+        a = 2 * float(sp['k']) * math.sqrt(3)
+        A, B, C = (0, 0), (a, 0), (a / 2, a * math.sqrt(3) / 2)
+        close(C[1], x)                                    # плоскость ABB₁ — вертикальная через AB (y = 0)
+
+
+def v18(sp, x):
+    k = sp['kind']
+    if k == 'height':
+        p, q = float(sp['p']), float(sp['q'])
+        A, B = (0, 0), (p + q, 0)
+        H = (p, 0)
+        C = (p, math.sqrt(p * q))
+        close(angle(A, C, B), 90)
+        close(math.dist(C, H), x)
+    elif k == 'incircle':
+        a, b = float(sp['a']), float(sp['b'])
+        A, B, C = (b, 0), (0, a), (0, 0)
+        c = math.dist(A, B)
+        close(2 * area(A, B, C) / (a + b + c), x)         # r = 2S / P
+    elif k == 'bisector':
+        ab, ac, bc = (float(sp[t]) for t in ('ab', 'ac', 'bc'))
+        B, C = (0, 0), (bc, 0)
+        xa = (ab * ab - ac * ac + bc * bc) / (2 * bc)
+        A = (xa, math.sqrt(ab * ab - xa * xa))
+        lo, hi = 0.0, bc
+        for _ in range(100):
+            m = (lo + hi) / 2
+            if angle(B, A, (m, 0)) < angle((m, 0), A, C):
+                lo = m
+            else:
+                hi = m
+        close(lo, x)
+    else:
+        d1, d2 = float(sp['d1']), float(sp['d2'])
+        A, C = (0, 0), (d1, 0)
+        B, D = (d1 * 0.4 + d2 * 0.3, d2 * math.sqrt(1 - 0.09)), None
+        B = (0.4 * d1, 0.6 * d2); D = (0.4 * d1, -0.4 * d2)     # BD ⟂ AC, длина d2
+        mids = [((P[0] + Q[0]) / 2, (P[1] + Q[1]) / 2) for P, Q in ((A, B), (B, C), (C, D), (D, A))]
+        close(sum(math.dist(mids[i], mids[i - 1]) for i in range(4)), x)
+
+
+def v20(sp, x):
+    k, S = sp['kind'], int(sp['S'])
+    nums = range(1, S + 1, 2) if k == 'odd' else range(1, int(sp['n']) + 1)
+    can = {(0, 0)}                                         # (сколько чисел, сумма) — перебор наборов динамикой
+    for v in nums:
+        can |= {(c + 1, s + v) for c, s in can if s + v <= S}
+    ok = lambda N: (N, S) in can
+    best = max(c for c, s in can if s == S)
+    assert ok(int(sp['a'])) and not ok(int(sp['b'])) and best == sp['ans'][2]
+    assert x == f'а) да; б) нет; в) {best}'
+
+
+VERIFY = {1: v1, 2: v2, 3: v3, 14: v14, 15: v15, 16: v16, 17: v17, 18: v18, 19: v19, 20: v20, 4: v4, 5: v5, 6: v6, 7: v7, 8: v8, 9: v9, 10: v_check, 11: v_check, 12: v12, 13: v13}
 
 
 class MathBankTest(unittest.TestCase):
@@ -594,7 +791,17 @@ class MathBankTest(unittest.TestCase):
                 self.assertTrue(1 <= p['snum'] <= 20)
                 self.assertTrue(p['topic'] and p['title'] and p['text'] and p['sol'] and p['code'])
                 self.assertIn(p['level'], ('Б', 'П', 'В'))
-                self.assertRegex(p['answer'], ANS)
+                if p.get('pts'):                              # часть 2: самопроверка по критериям
+                    self.assertGreaterEqual(p['snum'], 14)
+                    self.assertEqual(max(c[0] for c in p['crit']), p['pts'])
+                    self.assertEqual(sorted(c[0] for c in p['crit']), list(range(p['pts'] + 1)))
+                    if p['auto']:
+                        self.assertRegex(p['answer'], ANS)
+                    else:
+                        self.assertTrue(p['answer'].strip())
+                else:
+                    self.assertLessEqual(p['snum'], 13)
+                    self.assertRegex(p['answer'], ANS)
                 self.assertTrue(p['id'].startswith(f'm{p["snum"]}-'))
 
     def test_titles_unique_within_number(self):
@@ -609,7 +816,7 @@ class MathBankTest(unittest.TestCase):
         for p in math_items():
             with self.subTest(p['id']):
                 self.assertIn(p['snum'], VERIFY, 'для номера нет независимой проверки')
-                VERIFY[p['snum']](spec(p), val(p['answer']))
+                VERIFY[p['snum']](spec(p), val(p['answer']) if not p.get('pts') or p['auto'] else p['answer'])
 
     @unittest.skipUnless(shutil.which('node'), 'нет node')
     def test_formulas_render(self):
