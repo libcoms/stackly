@@ -923,8 +923,20 @@ a.bk-tile.empty:hover, a.bk-tile.add:hover { border-color: var(--blue); }
 .ai-editor { display: grid; grid-template-columns: auto minmax(0, 1fr); border-radius: var(--r-s); background: var(--code-bg); box-shadow: inset 0 0 0 1px var(--code-line); overflow: hidden; }
 .ai-editor:focus-within { box-shadow: 0 0 0 2px var(--blue); }
 .ai-gutter { margin: 0; padding: 12px 10px 12px 14px; overflow: hidden; height: 100%; max-height: 100%; text-align: right; color: var(--c-com); font: 500 13.5px/1.55 var(--f-mono); user-select: none; border-right: 1px solid var(--code-line); }
-.ai-editor .ai-src { width: 100%; min-height: 200px; max-height: 520px; padding: 12px 14px; border: 0; outline: 0; border-radius: 0; background: transparent; color: var(--code-fg); font: 500 13.5px/1.55 var(--f-mono); tab-size: 4; resize: vertical; white-space: pre; overflow: auto; caret-color: var(--code-fg); }
-.ai-editor .ai-src::placeholder { color: var(--c-com); }
+.ai-ed { position: relative; min-width: 0; }
+.ai-hl { position: absolute; inset: 0; margin: 0; padding: 12px 14px; overflow: hidden; pointer-events: none; color: var(--code-fg); font: 500 13.5px/1.55 var(--f-mono); tab-size: 4; white-space: pre; }
+.ai-hl code { font: inherit; color: inherit; background: none; border: 0; padding: 0; }
+.ai-hl .tk-f { font-weight: inherit; }
+/* текст поля прозрачный: видна раскрашенная копия под ним, а курсор и выделение — от поля */
+.ai-editor .ai-src { position: relative; display: block; width: 100%; min-height: 200px; max-height: 520px; padding: 12px 14px; border: 0; outline: 0; border-radius: 0; background: transparent; color: transparent; -webkit-text-fill-color: transparent; font: 500 13.5px/1.55 var(--f-mono); tab-size: 4; resize: vertical; white-space: pre; overflow: auto; caret-color: var(--code-fg); }
+.ai-editor .ai-src::selection { background: rgb(120 150 255 / .35); -webkit-text-fill-color: transparent; }
+.ai-ac { position: fixed; z-index: 60; min-width: 220px; max-width: min(380px, calc(100vw - 16px)); padding: 4px; border-radius: var(--r-s); background: var(--paper); box-shadow: var(--shadow-pop), inset 0 0 0 1px var(--line); font-size: 13.5px; }
+.ai-ac-i { display: flex; justify-content: space-between; gap: 14px; padding: 6px 9px; border-radius: 5px; cursor: pointer; color: var(--ink); }
+.ai-ac-i b { font: 600 13.5px/1.3 var(--f-mono); }
+.ai-ac-i span { font-size: 12px; color: var(--mute); white-space: nowrap; }
+.ai-ac-i.on { background: var(--blue-soft); color: var(--blue-ink); }
+.ai-ac-d { margin-top: 4px; padding: 7px 9px 5px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.4; color: var(--ink-2); }
+.ai-editor .ai-src::placeholder { color: var(--c-com); -webkit-text-fill-color: var(--c-com); }
 .ai-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ai-cb-h input[type=file] { display: none; }
 .ai-chat { display: grid; gap: 10px; }
@@ -4011,7 +4023,7 @@ function stacklyApp() {
     return `<div class="ai-codebox" data-aicode="${pid}">
         <div class="ai-cb-h"><b>Ваш код</b><span class="ai-cb-lang">Python</span>
           <label class="btn small ghost">Загрузить .py<input type="file" accept=".py,.txt,text/plain" data-aifile="${pid}"></label></div>
-        <div class="ai-editor"><pre class="ai-gutter" aria-hidden="true">${aiGutter(st.code)}</pre><textarea class="ai-src" data-aisrc="${pid}" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" placeholder="Вставьте сюда решение на Python" aria-label="Код решения">${esc(st.code)}</textarea></div>
+        <div class="ai-editor"><pre class="ai-gutter" aria-hidden="true">${aiGutter(st.code)}</pre><div class="ai-ed"><pre class="ai-hl" aria-hidden="true"><code>${hl(st.code)}\n</code></pre><textarea class="ai-src" data-aisrc="${pid}" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" wrap="off" placeholder="Вставьте сюда решение на Python или начните писать — появятся подсказки" aria-label="Код решения" aria-autocomplete="list">${esc(st.code)}</textarea></div></div>
         <div class="ai-acts" data-aiacts="${pid}">${aiActsHTML(pid)}</div>
       </div><div class="aibox" data-aibox="${pid}">${st.open ? aiInner(pid) : ''}</div>`;
   }
@@ -4046,7 +4058,10 @@ function stacklyApp() {
   function aiSetCode(pid, code, ta) {
     const st = aiSt(pid); st.code = code.slice(0, 20000);
     const box = $(`[data-aicode="${pid}"]`);
-    if (box) { const t = ta || $('.ai-src', box); if (!ta) t.value = st.code; $('.ai-gutter', box).textContent = aiGutter(st.code); }
+    if (box) {
+      const t = ta || $('.ai-src', box); if (!ta) t.value = st.code;
+      $('.ai-gutter', box).textContent = aiGutter(st.code); $('.ai-hl code', box).innerHTML = hl(st.code) + '\n'; edSync(t);
+    }
     if (st.code.trim()) aiCode[pid] = st.code; else delete aiCode[pid];
     clearTimeout(aiSaveT); aiSaveT = setTimeout(() => store.set('aicode', aiCode), 400);
     const acts = $(`[data-aiacts="${pid}"]`); if (acts && st.hist.length) acts.innerHTML = aiActsHTML(pid);
@@ -4125,10 +4140,20 @@ function stacklyApp() {
     }
   });
   window.addEventListener('hashchange', () => { if (aiRec) aiRec.cancel(); aiStopAudio(); });
-  document.addEventListener('input', e => { const t = e.target.closest('[data-aisrc]'); if (t) aiSetCode(t.dataset.aisrc, t.value, t); });
-  // номера строк едут вместе с кодом
+  document.addEventListener('input', e => {
+    const t = e.target.closest('[data-aisrc]'); if (!t) return;
+    aiSetCode(t.dataset.aisrc, t.value, t);
+    if (/^insert(Text|CompositionText)$|^delete/.test(e.inputType || '')) acShow(t, /^delete/.test(e.inputType)); else acHide();
+  });
+  // номера строк и подсветка едут вместе с кодом; подсказка при прокрутке страницы закрывается
+  function edSync(t) {
+    const ed = t.closest('.ai-editor'); if (!ed) return;
+    $('.ai-gutter', ed).scrollTop = t.scrollTop;
+    const h = $('.ai-hl', ed); h.scrollTop = t.scrollTop; h.scrollLeft = t.scrollLeft;
+  }
   document.addEventListener('scroll', e => {
-    const t = e.target.closest && e.target.closest('[data-aisrc]'); if (t) t.previousElementSibling.scrollTop = t.scrollTop;
+    const t = e.target.closest && e.target.closest('[data-aisrc]');
+    if (t) { edSync(t); if (ac.t === t) acPlace(); } else acHide();
   }, true);
   document.addEventListener('change', e => {
     const t = e.target.closest('[data-aifile]'); if (!t || !t.files[0]) return;
@@ -4143,10 +4168,170 @@ function stacklyApp() {
     const inp = $('input', f), text = inp.value.trim(); if (!text) { inp.focus(); return; }
     aiTurn(f.dataset.aiask, { text });
   });
-  // Tab в поле кода — отступ, а не переход к следующей кнопке
+  /* ── редактор кода: отступы, парные скобки, подсказки ──
+     Подсветка — тот же hl(), что у решений на сайте: прозрачный текст поля лежит поверх раскрашенной копии.
+     Вставка идёт через execCommand('insertText'), чтобы работали Ctrl+Z и Ctrl+Y. */
+  function edIns(t, text, from = t.selectionStart, to = t.selectionEnd, caret) {
+    t.focus(); t.setSelectionRange(from, to);
+    if (!document.execCommand('insertText', false, text)) { t.setRangeText(text, from, to, 'end'); aiSetCode(t.dataset.aisrc, t.value, t); }
+    if (caret !== undefined) t.setSelectionRange(from + caret, from + caret);
+  }
+  const PAIRS = { '(': ')', '[': ']', '{': '}', "'": "'", '"': '"' };
+  // строки выделения целиком: [начало первой, конец последней]
+  function edLines(t) {
+    const v = t.value, a = v.lastIndexOf('\n', t.selectionStart - 1) + 1;
+    let b = v.indexOf('\n', t.selectionEnd - (t.selectionEnd > t.selectionStart && v[t.selectionEnd - 1] === '\n' ? 1 : 0));
+    return [a, b < 0 ? v.length : b];
+  }
+  function edShift(t, back) {
+    const [a, b] = edLines(t), block = t.value.slice(a, b);
+    const out = block.split('\n').map(l => back ? l.replace(/^ {1,4}/, '') : '    ' + l).join('\n');
+    edIns(t, out, a, b); t.setSelectionRange(a, a + out.length);
+  }
+  function edKey(e, t) {
+    const v = t.value, s0 = t.selectionStart, s1 = t.selectionEnd, sel = s0 !== s1;
+    const lineStart = v.lastIndexOf('\n', s0 - 1) + 1, before = v.slice(lineStart, s0), next = v[s1] || '';
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey || (sel && v.slice(s0, s1).includes('\n'))) edShift(t, e.shiftKey); else edIns(t, '    ');
+    } else if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      // новая строка с тем же отступом; после двоеточия — на уровень глубже
+      e.preventDefault();
+      const ind = before.match(/^ */)[0], code = before.replace(/#.*$/, '').trimEnd();
+      edIns(t, '\n' + ind + (code.endsWith(':') ? '    ' : ''));
+    } else if (e.key === 'Backspace' && !sel && s0 > lineStart) {
+      if (/^ +$/.test(before) && before.length % 4 === 0) { e.preventDefault(); edIns(t, '', s0 - 4, s0); }       // отступ целиком
+      else if (PAIRS[v[s0 - 1]] && PAIRS[v[s0 - 1]] === next) { e.preventDefault(); edIns(t, '', s0 - 1, s0 + 1); } // пустая пара скобок
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const k = e.key;
+      if (')]}'.includes(k) && !sel && next === k) { e.preventDefault(); t.setSelectionRange(s0 + 1, s0 + 1); return; }
+      if ((k === '"' || k === "'") && !sel && next === k) { e.preventDefault(); t.setSelectionRange(s0 + 1, s0 + 1); return; }
+      if (!PAIRS[k]) return;
+      if (sel) { e.preventDefault(); edIns(t, k + v.slice(s0, s1) + PAIRS[k], s0, s1); t.setSelectionRange(s0 + 1, s1 + 1); return; }
+      const quote = k === '"' || k === "'";
+      if (quote && /[\w'"]$/.test(before)) return;                    // апостроф после буквы или вторая кавычка — как есть
+      if (next && !/[\s)\]}:,]/.test(next)) return;                     // перед словом пару не ставим
+      e.preventDefault(); edIns(t, k + PAIRS[k], s0, s1, 1);
+    }
+  }
+
+  // слова для подсказок: [слово, вид, описание, f — функция (ставим скобки)]
+  const AC_BI = {
+    print: 'вывести: print(a, b, sep=" ", end="\\n")', input: 'строка с клавиатуры', int: 'целое число; int("1011", 2) — из двоичной записи',
+    float: 'дробное число', str: 'строка; str(x) — запись числа', bool: 'истина или ложь', list: 'список', dict: 'словарь', set: 'множество без повторов',
+    tuple: 'кортеж', range: 'числа: range(start, stop, step) — до stop−1', len: 'длина строки или списка', sum: 'сумма элементов',
+    min: 'наименьшее; min(it, key=…)', max: 'наибольшее; max(it, key=…)', abs: 'модуль числа', sorted: 'новый отсортированный список: sorted(it, key=…, reverse=True)',
+    reversed: 'в обратном порядке', enumerate: 'пары (номер, элемент): enumerate(it, start=0)', zip: 'идти по нескольким спискам сразу: zip(a, a[1:])',
+    map: 'применить функцию ко всем: map(int, s.split())', filter: 'оставить подходящие', any: 'есть ли хоть один истинный', all: 'все ли истинны',
+    open: 'открыть файл: for s in open("17.txt")', round: 'округлить: round(x, 2)', divmod: '(a // b, a % b) сразу', pow: 'pow(a, b, m) — a**b по модулю m',
+    bin: 'двоичная запись: bin(n)[2:] — без 0b', oct: 'восьмеричная запись', hex: 'шестнадцатеричная запись', ord: 'код символа', chr: 'символ по коду',
+    type: 'тип значения', isinstance: 'проверить тип', next: 'следующий элемент', iter: 'итератор', format: 'format(n, "b") — двоичная без 0b; "o", "x" — 8 и 16',
+  };
+  const AC_MOD = {
+    itertools: { product: 'все слова длины k: product("ABC", repeat=k)', permutations: 'перестановки: permutations(it, r)', combinations: 'сочетания без повторов: combinations(it, r)',
+      combinations_with_replacement: 'сочетания с повторами', count: 'бесконечный счётчик', accumulate: 'накопленные суммы' },
+    math: { sqrt: 'квадратный корень', isqrt: 'целая часть корня', ceil: 'округлить вверх', floor: 'округлить вниз', gcd: 'НОД', lcm: 'НОК', log: 'логарифм: log(x, base)',
+      log2: 'двоичный логарифм', factorial: 'факториал', prod: 'произведение элементов', dist: 'расстояние между точками: dist(p, q)', inf: 'бесконечность — начальное значение для min', pi: 'число π' },
+    functools: { lru_cache: 'запоминать результаты рекурсии: @lru_cache(None)', cache: 'то же, что lru_cache(None)', reduce: 'свернуть список' },
+    fnmatch: { fnmatch: 'подходит ли под маску: fnmatch(str(x), "1?2*")' },
+    ipaddress: { ip_network: 'сеть: ip_network(f"{ip}/{mask}", strict=False)', ip_address: 'IP-адрес' },
+    string: { digits: '"0123456789"', ascii_uppercase: 'латинские заглавные', ascii_lowercase: 'латинские строчные', ascii_letters: 'все латинские буквы' },
+    sys: { setrecursionlimit: 'глубже рекурсия: sys.setrecursionlimit(10**6)' },
+    collections: { Counter: 'подсчёт: Counter(s).most_common()', deque: 'очередь с двух концов', defaultdict: 'словарь со значением по умолчанию' },
+  };
+  const AC_CONST = new Set(['inf', 'pi', 'digits', 'ascii_uppercase', 'ascii_lowercase', 'ascii_letters']);
+  const AC_METH = {
+    split: 'разбить на список: s.split(), s.split(",")', strip: 'убрать пробелы и \\n по краям', replace: 'заменить: s.replace(a, b)', count: 'сколько раз встречается',
+    find: 'индекс подстроки или −1', index: 'индекс элемента', startswith: 'начинается ли с …', endswith: 'заканчивается ли на …', join: 'склеить: "".join(список)',
+    upper: 'заглавными', lower: 'строчными', isdigit: 'только цифры?', isalpha: 'только буквы?', zfill: 'дополнить нулями слева: s.zfill(8)',
+    append: 'добавить в конец списка', extend: 'добавить все элементы', insert: 'вставить по индексу', pop: 'убрать и вернуть последний',
+    remove: 'убрать первое такое значение', sort: 'отсортировать на месте: a.sort(key=…, reverse=True)', reverse: 'развернуть на месте', copy: 'копия',
+    get: 'значение или по умолчанию: d.get(k, 0)', items: 'пары (ключ, значение)', keys: 'ключи', values: 'значения', setdefault: 'значение или создать: d.setdefault(k, [])',
+    update: 'добавить из другого словаря', add: 'добавить в множество', discard: 'убрать из множества', readline: 'прочитать строку файла', readlines: 'все строки файла', read: 'весь файл строкой',
+  };
+  const ac = { t: null, items: [], i: 0, from: 0, el: null };
+  function acWords(t, prefix, dot) {
+    const code = t.value, list = [];
+    if (dot !== null) {
+      const mod = AC_MOD[dot];
+      Object.entries(mod || AC_METH).forEach(([w, d]) => list.push([w, mod ? (AC_CONST.has(w) ? 'константа' : 'функция') : 'метод', d, !AC_CONST.has(w)]));
+    } else {
+      Object.entries(AC_BI).forEach(([w, d]) => list.push([w, 'функция', d, true]));
+      Object.values(AC_MOD).forEach(m => Object.entries(m).forEach(([w, d]) => list.push([w, AC_CONST.has(w) ? 'константа' : 'функция', d, !AC_CONST.has(w)])));
+      Object.keys(AC_MOD).forEach(w => list.push([w, 'модуль', 'import ' + w]));
+      KW.forEach(w => list.push([w, 'слово', '']));
+      const known = new Set(list.map(x => x[0])), here = new Set();
+      for (const m of code.matchAll(/\b[A-Za-z_]\w*/g)) if (!known.has(m[0]) && !here.has(m[0]) && m.index + m[0].length !== t.selectionStart) {
+        here.add(m[0]); list.push([m[0], 'из кода', '', new RegExp(`def\\s+${m[0]}\\b`).test(code)]);
+      }
+    }
+    const pl = prefix.toLowerCase(), seen = new Set();
+    return list.filter(x => x[0].toLowerCase().startsWith(pl) && x[0] !== prefix && !seen.has(x[0]) && seen.add(x[0]))
+      .sort((a, b) => (b[0].startsWith(prefix) - a[0].startsWith(prefix)) || ((a[1] === 'из кода') - (b[1] === 'из кода')) * -1 || a[0].length - b[0].length || a[0].localeCompare(b[0]))
+      .slice(0, 8);
+  }
+  function acShow(t, deleting) {
+    const v = t.value, c = t.selectionStart;
+    if (c !== t.selectionEnd) return acHide();
+    const line = v.slice(v.lastIndexOf('\n', c - 1) + 1, c);
+    if (/#/.test(line.replace(/'[^']*'|"[^"]*"/g, '')) || (line.match(/['"]/g) || []).length % 2) return acHide();   // в комментарии и строке молчим
+    // слово под курсором; перед ним «имя.» — функции модуля или методы, «).», «]», кавычка с точкой — методы
+    const prefix = (line.match(/([A-Za-z_]\w*)?$/) || [])[1] || '', head = line.slice(0, line.length - prefix.length);
+    let dot = null;
+    if (head.endsWith('.')) {
+      const before = head.slice(0, -1), name = before.match(/(^|[^\w])([A-Za-z_]\w*)$/);
+      if (name) dot = name[2]; else if (/[)\]'"]$/.test(before)) dot = '';
+    }
+    if (dot === null && (prefix.length < 2 || /^\d/.test(prefix))) return acHide();
+    if (dot !== null && deleting && !prefix) return acHide();
+    const items = acWords(t, prefix, dot);
+    if (!items.length) return acHide();
+    Object.assign(ac, { t, items, i: 0, from: c - prefix.length });
+    if (!ac.el) { ac.el = document.createElement('div'); ac.el.className = 'ai-ac'; ac.el.setAttribute('role', 'listbox'); document.body.appendChild(ac.el); }
+    acRender(); acPlace();
+  }
+  function acRender() {
+    const cur = ac.items[ac.i];
+    ac.el.innerHTML = ac.items.map(([w, k], i) => `<div class="ai-ac-i ${i === ac.i ? 'on' : ''}" role="option" aria-selected="${i === ac.i}" data-aci="${i}"><b>${esc(w)}</b><span>${k}</span></div>`).join('')
+      + (cur[2] ? `<div class="ai-ac-d">${esc(cur[2])}</div>` : '');
+    ac.el.hidden = false;
+  }
+  // список — под курсором: в моноширинном шрифте место курсора считается по номеру строки и столбца
+  let acCharW = 0;
+  function acPlace() {
+    const t = ac.t; if (!t || !ac.el || ac.el.hidden) return;
+    const cs = getComputedStyle(t), lh = parseFloat(cs.lineHeight), r = t.getBoundingClientRect();
+    if (!acCharW) { const c = document.createElement('canvas').getContext('2d'); c.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; acCharW = c.measureText('0'.repeat(50)).width / 50; }
+    const v = t.value.slice(0, ac.from), row = v.split('\n').length - 1, col = v.length - v.lastIndexOf('\n') - 1;
+    let x = r.left + parseFloat(cs.paddingLeft) + col * acCharW - t.scrollLeft, y = r.top + parseFloat(cs.paddingTop) + (row + 1) * lh - t.scrollTop + 4;
+    if (y < r.top || y > r.bottom) return acHide();
+    const w = ac.el.offsetWidth, h = ac.el.offsetHeight;
+    x = Math.max(8, Math.min(x, innerWidth - w - 8));
+    if (y + h > innerHeight - 8) y = y - lh - h - 8;
+    ac.el.style.left = x + 'px'; ac.el.style.top = y + 'px';
+  }
+  function acHide() { if (ac.el) ac.el.hidden = true; ac.t = null; }
+  function acPick(i) {
+    const t = ac.t, [w, , , fn] = ac.items[i], c = t.selectionStart, after = t.value[c] || '';
+    acHide();
+    if (fn && after !== '(') edIns(t, w + '()', ac.from, c, w.length + 1);
+    else edIns(t, w, ac.from, c);
+  }
+  document.addEventListener('mousedown', e => {
+    const it = e.target.closest('[data-aci]');
+    if (it) { e.preventDefault(); acPick(+it.dataset.aci); } else if (ac.el && !e.target.closest('.ai-ac')) acHide();
+  });
+  document.addEventListener('focusout', e => { if (e.target.closest && e.target.closest('[data-aisrc]')) acHide(); });
+  window.addEventListener('resize', acHide);
   document.addEventListener('keydown', e => {
-    const t = e.target.closest('[data-aisrc]'); if (!t || e.key !== 'Tab' || e.shiftKey) return;
-    e.preventDefault(); t.setRangeText('    ', t.selectionStart, t.selectionEnd, 'end'); aiSetCode(t.dataset.aisrc, t.value, t);
+    const t = e.target.closest('[data-aisrc]'); if (!t) return;
+    if (ac.t === t && ac.el && !ac.el.hidden) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); ac.i = (ac.i + (e.key === 'ArrowDown' ? 1 : -1) + ac.items.length) % ac.items.length; acRender(); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); acPick(ac.i); return; }
+      if (e.key === 'Escape') { e.preventDefault(); acHide(); return; }
+      if (/^(ArrowLeft|ArrowRight|Home|End|PageUp|PageDown)$/.test(e.key)) acHide();
+    }
+    edKey(e, t);
   });
 
   /* ═════════════ ШПАРГАЛКА ═════════════ */
