@@ -15,7 +15,7 @@ class FakeRouterAI:
         self.calls, self.auth_ok = [], True
         self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```', 'mood': 'angry'})
         self.heard, self.speech_sec, self.fail, self.fail_tts, self.block_swear, self.stream_cost = 'а почему шаг не тот', 10, False, False, False, 0.3
-        self.reject_reasoning = False
+        self.reject_reasoning, self.empty = False, None     # empty: 'reasoning' — пусто при reasoning, 'all' — всегда, иначе текст ошибки
         fake = self
 
         class H(BaseHTTPRequestHandler):
@@ -43,6 +43,12 @@ class FakeRouterAI:
                     self.send_header('Content-Type', 'text/event-stream')
                     self.end_headers()
                     self.close_connection = True
+                    if fake.empty == 'all' or fake.empty == 'reasoning' and 'reasoning' in body:
+                        self.wfile.write(b'data: {"choices": [{"delta": {}, "finish_reason": "stop"}]}\n\ndata: [DONE]\n\n')
+                        return
+                    if fake.empty not in (None, 'all', 'reasoning'):
+                        self.wfile.write(b'data: ' + json.dumps({'error': {'message': fake.empty}}).encode() + b'\n\n')
+                        return
                     for i in range(0, len(fake.reply), 7):
                         self.wfile.write(b'data: ' + json.dumps({'choices': [{'delta': {'content': fake.reply[i:i + 7]}}]}).encode() + b'\n\n')
                     self.wfile.write(b'data: ' + json.dumps({'choices': [{'delta': {}}], 'usage': {'cost': fake.stream_cost}}).encode() + b'\n\ndata: [DONE]\n\n')
@@ -273,6 +279,23 @@ class AiTest(T.ServerCase):
         self.rai.reply = 'Отлично. Всё работает, молодец!'
         ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
         self.assertEqual(' '.join(e['text'] for e in ev if e['t'] == 'say'), 'Отлично. Всё работает, молодец!')
+        # пустой ответ модели — внятная ошибка, а не выдуманная реплика
+        self.rai.empty = 'all'
+        ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
+        self.assertEqual([e['t'] for e in ev], ['error'])
+        self.assertIn('пустой ответ', ev[0]['message'])
+        self.assertNotIn('reasoning', self.rai.last('/chat/completions'))                         # повтор был без reasoning
+        self.rai.empty = 'Provider overloaded'
+        ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
+        self.assertEqual(ev, [{'t': 'error', 'message': 'Модель не ответила: Provider overloaded'}])
+        self.assertEqual(self.rai.last('/chat/completions')['reasoning'], {'enabled': False})     # повтор не помог — флаг остался
+        # пусто только с reasoning — повтор без него, дальше уже не шлём
+        self.rai.empty = 'reasoning'
+        ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
+        self.assertEqual([e['t'] for e in ev][-1], 'done', ev)
+        self.assertEqual(' '.join(e['text'] for e in ev if e['t'] == 'say'), 'Отлично. Всё работает, молодец!')
+        self.assertNotIn('reasoning', self.rai.last('/chat/completions'))
+        self.rai.empty = None
         # RouterAI не знает параметр reasoning — повтор без него, дальше уже не шлём
         self.rai.reject_reasoning = True
         self.rai.reply = 'Отлично. Всё работает, молодец!'

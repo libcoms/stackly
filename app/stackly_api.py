@@ -1860,7 +1860,7 @@ class Handler(BaseHTTPRequestHandler):
         # заголовки уже ушли: любая ошибка дальше — событием в потоке, иначе общий обработчик допишет
         # в поток вторую HTTP-страницу и браузер проиграет только начало ответа
         try:
-            self.ai_stream_body(u, p, resp, roast, heard, emit, t0)
+            self.ai_stream_body(u, p, resp, roast, heard, emit, t0, body)
         except Exception:
             log.exception('ответ ИИ потоком')
             try:
@@ -1870,11 +1870,13 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             resp.close()
 
-    def ai_stream_body(self, u, p, resp, roast, heard, emit, t0):
+    def ai_stream_body(self, u, p, resp, roast, heard, emit, t0, body, retry=True):
+        global _ai_reasoning_off
         if heard:
             emit({'t': 'heard', 'heard': heard})
         content, cost, mood_sent, pos, spoken, said = '', 0, False, 0, 0, []
         thought, first, finish = 0, None, ''
+        trace, oops, plain = [], '', ''      # начало «пустого» потока — в журнал; ошибка внутри потока; ответ не потоком
 
         def speak(piece):
             nonlocal spoken
@@ -1889,7 +1891,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             for line in resp:
                 line = line.decode('utf-8', 'replace').strip()
+                if line and len(trace) < 8:
+                    trace.append(line[:300])
                 if not line.startswith('data:'):
+                    if len(plain) < 200000:
+                        plain += line
                     continue
                 data = line[5:].strip()
                 if data == '[DONE]':
@@ -1902,6 +1908,9 @@ class Handler(BaseHTTPRequestHandler):
                     continue
                 if isinstance(j.get('usage'), dict):
                     cost = j['usage'].get('cost') or cost
+                if j.get('error'):                                  # провайдер упал уже после заголовков
+                    e = j['error']
+                    oops = str(e.get('message') if isinstance(e, dict) else e)[:200]
                 ch = (j.get('choices') or [{}])[0]
                 dl = (ch.get('delta') if isinstance(ch, dict) else None) or {}
                 finish = (ch.get('finish_reason') if isinstance(ch, dict) else None) or finish
@@ -1928,6 +1937,32 @@ class Handler(BaseHTTPRequestHandler):
             if not said:
                 emit({'t': 'error', 'message': 'Связь с RouterAI оборвалась. Спросите ещё раз'})
                 return
+        if not content and plain:                          # RouterAI ответил обычным JSON вместо потока
+            try:
+                j = json.loads(plain)
+                content = j['choices'][0]['message']['content'] or ''
+                cost = (j.get('usage') or {}).get('cost') or cost
+            except (ValueError, KeyError, IndexError, TypeError):
+                pass
+        if not content and retry and _ai_reasoning_off and not oops:
+            # пустой ответ при выключенных размышлениях — повтор без параметра; помогло — дальше его не шлём
+            log.warning('ИИ: пустой ответ с reasoning.enabled=false (%s) — повтор без него', ' | '.join(trace) or 'поток пустой')
+            resp.close()
+            again = rai_open('/chat/completions', dict(body, stream=True), 90)
+            try:
+                if self.ai_stream_body(u, p, again, roast, None, emit, time.time(), body, False):
+                    _ai_reasoning_off = False
+                    log.warning('ИИ: без reasoning ответ пришёл — дальше параметр не шлём')
+            finally:
+                again.close()
+            return False
+        if not content:
+            # пустой ответ модели раньше маскировался фразой «Не получилось сформулировать…» — теперь видна причина
+            log.warning('ИИ: модель %s вернула пустой ответ за %.1f с (окончание %s, размышления %d симв.): %s',
+                        AI_MODEL, time.time() - t0, finish or '—', thought, ' | '.join(trace) or 'поток пустой')
+            emit({'t': 'error', 'message': f'Модель не ответила: {oops}' if oops else
+                  'Модель вернула пустой ответ. Спросите ещё раз — если повторится, нажмите «Отчёт»'})
+            return False
         # хвост ответа — сразу, до записи в журнал
         say, notes, voice, mood = ai_parse(content)
         text, closed = json_partial(content, 'say')
@@ -1944,6 +1979,7 @@ class Handler(BaseHTTPRequestHandler):
         if finish == 'length':
             log.warning('ИИ: ответ упёрся в max_tokens — он обрезан')
         ai_log(u['id'], 'llm', p['id'], 0, cost)
+        return True
 
     def ai_speech(self):
         """Озвучка реплики: mp3 или WAV (обычно уже готова — её начали делать в фоне). Длительность списывается с недельного лимита."""
