@@ -262,6 +262,9 @@ def migrate():
     if 'voice' not in [r['name'] for r in db().execute('PRAGMA table_info(live_cfg)')]:
         db().execute("ALTER TABLE live_cfg ADD COLUMN voice TEXT NOT NULL DEFAULT ''")
         db().execute('ALTER TABLE live_cfg ADD COLUMN rate REAL NOT NULL DEFAULT 1')
+    # стиль разбора кода с ИИ: 0 — обычный, 1 — прожарка, 2 — прожарка с матом; включает сам пользователь
+    if 'ai_roast' not in [r['name'] for r in db().execute('PRAGMA table_info(users)')]:
+        db().execute('ALTER TABLE users ADD COLUMN ai_roast INTEGER NOT NULL DEFAULT 0')
     if 'snum' not in cols:
         db().execute("ALTER TABLE problems ADD COLUMN snum INTEGER NOT NULL DEFAULT 0")
     # тариф преподавателя: free — бесплатный, trial — пробный Про, pro — Про. plan_until — до какого момента
@@ -893,7 +896,11 @@ AI_MODEL = os.environ.get('STACKLY_AI_MODEL', 'anthropic/claude-sonnet-5.5')
 AI_STT = os.environ.get('STACKLY_AI_STT', 'openai/whisper-large-v3-turbo')
 AI_TTS = os.environ.get('STACKLY_AI_TTS', 'google/gemini-3.8-flash-tts')
 AI_VOICE = os.environ.get('STACKLY_AI_VOICE', 'Kore')
-AI_STYLE = os.environ.get('STACKLY_AI_STYLE', 'дружелюбно и спокойно, как репетитор на занятии, в живом разговорном темпе')
+# манера озвучки по стилю разбора: 0 — обычный, 1 — прожарка, 2 — прожарка с матом (стиль выбирает сам ученик)
+AI_STYLES = (os.environ.get('STACKLY_AI_STYLE', 'живо и эмоционально, с выразительной интонацией, как увлечённый репетитор: '
+                                                'искренне радуется удачам, удивляется и сокрушается над ошибками'),
+             'дерзко и очень эмоционально, с сарказмом, смехом и драматичными паузами, как стендап-комик на прожарке, но по-дружески',
+             'дерзко и очень эмоционально, с сарказмом, смехом и драматичными паузами, как стендап-комик на прожарке, но по-дружески')
 # кому открыт разбор: почты через запятую; пока функция в проверке — только у одного преподавателя
 AI_USERS = {e.strip().lower() for e in os.environ.get('STACKLY_AI_USERS', 'dglumov4@gmail.com').split(',') if e.strip()}
 AI_WEEK_SECONDS = int(os.environ.get('STACKLY_AI_WEEK_SECONDS', '600'))
@@ -914,7 +921,8 @@ AI_PROMPT = '''Ты — репетитор по информатике на са
 - Речь ученика распознаётся автоматически и может быть с ошибками — понимай по смыслу.
 
 Формат ответа — только JSON-объект, без текста вокруг: {"say": "…", "notes": "…"}
-say — то, что прозвучит голосом: 2–5 коротких предложений живой разговорной речи, не длиннее 600 символов. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
+say — то, что прозвучит голосом: 2–5 коротких предложений живой эмоциональной разговорной речи, не длиннее 600 символов. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
+Говори с эмоциями: восклицания, удивление, радость, разочарование — как живой человек, а не диктор. Для озвучки можно вставлять в say звуки в квадратных скобках: [laughs], [chuckle], [sigh], [short pause] — не больше двух-трёх за реплику; слово, которое надо выделить голосом, пиши ЗАГЛАВНЫМИ буквами.
 notes — необязательная письменная подсказка к сказанному: исправленная строка или маленький фрагмент кода в блоке ``` (до 8 строк). Если показывать нечего — пустая строка.'''
 
 def ai_allowed(u):
@@ -925,8 +933,17 @@ def ai_used(uid, now=None):
     return db().execute('SELECT COALESCE(SUM(seconds), 0) FROM ai_log WHERE user_id = ? AND ts >= ?',
                         (uid, week_start(now))).fetchone()[0]
 
+AI_ROAST = ('', """
+Стиль — ПРОЖАРКА: ученик сам включил её в настройках. Разбирай как стендап-комик на прожарке: едкие шутки, сарказм, преувеличения, смешные сравнения про код и ход решения. Но каждая шутка — по делу: за ней всегда стоит конкретная ошибка и подсказка, как исправить; разбор не должен стать хуже от того, что он смешной. Прожаривай код и решение, а не человека: никаких шуток про внешность, семью, национальность, пол, здоровье, ум и способности ученика в целом. Без мата. Если решение верное — прожарь за мелочи и стиль, но признай, что работает. Если ученик расстроен или просит помягче — сразу сбавь и говори по-доброму.""",
+"""
+Стиль — ПРОЖАРКА С МАТОМ: ученик сам включил её в настройках и согласился на мат. Разбирай как стендап-комик на прожарке: едкие шутки, сарказм, преувеличения, смешные сравнения про код и ход решения, русский мат — естественно и смешно, как на живой прожарке, но не через слово. Каждая шутка — по делу: за ней всегда стоит конкретная ошибка и подсказка, как исправить; разбор не должен стать хуже от того, что он смешной. Материшься на код, баги и ситуацию, а не на ученика: не называй его матерными словами и не унижай. Никаких шуток про внешность, семью, национальность, пол, здоровье, ум и способности ученика в целом. Если решение верное — прожарь за мелочи и стиль, но признай, что работает. Если ученик расстроен или просит помягче — сразу сбавь и говори по-доброму, без мата.""")
+
+def ai_roast(uid):
+    r = db().execute('SELECT ai_roast FROM users WHERE id = ?', (uid,)).fetchone()
+    return r['ai_roast'] if r and r['ai_roast'] in (0, 1, 2) else 0
+
 def ai_status(uid):
-    return {'limit': AI_WEEK_SECONDS, 'used': round(ai_used(uid), 1), 'reset': week_start() + 7 * 86400}
+    return {'limit': AI_WEEK_SECONDS, 'used': round(ai_used(uid), 1), 'reset': week_start() + 7 * 86400, 'roast': ai_roast(uid)}
 
 def ai_log(uid, kind, pid, seconds=0.0, cost=0.0):
     db().execute('INSERT INTO ai_log (user_id, ts, kind, pid, seconds, cost) VALUES (?,?,?,?,?,?)',
@@ -975,7 +992,8 @@ def ai_task_context(p, code):
     return '\n\n'.join(x for x in parts if x)
 
 def ai_parse(content):
-    """Ответ модели → (say, notes). Если модель не соблюла JSON — весь текст идёт в речь."""
+    """Ответ модели → (say, notes, voice): say — для экрана, voice — для озвучки, со звуками [laughs] и ударениями.
+    Если модель не соблюла JSON — весь текст идёт в речь."""
     content = str(content or '').strip()
     m = re.search(r'\{.*\}', content, re.S)
     try:
@@ -990,7 +1008,8 @@ def ai_parse(content):
     if len(say) > AI_MAX_SAY:                 # длинную реплику режем по концу предложения
         cut = say[:AI_MAX_SAY]
         say = cut[:max(cut.rfind('. '), cut.rfind('? '), cut.rfind('! ')) + 1] or cut
-    return say, notes.strip()[:3000]
+    shown = re.sub(r'\s+([,.!?…])', r'\1', re.sub(r'\s*[\[<][a-z ]{2,20}[\]>]\s*', ' ', say)).strip()
+    return shown, notes.strip()[:3000], say
 
 def wav(pcm, rate=PCM_RATE):
     """Сырые 16-битные моно-сэмплы → WAV, который играет любой браузер."""
@@ -1316,6 +1335,7 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/ai/status'): self.ai_get_status,
             ('POST', '/api/ai/turn'): self.ai_turn,
             ('POST', '/api/ai/speech'): self.ai_speech,
+            ('POST', '/api/ai/settings'): self.ai_settings,
             ('GET', '/api/materials'): self.materials,
             ('POST', '/api/materials'): self.material_save,
             ('POST', '/api/materials/delete'): self.material_delete,
@@ -1408,6 +1428,15 @@ class Handler(BaseHTTPRequestHandler):
     def ai_get_status(self):
         self.send_json(200, {'ai': ai_status(self.ai_user()['id'])})
 
+    def ai_settings(self):
+        """Стиль разбора выбирает только сам пользователь: прожарка и мат — по его согласию."""
+        u = self.ai_user()
+        roast = self.body().get('roast')
+        if roast not in (0, 1, 2) or isinstance(roast, bool):
+            raise ApiError(400, 'bad_request', 'Некорректный стиль')
+        db().execute('UPDATE users SET ai_roast = ? WHERE id = ?', (roast, u['id']))
+        self.send_json(200, {'ai': ai_status(u['id'])})
+
     def ai_turn(self):
         u = self.ai_user()
         d = self.body(4 * 1024 * 1024)
@@ -1458,19 +1487,21 @@ class Handler(BaseHTTPRequestHandler):
                     hist.append({'role': m['role'], 'content': m['text'][:3000]})
         if hist and hist[-1]['role'] == 'user':
             hist.pop()
-        msgs = [{'role': 'system', 'content': AI_PROMPT + '\n\n' + ai_task_context(p, code)}, *hist,
+        roast = ai_roast(u['id'])
+        msgs = [{'role': 'system', 'content': AI_PROMPT + AI_ROAST[roast] + '\n\n' + ai_task_context(p, code)}, *hist,
                 {'role': 'user', 'content': text or ('Посмотри мой код ещё раз.' if hist else 'Разбери моё решение.')}]
-        r = rai_json('/chat/completions', {'model': AI_MODEL, 'messages': msgs, 'max_tokens': 1200, 'temperature': 0.4}, 90)
+        r = rai_json('/chat/completions', {'model': AI_MODEL, 'messages': msgs, 'max_tokens': 1200,
+                                           'temperature': 0.8 if roast else 0.5}, 90)
         try:
             content = r['choices'][0]['message']['content']
         except (KeyError, IndexError, TypeError):
             log.warning('RouterAI chat: нет ответа: %s', str(r)[:300])
             raise ApiError(502, 'ai_error', 'ИИ не ответил. Попробуйте ещё раз')
         ai_log(u['id'], 'llm', p['id'], 0, (r.get('usage') or {}).get('cost') or 0)
-        say, notes = ai_parse(content)
+        say, notes, voice = ai_parse(content)
         if not say:
-            say = 'Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.'
-        self.send_json(200, {'heard': heard, 'say': say, 'notes': notes, 'speech': ai_say_put(u['id'], p['id'], say),
+            say = voice = 'Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.'
+        self.send_json(200, {'heard': heard, 'say': say, 'notes': notes, 'speech': ai_say_put(u['id'], p['id'], (voice, roast)),
                              'ai': ai_status(u['id'])})
 
     def ai_speech(self):
@@ -1482,9 +1513,10 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(404, 'not_found', 'Эта реплика уже озвучена или устарела')
         try:
             self.ai_limit_check(u['id'])
-            body = {'model': AI_TTS, 'input': v[2], 'voice': AI_VOICE, 'response_format': 'pcm'}
+            text, roast = v[2]
+            body = {'model': AI_TTS, 'input': text, 'voice': AI_VOICE, 'response_format': 'pcm'}
             if AI_TTS.startswith('google/'):
-                body['provider'] = {'options': {'google-ai-studio': {'speech_metadata': {'style': AI_STYLE}}}}
+                body['provider'] = {'options': {'google-ai-studio': {'speech_metadata': {'style': AI_STYLES[roast]}}}}
             raw, ctype = rai('/audio/speech', body, 60)
             if 'json' in ctype or len(raw) < 2 * PCM_RATE // 10:
                 log.warning('RouterAI speech: не звук (%s): %s', ctype, raw[:300])

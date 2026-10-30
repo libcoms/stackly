@@ -13,7 +13,7 @@ class FakeRouterAI:
     """Чат, распознавание и озвучка: запросы складываются в self.calls, ответы задаёт тест."""
     def __init__(self):
         self.calls, self.auth_ok = [], True
-        self.reply = json.dumps({'say': 'В пятой строке шаг цикла не тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```'})
+        self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```'})
         self.heard, self.speech_sec, self.fail = 'а почему шаг не тот', 10, False
         fake = self
 
@@ -102,7 +102,9 @@ class AiTest(T.ServerCase):
         # первый разбор: модель видит задачу, эталон и пронумерованный код ученика
         st, r = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})
         self.assertEqual(st, 200, r)
-        self.assertTrue(r['say'].startswith('В пятой строке') and 'range(2027' in r['notes'] and r['speech'])
+        self.assertEqual(r['say'], 'В пятой строке шаг цикла НЕ тот. Подумай, с какого числа начинать.')   # звуки — только в голосе
+        self.assertTrue('range(2027' in r['notes'] and r['speech'])
+        self.assertNotIn('ПРОЖАРКА', self.rai.last('/chat/completions')['messages'][0]['content'])
         self.assertEqual(r['heard'], '')
         sent = self.rai.last('/chat/completions')
         system, ask = sent['messages'][0]['content'], sent['messages'][-1]
@@ -120,7 +122,8 @@ class AiTest(T.ServerCase):
         self.assertEqual(len(wav), 44 + 2 * 24000 * 10)
         self.assertEqual(float(used), 10.0)
         tts = self.rai.last('/audio/speech')
-        self.assertEqual((tts['model'], tts['response_format'], tts['input']), ('google/gemini-3.8-flash-tts', 'pcm', r['say']))
+        self.assertEqual((tts['model'], tts['response_format'], tts['input']), ('google/gemini-3.8-flash-tts', 'pcm', 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.'))
+        self.assertIn('эмоционально', tts['provider']['options']['google-ai-studio']['speech_metadata']['style'])
         self.assertIn('style', tts['provider']['options']['google-ai-studio']['speech_metadata'])
         self.assertEqual(self.speech(t, r['speech'])[0], 404)
         self.assertEqual(self.speech(other, 'x')[0], 403)
@@ -138,6 +141,23 @@ class AiTest(T.ServerCase):
         self.assertEqual(roles, ['system', 'user', 'assistant', 'user'])
         self.assertEqual(self.rai.last('/chat/completions')['messages'][-1]['content'], 'а почему шаг не тот')
         self.assertEqual(t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'audio': dict(audio, format='exe')})[1]['error'], 'bad_audio')
+
+        # прожарка с матом: включает сам пользователь, модель получает правила, голос — манеру комика
+        self.assertEqual(t.call('POST', '/ai/settings', {'roast': 3})[0], 400)
+        self.assertEqual(t.call('POST', '/ai/settings', {'roast': True})[0], 400)
+        self.assertEqual(other.call('POST', '/ai/settings', {'roast': 2})[0], 403)
+        self.assertEqual(t.call('POST', '/ai/settings', {'roast': 2})[1]['ai']['roast'], 2)
+        self.assertEqual(t.call('GET', '/auth/me')[1]['user']['ai']['roast'], 2)
+        rr = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'жги'})[1]
+        sent = self.rai.last('/chat/completions')
+        self.assertIn('ПРОЖАРКА С МАТОМ', sent['messages'][0]['content'])
+        self.assertEqual(sent['temperature'], 0.8)
+        self.assertEqual(self.speech(t, rr['speech'])[0], 200)
+        self.assertIn('стендап', self.rai.last('/audio/speech')['provider']['options']['google-ai-studio']['speech_metadata']['style'])
+        t.call('POST', '/ai/settings', {'roast': 1})
+        t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'а без мата?'})
+        self.assertIn('Без мата.', self.rai.last('/chat/completions')['messages'][0]['content'])
+        self.rai.speech_sec = 1
 
         # модель ответила не JSON — текст целиком идёт в речь, без markdown
         self.rai.reply = 'Всё **верно**, молодец!'

@@ -913,6 +913,8 @@ a.bk-tile.empty:hover, a.bk-tile.add:hover { border-color: var(--blue); }
 .ai-left { font: 600 12.5px/1 var(--f-mono); color: var(--mute); padding: 6px 8px; border-radius: 5px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
 .ai-left.low { color: var(--bad); }
 .ai-head .ai-x { margin-left: auto; }
+.ai-mode { font-size: 12.5px; color: var(--mute); }
+.role-pick.ai-style-pick { grid-template-columns: 1fr; }
 .ai-src { width: 100%; min-height: 180px; padding: 12px 14px; font: 500 13.5px/1.55 var(--f-mono); tab-size: 4; resize: vertical; white-space: pre; }
 .ai-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .ai-acts input[type=file] { display: none; }
@@ -3997,6 +3999,7 @@ function stacklyApp() {
       : m.role === 'err' ? `<div class="ai-msg err">${esc(m.text)}</div>`
       : `<div class="ai-msg ai"><p>${esc(m.text)}</p>${m.notes ? md(m.notes) : ''}${m.url || m.speech ? `<button type="button" class="btn small ghost ai-play" data-aiplay="${i}" data-p="${pid}">${I.play}${m.url ? 'Прослушать ещё раз' : 'Озвучить'}</button>` : ''}</div>`;
     return `<div class="ai-head"><b>Разбор кода с ИИ</b><span class="ai-left ${left < 60 ? 'low' : ''}" title="Считаются минуты звука: ваша речь и ответы голосом">${out ? 'время на неделю закончилось' : `осталось ${mmss(Math.floor(left))} из ${mmss(Math.floor(lim))} на неделе`}</span>
+        <a class="ai-mode" href="#me" title="Стиль разбора меняется в настройках кабинета">${['обычный разбор', 'прожарка', 'прожарка с матом'][acct.ai.roast || 0]}</a>
         <button type="button" class="btn small ghost ai-x" data-aiclose="${pid}">Свернуть</button></div>
       ${st.edit ? `<textarea class="ai-src" data-aisrc="${pid}" spellcheck="false" autocomplete="off" placeholder="Вставьте сюда код решения на Python" aria-label="Код решения">${esc(st.code)}</textarea>
         <div class="ai-acts"><button type="button" class="btn small" data-aigo="${pid}" ${out || st.busy ? 'disabled' : ''}>${st.hist.length ? 'Разобрать заново' : 'Разобрать решение'}</button>
@@ -5122,6 +5125,27 @@ function stacklyApp() {
     } catch (e) { msg.textContent = e.message; msg.className = 'form-msg bad'; }
     btn.disabled = false;
   }
+  // стиль разбора кода с ИИ: прожарку и мат включает только сам пользователь
+  const AI_STYLE_NAMES = [['Обычный', 'Спокойный разбор: где ошибка и как дойти до решения самому'],
+    ['Прожарка', 'Шутки и сарказм про ваш код — но каждая по делу, с подсказкой. Без мата'],
+    ['Прожарка с матом', 'То же, но с матом, как на живой прожарке. Ругается на код, а не на вас']];
+  function aiStyleHTML() {
+    const cur = acct.ai.roast || 0;
+    return `<div class="panel"><div class="panel-h"><h2>Разбор кода с ИИ</h2></div>
+        <p class="auth-note">Как ИИ разговаривает с вами, когда разбирает решение. Прожарку можно выключить в любой момент.</p>
+        <div class="role-pick ai-style-pick" role="radiogroup" aria-label="Стиль разбора" style="margin-top:12px">${AI_STYLE_NAMES.map(([t, d], i) =>
+          `<label><input type="radio" name="ai-roast" value="${i}" data-airoast ${cur === i ? 'checked' : ''}><span><b>${t}</b><small>${d}</small></span></label>`).join('')}</div>
+        <div class="form-msg" role="status" data-airoast-msg></div></div>`;
+  }
+  document.addEventListener('change', async e => {
+    const r = e.target.closest('[data-airoast]'); if (!r) return;
+    const msg = $('[data-airoast-msg]'), roast = +r.value;
+    if (roast === 2 && !confirm('Включить прожарку с матом? ИИ будет шутить про ваш код и материться. Выключить можно здесь же.')) {
+      $$('[data-airoast]').forEach(x => { x.checked = +x.value === (acct.ai.roast || 0); }); return;
+    }
+    try { const d = await api('/ai/settings', 'POST', { roast }); acct.ai = d.ai; if (msg) { msg.textContent = 'Сохранено'; msg.className = 'form-msg ok'; } }
+    catch (err) { if (msg) { msg.textContent = err.message; msg.className = 'form-msg bad'; } $$('[data-airoast]').forEach(x => { x.checked = +x.value === (acct.ai.roast || 0); }); }
+  });
   function settingsHTML() {
     if (!acct.cloud) return '';
     return `<section class="me-settings">
@@ -5133,6 +5157,7 @@ function stacklyApp() {
           ${field('st-old', 'Текущий пароль', 'password', 'autocomplete="current-password" required')}
           ${field('st-new', 'Новый пароль — от 8 символов', 'password', 'autocomplete="new-password" required minlength="8"')}
           <div class="form-msg" role="alert"></div><button class="btn small" type="submit">Сменить пароль</button></form></div>
+      ${acct.ai ? aiStyleHTML() : ''}
       <div class="panel"><div class="panel-h"><h2>Удалить аккаунт</h2></div>
         <p class="auth-note">Аккаунт, прогресс и статистика удалятся с сервера навсегда.</p>
         <form class="auth-form" data-settings="delete" novalidate style="margin-top:12px">
