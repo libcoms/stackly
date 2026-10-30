@@ -15,6 +15,7 @@ class FakeRouterAI:
         self.calls, self.auth_ok = [], True
         self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```', 'mood': 'angry'})
         self.heard, self.speech_sec, self.fail, self.fail_tts, self.block_swear, self.stream_cost = 'а почему шаг не тот', 10, False, False, False, 0.3
+        self.reject_reasoning = False
         fake = self
 
         class H(BaseHTTPRequestHandler):
@@ -34,6 +35,8 @@ class FakeRouterAI:
                 fake.calls.append((self.path, body))
                 if fake.fail:
                     return self.send(b'{"error": {"message": "upstream"}}', code=fake.fail if fake.fail is not True else 500)
+                if self.path == '/chat/completions' and fake.reject_reasoning and 'reasoning' in body:
+                    return self.send(b'{"error": {"message": "unknown parameter: reasoning"}}', code=400)
                 if self.path == '/chat/completions' and body.get('stream'):
                     # поток, как у OpenAI: куски по 7 символов, в конце — цена
                     self.send_response(200)
@@ -241,6 +244,8 @@ class AiTest(T.ServerCase):
         self.assertEqual(ev[-1]['say'], ' '.join(x['text'] for x in says))
         self.assertIn('range(2027', ev[-1]['notes'])
         self.assertEqual(self.rai.last('/chat/completions')['stream'], True)
+        self.assertEqual(self.rai.last('/chat/completions')['reasoning'], {'enabled': False})      # без размышлений — быстрее
+        self.assertEqual(self.rai.last('/chat/completions')['max_tokens'], 4000)
         for x in says:
             stt, typ, wavb, _ = self.speech(t, x['speech'])
             self.assertEqual((stt, typ, wavb[:4]), (200, 'audio/wav', b'RIFF'))
@@ -268,6 +273,15 @@ class AiTest(T.ServerCase):
         self.rai.reply = 'Отлично. Всё работает, молодец!'
         ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
         self.assertEqual(' '.join(e['text'] for e in ev if e['t'] == 'say'), 'Отлично. Всё работает, молодец!')
+        # RouterAI не знает параметр reasoning — повтор без него, дальше уже не шлём
+        self.rai.reject_reasoning = True
+        self.rai.reply = 'Отлично. Всё работает, молодец!'
+        ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
+        self.assertEqual(ev[-1]['t'], 'done')
+        self.assertNotIn('reasoning', self.rai.last('/chat/completions'))
+        self.rai.reject_reasoning = False
+        self.stream(t, {'pid': '25-1', 'code': code, 'text': 'и так?'})
+        self.assertNotIn('reasoning', self.rai.last('/chat/completions'))
         # RouterAI недоступен — обычная ошибка с причиной, без потока
         self.rai.fail = 402
         st, _, e = self.stream(t, {'pid': '25-1', 'code': code})

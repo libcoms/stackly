@@ -1105,10 +1105,35 @@ def rai_open(path, body, timeout):
                403: 'RouterAI запретил запрос — проверьте права ключа и доступ к модели',
                404: 'RouterAI не нашёл модель или адрес — проверьте STACKLY_AI_MODEL/STT/TTS и уберите STACKLY_AI_API',
                429: 'RouterAI просит подождать: слишком много запросов. Попробуйте через минуту'}.get(e.code)
-        raise ApiError(502, 'ai_error', why or f'RouterAI ответил ошибкой {e.code}' + (f': {msg}' if msg else '') + '. Попробуйте ещё раз через минуту')
+        err = ApiError(502, 'ai_error', why or f'RouterAI ответил ошибкой {e.code}' + (f': {msg}' if msg else '') + '. Попробуйте ещё раз через минуту')
+        err.upstream = e.code
+        raise err
     except (urllib.error.URLError, OSError) as e:
         log.warning('RouterAI %s %s: %s', AI_API, path, e)
         raise ApiError(502, 'ai_error', 'Нет связи с RouterAI (сервер не дозвонился или не дождался ответа). Попробуйте ещё раз через минуту')
+
+# размышления модели отключаем: голосовому разговору важна скорость, а длинные размышления съедают и время
+# (8–10 с тишины), и лимит длины — ответ обрывался. Если RouterAI параметр не примет — дальше без него
+_ai_reasoning_off = True
+
+def ai_chat(body, timeout):
+    global _ai_reasoning_off
+    if _ai_reasoning_off:
+        try:
+            return rai_open('/chat/completions', dict(body, reasoning={'enabled': False}), timeout)
+        except ApiError as e:
+            if getattr(e, 'upstream', 0) != 400:
+                raise
+            log.warning('RouterAI не принял reasoning.enabled=false — дальше без него')
+            _ai_reasoning_off = False
+    return rai_open('/chat/completions', body, timeout)
+
+def json_or_502(raw):
+    try:
+        return json.loads(raw)
+    except ValueError:
+        log.warning('RouterAI: не JSON: %s', raw[:300])
+        raise ApiError(502, 'ai_error', 'ИИ ответил что-то непонятное. Попробуйте ещё раз')
 
 def rai_json(path, body, timeout):
     raw, _ = rai(path, body, timeout)
@@ -1799,10 +1824,10 @@ class Handler(BaseHTTPRequestHandler):
         roast = ai_roast(u['id'])
         msgs = [{'role': 'system', 'content': AI_PROMPT + AI_ROAST[roast] + '\n\n' + ai_task_context(p, code)}, *hist,
                 {'role': 'user', 'content': text or ('Посмотри мой код ещё раз.' if hist else 'Разбери моё решение.')}]
-        body = {'model': AI_MODEL, 'messages': msgs, 'max_tokens': 1200, 'temperature': (0.5, 0.8, 0.95)[roast]}
+        body = {'model': AI_MODEL, 'messages': msgs, 'max_tokens': 4000, 'temperature': (0.5, 0.8, 0.95)[roast]}
         if d.get('stream'):
             return self.ai_turn_stream(u, p, body, roast, heard)
-        r = rai_json('/chat/completions', body, 90)
+        r = json_or_502(ai_chat(body, 90).read())
         try:
             content = r['choices'][0]['message']['content']
         except (KeyError, IndexError, TypeError):
@@ -1818,7 +1843,8 @@ class Handler(BaseHTTPRequestHandler):
     def ai_turn_stream(self, u, p, body, roast, heard):
         """Ответ потоком NDJSON: эмоция, как только модель её назвала; затем предложения по мере готовности — каждое
         сразу уходит в озвучку, и браузер начинает говорить, пока модель дописывает остальное; в конце — подсказка с кодом."""
-        resp = rai_open('/chat/completions', dict(body, stream=True), 90)    # ошибка RouterAI — обычным ответом с причиной
+        resp = ai_chat(dict(body, stream=True), 90)    # ошибка RouterAI — обычным ответом с причиной
+        t0 = time.time()
         self.send_response(200)
         self.send_header('Content-Type', 'application/x-ndjson; charset=utf-8')
         self.send_header('Cache-Control', 'no-store')
@@ -1834,7 +1860,7 @@ class Handler(BaseHTTPRequestHandler):
         # заголовки уже ушли: любая ошибка дальше — событием в потоке, иначе общий обработчик допишет
         # в поток вторую HTTP-страницу и браузер проиграет только начало ответа
         try:
-            self.ai_stream_body(u, p, resp, roast, heard, emit)
+            self.ai_stream_body(u, p, resp, roast, heard, emit, t0)
         except Exception:
             log.exception('ответ ИИ потоком')
             try:
@@ -1844,10 +1870,11 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             resp.close()
 
-    def ai_stream_body(self, u, p, resp, roast, heard, emit):
+    def ai_stream_body(self, u, p, resp, roast, heard, emit, t0):
         if heard:
             emit({'t': 'heard', 'heard': heard})
         content, cost, mood_sent, pos, spoken, said = '', 0, False, 0, 0, []
+        thought, first, finish = 0, None, ''
 
         def speak(piece):
             nonlocal spoken
@@ -1876,9 +1903,15 @@ class Handler(BaseHTTPRequestHandler):
                 if isinstance(j.get('usage'), dict):
                     cost = j['usage'].get('cost') or cost
                 ch = (j.get('choices') or [{}])[0]
-                delta = ((ch.get('delta') if isinstance(ch, dict) else None) or {}).get('content') or ''
+                dl = (ch.get('delta') if isinstance(ch, dict) else None) or {}
+                finish = (ch.get('finish_reason') if isinstance(ch, dict) else None) or finish
+                if isinstance(dl.get('reasoning'), str):
+                    thought += len(dl['reasoning'])
+                delta = dl.get('content') or ''
                 if not isinstance(delta, str) or not delta:
                     continue
+                if first is None:
+                    first = time.time() - t0
                 content += delta
                 if not mood_sent:
                     m = re.search(r'"mood"\s*:\s*"(\w+)"', content)
@@ -1906,6 +1939,10 @@ class Handler(BaseHTTPRequestHandler):
         if not said:
             speak('Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.')
         emit({'t': 'done', 'say': ' '.join(said), 'notes': notes, 'mood': mood, 'ai': ai_status(u['id'])})
+        log.info('ИИ: первый текст через %s с, размышления %d симв., ответ %d симв., окончание %s',
+                 f'{first:.1f}' if first is not None else '—', thought, len(content), finish or '—')
+        if finish == 'length':
+            log.warning('ИИ: ответ упёрся в max_tokens — он обрезан')
         ai_log(u['id'], 'llm', p['id'], 0, cost)
 
     def ai_speech(self):
