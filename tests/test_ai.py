@@ -163,13 +163,13 @@ class AiTest(T.ServerCase):
         self.assertEqual(t.call('GET', '/auth/me')[1]['user']['ai']['roast'], 2)
         rr = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'жги'})[1]
         sent = self.rai.last('/chat/completions')
-        self.assertIn('ЖЁСТКАЯ ПРОЖАРКА С МАТОМ', sent['messages'][0]['content'])
+        self.assertIn('ЖЁСТКАЯ КОМЕДИЙНАЯ ПРОЖАРКА', sent['messages'][0]['content'])
         self.assertEqual(sent['temperature'], 0.8)
         self.assertEqual(self.speech(t, rr['speech'])[0], 200)
         self.assertIn('жёсткой прожарке', self.rai.last('/audio/speech')['provider']['options']['google-ai-studio']['speech_metadata']['style'])
         t.call('POST', '/ai/settings', {'roast': 1})
         t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'а без мата?'})
-        self.assertIn('Без мата.', self.rai.last('/chat/completions')['messages'][0]['content'])
+        self.assertIn('Не используй мат.', self.rai.last('/chat/completions')['messages'][0]['content'])
         self.rai.speech_sec = 1
 
         # модель ответила не JSON — текст целиком идёт в речь, без markdown
