@@ -126,7 +126,7 @@ class AiTest(T.ServerCase):
         self.assertIn('112157964 55332', system)                          # ответ эталона — только модели
         self.assertIn('  2|     if x % 2027 == 0:', system)
         self.assertEqual((ask['role'], ask['content'], len(sent['messages'])), ('user', 'Разбери моё решение.', 2))
-        self.assertEqual(sent['model'], 'anthropic/claude-sonnet-5.5')
+        self.assertEqual(sent['model'], 'anthropic/claude-haiku-5.5')
         self.assertTrue(self.rai.auth_ok)
 
         # озвучка: WAV, 10 секунд звука списываются; второй раз ту же реплику не озвучить

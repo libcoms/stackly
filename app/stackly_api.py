@@ -900,7 +900,7 @@ def ai_base(url):
     return url or 'https://routerai.ru/api/v1'
 
 AI_API = ai_base(os.environ.get('STACKLY_AI_API', ''))
-AI_MODEL = os.environ.get('STACKLY_AI_MODEL', 'anthropic/claude-sonnet-5.5')
+AI_MODEL = os.environ.get('STACKLY_AI_MODEL', 'anthropic/claude-haiku-5.5')     # быстрая модель: голосовой разговор важнее задержки
 AI_STT = os.environ.get('STACKLY_AI_STT', 'openai/whisper-large-v3-turbo')
 AI_TTS = os.environ.get('STACKLY_AI_TTS', 'google/gemini-3.8-flash-tts')
 # голос по стилю разбора: Puck — живой и бодрый, Fenrir — заводной, для прожарки; STACKLY_AI_VOICE задаёт один голос на все
