@@ -14,7 +14,7 @@ class FakeRouterAI:
     def __init__(self):
         self.calls, self.auth_ok = [], True
         self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```', 'mood': 'angry'})
-        self.heard, self.speech_sec, self.fail, self.fail_tts = 'а почему шаг не тот', 10, False, False
+        self.heard, self.speech_sec, self.fail, self.fail_tts, self.block_swear = 'а почему шаг не тот', 10, False, False, False
         fake = self
 
         class H(BaseHTTPRequestHandler):
@@ -48,6 +48,8 @@ class FakeRouterAI:
                     return self.send(json.dumps({'choices': [{'message': {'content': fake.reply}}], 'usage': {'cost': 0.42}}).encode())
                 if self.path == '/audio/transcriptions':
                     return self.send(json.dumps({'text': fake.heard, 'usage': {'seconds': 5, 'cost': 0.01}}).encode())
+                if self.path == '/audio/speech' and fake.block_swear and ('хуй' in body['input'].lower() or 'хуе' in body['input'].lower()):
+                    return self.send(b'{"error": {"message": "safety"}}', code=400)     # фильтр модели озвучки
                 if self.path == '/audio/speech' and fake.fail_tts:
                     return self.send(b'{"error": {"message": "tts down"}}', code=500)
                 if self.path == '/audio/speech':
@@ -233,7 +235,7 @@ class AiTest(T.ServerCase):
         self.assertEqual((kinds[0], kinds[-1]), ('mood', 'done'))
         self.assertEqual(ev[0]['mood'], 'angry')
         says = [e for e in ev if e['t'] == 'say']
-        self.assertGreaterEqual(len(says), 3)
+        self.assertGreaterEqual(len(says), 2)
         self.assertEqual(says[0]['text'], 'Ну ты даёшь!')                              # первый кусок короткий — голос стартует сразу
         self.assertEqual(' '.join(x['text'] for x in says), 'Ну ты даёшь! Во второй строке цикл от единицы, а надо от 2027 — иначе это до утра. Шаг ставь 2027. Тьфу.')
         self.assertEqual(ev[-1]['say'], ' '.join(x['text'] for x in says))
@@ -246,6 +248,15 @@ class AiTest(T.ServerCase):
         self.assertIn('Ну ты [laughs] даёшь!', voices)                                  # звуки — в голосе
         self.assertEqual(self.rai.last('/audio/speech')['voice'], 'Puck')               # мужской голос
         self.assertEqual(t.call('GET', '/ai/status')[1]['ai']['used'], 2.0 * len(says))
+        # модель озвучки не пропустила мат — кусок озвучивается с «пи-и-ип», на экране текст как есть
+        self.rai.block_swear = True
+        self.rai.reply = json.dumps({'mood': 'angry', 'say': 'Охуеть, ты range от единицы запустил!', 'notes': ''}, ensure_ascii=False)
+        ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'жги'})[2]
+        say = [e for e in ev if e['t'] == 'say'][0]
+        self.assertEqual(say['text'], 'Охуеть, ты range от единицы запустил!')
+        self.assertEqual(self.speech(t, say['speech'])[0], 200)
+        self.assertEqual(self.rai.last('/audio/speech')['input'], 'пи-и-ип, ты range от единицы запустил!')
+        self.rai.block_swear = False
         # ответ не JSON — всё равно звучит
         self.rai.reply = 'Отлично. Всё работает, молодец!'
         ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
@@ -269,7 +280,7 @@ class PcmTidyTest(unittest.TestCase):
         tone = [int(8000 * math.sin(i / 8)) for i in range(rate)]
         a = array.array('h', hiss(rate // 2) + tone + hiss(rate // 2))
         out = array.array('h'); out.frombytes(api.pcm_tidy(a.tobytes(), rate))
-        self.assertTrue(rate <= len(out) <= rate + 8 * rate // 100)     # секунда речи и запас в 70 мс вместо двух секунд
+        self.assertTrue(rate <= len(out) <= rate + 22 * rate // 100)    # секунда речи и запас 200 мс вместо двух секунд
         self.assertEqual((out[0], out[-1]), (0, 0))                     # нарастание и затухание без щелчка
         self.assertGreater(max(map(abs, out)), 7000)
         quiet = array.array('h', hiss(rate))                            # одна тишина — не трогаем

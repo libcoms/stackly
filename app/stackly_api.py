@@ -932,7 +932,7 @@ AI_PROMPT = '''Ты — репетитор по информатике на са
 
 Формат ответа — только JSON-объект, без текста вокруг, поля строго в этом порядке: {"mood": "…", "say": "…", "notes": "…"}
 say — то, что прозвучит голосом: 2–5 коротких предложений живой эмоциональной разговорной речи, не длиннее 600 символов. Первое предложение — короткое: оно начинает звучать, пока ты договариваешь остальное. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
-Говори с эмоциями: восклицания, удивление, радость, разочарование — как живой человек, а не диктор. Для озвучки можно вставлять в say звуки в квадратных скобках: [laughs], [chuckle], [sigh], [short pause] — не больше двух-трёх за реплику; слово, которое надо выделить голосом, пиши ЗАГЛАВНЫМИ буквами.
+Говори с эмоциями: восклицания, удивление, радость, разочарование — как живой человек, а не диктор. Для озвучки можно вставить в say смех: [laughs] или [chuckle] — не больше одного за реплику, других звуков не вставляй; слово, которое надо выделить голосом, пиши ЗАГЛАВНЫМИ буквами.
 notes — необязательная письменная подсказка к сказанному: исправленная строка или маленький фрагмент кода в блоке ``` (до 8 строк). Если показывать нечего — пустая строка.
 mood — эмоция маскота, который произносит реплику (ученик видит его вместо текста): одно из calm, happy, love, laugh, surprised, angry, sad. happy — похвала, love — умиление, laugh — смешно, surprised — неожиданная ошибка или находка, angry — злость и прожарка, sad — разочарование.'''
 
@@ -1190,7 +1190,8 @@ SENTENCE_RE = re.compile(r'.+?(?:[.!?…]+["»)]?(?=\s)|$)', re.S)
 
 def ai_pieces(text, closed, start):
     """Готовые к озвучке куски текста начиная с позиции start: целые предложения, не короче 25 символов
-    (короткие склеиваются; самый первый — от 12, чтобы голос зазвучал скорее). Возвращает (куски, новая позиция)."""
+    (самый первый — от 12 символов, чтобы голос зазвучал скорее; дальше — от 160: чем меньше стыков, тем меньше сбоев
+    озвучки). Возвращает (куски, новая позиция)."""
     out, buf, pos = [], '', start
     for m in SENTENCE_RE.finditer(text, start):
         part = m.group(0)
@@ -1198,7 +1199,7 @@ def ai_pieces(text, closed, start):
         if not ends and not (closed and m.end() == len(text)):
             break                                          # предложение ещё дописывается
         buf += part
-        if len(buf.strip()) >= (12 if start == 0 and not out else 25) or (closed and m.end() == len(text)):
+        if len(buf.strip()) >= (12 if start == 0 and not out else 160) or (closed and m.end() == len(text)):
             out.append(buf)
             buf, pos = '', m.end()
     return out, pos
@@ -1214,8 +1215,13 @@ def wav(pcm, rate=PCM_RATE):
 # браузер забирает её один раз, тогда же длительность списывается с лимита. Не получилось — можно запросить ещё раз
 _ai_says, _ai_lock = {}, threading.Lock()
 
-def ai_tts(text, roast):
-    """Текст → (WAV, секунды) через RouterAI. Ошибка — ApiError."""
+# мат для запасной озвучки: если модель озвучки отказалась от куска, повторяем его с «пи-и-ип», как на телевидении
+BLEEP_RE = re.compile(r'\b(?:на|по|за|вы|у|от|раз|рас|съ|въ|про|до|при|о|а|ни)?(?:ху[йеёяюи]|пизд|бля|[её]б(?:а|ну|ы|л|т|у|и|ё)|[её]бл|мудак|мудил|сук[аио]|сучк|залуп|гандон|пид[оа]р|шлюх|долбо[её]б)[а-яё]*', re.I)
+
+def bleep(text):
+    return BLEEP_RE.sub('пи-и-ип', text)
+
+def ai_tts_once(text, roast):
     body = {'model': AI_TTS, 'input': text, 'voice': AI_VOICES[roast], 'response_format': 'pcm'}
     if AI_TTS.startswith('google/'):
         body['provider'] = {'options': {'google-ai-studio': {'speech_metadata': {'style': AI_STYLES[roast]}}}}
@@ -1223,23 +1229,47 @@ def ai_tts(text, roast):
     if 'json' in ctype or len(raw) < 2 * PCM_RATE // 10:
         log.warning('RouterAI speech: не звук (%s): %s', ctype, raw[:300])
         raise ApiError(502, 'ai_error', 'Не получилось озвучить ответ')
-    pcm = pcm_tidy(raw[44:] if raw[:4] == b'RIFF' else raw)
+    return pcm_tidy(raw[44:] if raw[:4] == b'RIFF' else raw)
+
+def ai_tts(text, roast):
+    """Текст → (WAV, секунды) через RouterAI. Ошибка — ApiError.
+    Не озвучилось (фильтр модели не пропустил мат) — повтор с «пи-и-ип». Звука подозрительно мало для такого текста
+    (модель иногда обрубает конец) — один повтор, берём более длинный вариант."""
+    try:
+        pcm = ai_tts_once(text, roast)
+    except ApiError:
+        if bleep(text) == text:
+            raise
+        log.info('озвучка: повтор с «пи-и-ип»')
+        pcm = ai_tts_once(bleep(text), roast)
+    words = len(re.findall(r'[а-яёa-z0-9]+', text, re.I))
+    if words >= 6 and len(pcm) / (2 * PCM_RATE) < words * .22:               # обычная речь — около 0,35 с на слово
+        log.info('озвучка: похоже, обрублена (%d слов, %.1f с) — повтор', words, len(pcm) / (2 * PCM_RATE))
+        try:
+            again = ai_tts_once(text, roast)
+            pcm = max(pcm, again, key=len)
+        except ApiError:
+            pass
     return wav(pcm), len(pcm) / (2 * PCM_RATE)
 
-def pcm_tidy(pcm, rate=PCM_RATE, floor=700):
-    """Края озвучки: модель оставляет перед речью и после неё тихое шипение — между предложениями, которые звучат
-    подряд, оно слышно. Срезаем края тише порога (с запасом 30–40 мс, чтобы не съесть начало слова) и делаем
-    нарастание и затухание по 8 мс, чтобы на стыках не щёлкало. Если громче порога ничего нет — звук не трогаем."""
+def pcm_tidy(pcm, rate=PCM_RATE):
+    """Края озвучки: модель оставляет перед речью и после неё тихое шипение — между кусками, которые звучат подряд,
+    оно слышно. Срезаем края тише порога — он считается от громкости самой речи, чтобы не съесть тихие окончания;
+    запас 50 мс в начале и 150 мс в конце, нарастание и затухание по 12 мс — без щелчков на стыках."""
     a = array.array('h')
     a.frombytes(pcm[:len(pcm) // 2 * 2])
     if sys.byteorder == 'big':
         a.byteswap()
+    if not a:
+        return b''
     win = rate // 100                                       # окна по 10 мс
-    loud = [i for i in range(0, len(a), win) if max(map(abs, a[i:i + win]), default=0) > floor]
-    if not loud:
+    peaks = [max(map(abs, a[i:i + win])) for i in range(0, len(a), win)]
+    floor = max(400, max(peaks) * .05)
+    loud = [k for k, v in enumerate(peaks) if v > floor]
+    if not loud or max(peaks) < 1500:                       # речи не видно — звук не трогаем
         return pcm[:len(pcm) // 2 * 2]
-    a = a[max(0, loud[0] - 3 * win):min(len(a), loud[-1] + 4 * win)]
-    fade = min(len(a) // 2, rate // 125)
+    a = a[max(0, (loud[0] - 5) * win):min(len(a), (loud[-1] + 16) * win)]
+    fade = min(len(a) // 2, rate * 12 // 1000)
     for i in range(fade):
         a[i] = int(a[i] * i / fade)
         a[-1 - i] = int(a[-1 - i] * i / fade)
@@ -1770,7 +1800,7 @@ class Handler(BaseHTTPRequestHandler):
         def speak(piece):
             nonlocal spoken
             voice = ai_clean(piece)
-            if not voice or spoken >= AI_MAX_SAY:
+            if not voice or spoken >= AI_MAX_SAY * 1.6:          # длинную прожарку не обрываем на полуслове
                 return
             spoken += len(voice)
             shown = ai_shown(voice)
