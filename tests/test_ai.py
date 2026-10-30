@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import test_api as T       # noqa: E402
 
 KEY = 'rai-test-key'
-AI_EMAIL, AI_STUDENT = 'ai.teacher@example.com', 'ai.student@example.com'
+AI_EMAIL, AI_STUDENT, AI_STREAM = 'ai.teacher@example.com', 'ai.student@example.com', 'ai.stream@example.com'
 
 
 class FakeRouterAI:
@@ -14,7 +14,7 @@ class FakeRouterAI:
     def __init__(self):
         self.calls, self.auth_ok = [], True
         self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```', 'mood': 'angry'})
-        self.heard, self.speech_sec, self.fail = 'а почему шаг не тот', 10, False
+        self.heard, self.speech_sec, self.fail, self.fail_tts = 'а почему шаг не тот', 10, False, False
         fake = self
 
         class H(BaseHTTPRequestHandler):
@@ -34,10 +34,22 @@ class FakeRouterAI:
                 fake.calls.append((self.path, body))
                 if fake.fail:
                     return self.send(b'{"error": {"message": "upstream"}}', code=fake.fail if fake.fail is not True else 500)
+                if self.path == '/chat/completions' and body.get('stream'):
+                    # поток, как у OpenAI: куски по 7 символов, в конце — цена
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'text/event-stream')
+                    self.end_headers()
+                    self.close_connection = True
+                    for i in range(0, len(fake.reply), 7):
+                        self.wfile.write(b'data: ' + json.dumps({'choices': [{'delta': {'content': fake.reply[i:i + 7]}}]}).encode() + b'\n\n')
+                    self.wfile.write(b'data: ' + json.dumps({'choices': [{'delta': {}}], 'usage': {'cost': 0.3}}).encode() + b'\n\ndata: [DONE]\n\n')
+                    return
                 if self.path == '/chat/completions':
                     return self.send(json.dumps({'choices': [{'message': {'content': fake.reply}}], 'usage': {'cost': 0.42}}).encode())
                 if self.path == '/audio/transcriptions':
                     return self.send(json.dumps({'text': fake.heard, 'usage': {'seconds': 5, 'cost': 0.01}}).encode())
+                if self.path == '/audio/speech' and fake.fail_tts:
+                    return self.send(b'{"error": {"message": "tts down"}}', code=500)
                 if self.path == '/audio/speech':
                     return self.send(b'\x01\x00' * 24000 * fake.speech_sec, 'audio/pcm')
                 self.send(b'{}', code=404)
@@ -57,7 +69,7 @@ class AiTest(T.ServerCase):
     def setUpClass(cls):
         cls.rai = FakeRouterAI()
         cls.extra_env = {'STACKLY_AI_KEY': KEY, 'STACKLY_AI_API': cls.rai.url, 'STACKLY_AI_WEEK_SECONDS': '60',
-                         'STACKLY_AI_USERS': f'{AI_EMAIL}, {AI_STUDENT.upper()}'}
+                         'STACKLY_AI_USERS': f'{AI_EMAIL}, {AI_STUDENT.upper()}, {AI_STREAM}'}
         super().setUpClass()
 
     @classmethod
@@ -165,11 +177,10 @@ class AiTest(T.ServerCase):
         r3 = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'а так?'})[1]
         self.assertEqual((r3['say'], r3['notes'], r3['mood']), ('Всё верно, молодец!', '', 'calm'))
 
-        # RouterAI упал — понятная ошибка, реплику можно озвучить потом
+        # RouterAI упал — понятная ошибка
         self.rai.fail = True
         st, e = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})
         self.assertEqual((st, e['message']), (502, 'RouterAI ответил ошибкой 500: upstream. Попробуйте ещё раз через минуту'))
-        self.assertEqual(self.speech(t, r3['speech'])[0], 502)
         # причина ошибки RouterAI — понятными словами: что чинить
         self.rai.fail = 401
         self.assertIn('не принял ключ', t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})[1]['message'])
@@ -177,9 +188,17 @@ class AiTest(T.ServerCase):
         self.assertIn('балансе RouterAI', t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})[1]['message'])
         self.rai.fail = False
 
+        # озвучка не удалась (она идёт в фоне сразу после ответа) — реплику можно запросить ещё раз
+        self.rai.fail_tts = True
+        r4 = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'ещё'})[1]
+        self.assertEqual(self.speech(t, r4['speech'])[0], 502)
+        self.rai.fail_tts = False
+        self.assertEqual(self.speech(t, r4['speech'])[0], 200)
+
         # лимит: озвучка на 50 секунд добирает минуту, дальше — 429 до понедельника
         self.rai.speech_sec = 50
-        self.assertEqual(self.speech(t, r3['speech'])[0], 200)
+        r5 = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'и ещё'})[1]
+        self.assertEqual(self.speech(t, r5['speech'])[0], 200)
         st, e = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})
         self.assertEqual((st, e['error']), (429, 'ai_limit'))
         self.assertGreaterEqual(t.call('GET', '/ai/status')[1]['ai']['used'], 60)
@@ -189,6 +208,52 @@ class AiTest(T.ServerCase):
         s = self.make(AI_STUDENT, 'student')
         self.assertIn('ai', s.call('GET', '/auth/me')[1]['user'])
         self.assertEqual(s.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})[0], 404)
+
+    def stream(self, c, data):
+        req = urllib.request.Request(self.base + '/ai/turn', method='POST', data=json.dumps(dict(data, stream=True)).encode(),
+                                     headers={'Content-Type': 'application/json', 'Origin': T.ORIGIN, 'Cookie': c.cookie})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as r:
+                return r.status, r.headers.get('Content-Type'), [json.loads(x) for x in r.read().decode().splitlines() if x.strip()]
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers.get('Content-Type'), json.loads(e.read())
+
+    def test_stream(self):
+        """Поток: эмоция до первых слов, предложения по мере готовности — каждое сразу озвучивается, в конце подсказка."""
+        t = self.make(AI_STREAM, 'teacher')
+        code = 'for x in range(1, 10):\n    print(x)'
+        self.rai.fail = self.rai.fail_tts = False
+        self.rai.speech_sec = 2
+        self.rai.reply = json.dumps({'mood': 'angry', 'say': 'Ну ты [laughs] даёшь! Во второй строке цикл от единицы, а надо от 2027 — иначе это до утра. Шаг ставь 2027. Тьфу.',
+                                     'notes': '```\nrange(2027, 10**10, 2027)\n```'}, ensure_ascii=False)
+        st, ctype, ev = self.stream(t, {'pid': '25-1', 'code': code})
+        self.assertEqual((st, ctype.split(';')[0]), (200, 'application/x-ndjson'))
+        kinds = [e['t'] for e in ev]
+        self.assertEqual((kinds[0], kinds[-1]), ('mood', 'done'))
+        self.assertEqual(ev[0]['mood'], 'angry')
+        says = [e for e in ev if e['t'] == 'say']
+        self.assertGreaterEqual(len(says), 3)
+        self.assertEqual(says[0]['text'], 'Ну ты даёшь!')                              # первый кусок короткий — голос стартует сразу
+        self.assertEqual(' '.join(x['text'] for x in says), 'Ну ты даёшь! Во второй строке цикл от единицы, а надо от 2027 — иначе это до утра. Шаг ставь 2027. Тьфу.')
+        self.assertEqual(ev[-1]['say'], ' '.join(x['text'] for x in says))
+        self.assertIn('range(2027', ev[-1]['notes'])
+        self.assertEqual(self.rai.last('/chat/completions')['stream'], True)
+        for x in says:
+            stt, typ, wavb, _ = self.speech(t, x['speech'])
+            self.assertEqual((stt, typ, wavb[:4]), (200, 'audio/wav', b'RIFF'))
+        voices = [b['input'] for p_, b in self.rai.calls if p_ == '/audio/speech']
+        self.assertIn('Ну ты [laughs] даёшь!', voices)                                  # звуки — в голосе
+        self.assertEqual(self.rai.last('/audio/speech')['voice'], 'Puck')               # мужской голос
+        self.assertEqual(t.call('GET', '/ai/status')[1]['ai']['used'], 2.0 * len(says))
+        # ответ не JSON — всё равно звучит
+        self.rai.reply = 'Отлично. Всё работает, молодец!'
+        ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]
+        self.assertEqual(' '.join(e['text'] for e in ev if e['t'] == 'say'), 'Отлично. Всё работает, молодец!')
+        # RouterAI недоступен — обычная ошибка с причиной, без потока
+        self.rai.fail = 402
+        st, _, e = self.stream(t, {'pid': '25-1', 'code': code})
+        self.assertEqual((st, e['error']), (502, 'ai_error'))
+        self.rai.fail = False
 
 
 if __name__ == '__main__':

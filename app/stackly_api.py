@@ -903,7 +903,8 @@ AI_API = ai_base(os.environ.get('STACKLY_AI_API', ''))
 AI_MODEL = os.environ.get('STACKLY_AI_MODEL', 'anthropic/claude-sonnet-5.5')
 AI_STT = os.environ.get('STACKLY_AI_STT', 'openai/whisper-large-v3-turbo')
 AI_TTS = os.environ.get('STACKLY_AI_TTS', 'google/gemini-3.8-flash-tts')
-AI_VOICE = os.environ.get('STACKLY_AI_VOICE', 'Kore')
+# голос по стилю разбора: Puck — живой и бодрый, Fenrir — заводной, для прожарки; STACKLY_AI_VOICE задаёт один голос на все
+AI_VOICES = (os.environ.get('STACKLY_AI_VOICE') or 'Puck', os.environ.get('STACKLY_AI_VOICE') or 'Fenrir', os.environ.get('STACKLY_AI_VOICE') or 'Fenrir')
 # манера озвучки по стилю разбора: 0 — обычный, 1 — прожарка, 2 — прожарка с матом (стиль выбирает сам ученик)
 AI_STYLES = (os.environ.get('STACKLY_AI_STYLE', 'живо и эмоционально, с выразительной интонацией, как увлечённый репетитор: '
                                                 'искренне радуется удачам, удивляется и сокрушается над ошибками'),
@@ -929,8 +930,8 @@ AI_PROMPT = '''Ты — репетитор по информатике на са
 - Дальше отвечай на вопросы ученика об этой задаче и его коде. На посторонние темы мягко возвращай к задаче.
 - Речь ученика распознаётся автоматически и может быть с ошибками — понимай по смыслу.
 
-Формат ответа — только JSON-объект, без текста вокруг: {"say": "…", "notes": "…", "mood": "…"}
-say — то, что прозвучит голосом: 2–5 коротких предложений живой эмоциональной разговорной речи, не длиннее 600 символов. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
+Формат ответа — только JSON-объект, без текста вокруг, поля строго в этом порядке: {"mood": "…", "say": "…", "notes": "…"}
+say — то, что прозвучит голосом: 2–5 коротких предложений живой эмоциональной разговорной речи, не длиннее 600 символов. Первое предложение — короткое: оно начинает звучать, пока ты договариваешь остальное. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
 Говори с эмоциями: восклицания, удивление, радость, разочарование — как живой человек, а не диктор. Для озвучки можно вставлять в say звуки в квадратных скобках: [laughs], [chuckle], [sigh], [short pause] — не больше двух-трёх за реплику; слово, которое надо выделить голосом, пиши ЗАГЛАВНЫМИ буквами.
 notes — необязательная письменная подсказка к сказанному: исправленная строка или маленький фрагмент кода в блоке ``` (до 8 строк). Если показывать нечего — пустая строка.
 mood — эмоция маскота, который произносит реплику (ученик видит его вместо текста): одно из calm, happy, love, laugh, surprised, angry, sad. happy — похвала, love — умиление, laugh — смешно, surprised — неожиданная ошибка или находка, angry — злость и прожарка, sad — разочарование.'''
@@ -972,11 +973,19 @@ def ai_log(uid, kind, pid, seconds=0.0, cost=0.0):
 
 def rai(path, body, timeout):
     """POST в RouterAI. Ответ — (байты, Content-Type). Ошибка — ApiError 502."""
+    with rai_open(path, body, timeout) as r:
+        try:
+            return r.read(), r.headers.get('Content-Type') or ''
+        except OSError as e:
+            log.warning('RouterAI %s %s: %s', AI_API, path, e)
+            raise ApiError(502, 'ai_error', 'Нет связи с RouterAI (сервер не дождался ответа). Попробуйте ещё раз через минуту')
+
+def rai_open(path, body, timeout):
+    """Открытый ответ RouterAI (для потока читается по строкам). Ошибка — ApiError 502 с причиной."""
     req = urllib.request.Request(AI_API + path, method='POST', data=json.dumps(body, ensure_ascii=False).encode(),
                                  headers={'Authorization': 'Bearer ' + AI_KEY, 'Content-Type': 'application/json'})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read(), r.headers.get('Content-Type') or ''
+        return urllib.request.urlopen(req, timeout=timeout)
     except urllib.error.HTTPError as e:
         detail = e.read()[:500]
         log.warning('RouterAI %s %s: %s %s', AI_API, path, e.code, detail)
@@ -1045,8 +1054,61 @@ def ai_parse(content):
     if len(say) > AI_MAX_SAY:                 # длинную реплику режем по концу предложения
         cut = say[:AI_MAX_SAY]
         say = cut[:max(cut.rfind('. '), cut.rfind('? '), cut.rfind('! ')) + 1] or cut
-    shown = re.sub(r'\s+([,.!?…])', r'\1', re.sub(r'\s*[\[<][a-z ]{2,20}[\]>]\s*', ' ', say)).strip()
-    return shown, notes.strip()[:3000], say, mood
+    return ai_shown(say), notes.strip()[:3000], say, mood
+
+def ai_clean(say):
+    return re.sub(r'\s+', ' ', re.sub(r'[`*#_]', '', say)).strip()
+
+def ai_shown(voice):
+    """Текст для экрана: без звуков [laughs] и <sigh>."""
+    return re.sub(r'\s+([,.!?…])', r'\1', re.sub(r'\s*[\[<][a-z ]{2,20}[\]>]\s*', ' ', voice)).strip()
+
+def json_partial(content, key):
+    """Значение строкового поля JSON, пока ответ модели ещё дописывается: (текст, закрыта ли строка)."""
+    m = re.search(r'"%s"\s*:\s*"' % key, content)
+    if not m:
+        return None, False
+    out, i = [], m.end()
+    while i < len(content):
+        c = content[i]
+        if c == '"':
+            return ''.join(out), True
+        if c == '\\':
+            if i + 1 >= len(content):
+                break
+            n = content[i + 1]
+            if n == 'u':
+                if i + 6 > len(content):
+                    break
+                try:
+                    out.append(chr(int(content[i + 2:i + 6], 16)))
+                except ValueError:
+                    pass
+                i += 6
+                continue
+            out.append({'n': ' ', 't': ' ', 'r': ''}.get(n, n))
+            i += 2
+            continue
+        out.append(c)
+        i += 1
+    return ''.join(out), False
+
+SENTENCE_RE = re.compile(r'.+?(?:[.!?…]+["»)]?(?=\s)|$)', re.S)
+
+def ai_pieces(text, closed, start):
+    """Готовые к озвучке куски текста начиная с позиции start: целые предложения, не короче 25 символов
+    (короткие склеиваются; самый первый — от 12, чтобы голос зазвучал скорее). Возвращает (куски, новая позиция)."""
+    out, buf, pos = [], '', start
+    for m in SENTENCE_RE.finditer(text, start):
+        part = m.group(0)
+        ends = bool(re.search(r'[.!?…]+["»)]?$', part)) and m.end() < len(text)
+        if not ends and not (closed and m.end() == len(text)):
+            break                                          # предложение ещё дописывается
+        buf += part
+        if len(buf.strip()) >= (12 if start == 0 and not out else 25) or (closed and m.end() == len(text)):
+            out.append(buf)
+            buf, pos = '', m.end()
+    return out, pos
 
 def wav(pcm, rate=PCM_RATE):
     """Сырые 16-битные моно-сэмплы → WAV, который играет любой браузер."""
@@ -1055,23 +1117,48 @@ def wav(pcm, rate=PCM_RATE):
             + (rate * 2).to_bytes(4, 'little') + (2).to_bytes(2, 'little') + (16).to_bytes(2, 'little')
             + b'data' + len(pcm).to_bytes(4, 'little') + pcm)
 
-# реплики, которые ещё предстоит озвучить: id → (ученик, задача, текст, время). Озвучка — отдельным запросом,
-# чтобы текст ответа появился сразу, а голос догнал; каждая реплика озвучивается (и списывается с лимита) один раз
+# реплики к озвучке: id → запись. Озвучка стартует в фоне сразу, как готов текст, — к запросу браузера звук уже есть;
+# браузер забирает её один раз, тогда же длительность списывается с лимита. Не получилось — можно запросить ещё раз
 _ai_says, _ai_lock = {}, threading.Lock()
 
-def ai_say_put(uid, pid, text, sid=None):
+def ai_tts(text, roast):
+    """Текст → (WAV, секунды) через RouterAI. Ошибка — ApiError."""
+    body = {'model': AI_TTS, 'input': text, 'voice': AI_VOICES[roast], 'response_format': 'pcm'}
+    if AI_TTS.startswith('google/'):
+        body['provider'] = {'options': {'google-ai-studio': {'speech_metadata': {'style': AI_STYLES[roast]}}}}
+    raw, ctype = rai('/audio/speech', body, 60)
+    if 'json' in ctype or len(raw) < 2 * PCM_RATE // 10:
+        log.warning('RouterAI speech: не звук (%s): %s', ctype, raw[:300])
+        raise ApiError(502, 'ai_error', 'Не получилось озвучить ответ')
+    pcm = raw[44:] if raw[:4] == b'RIFF' else raw
+    return wav(pcm), len(pcm) / (2 * PCM_RATE)
+
+def ai_say_make(item):
+    try:
+        item['audio'], item['sec'] = ai_tts(item['text'], item['roast'])
+    except ApiError as e:
+        item['err'] = e
+    except Exception:
+        log.exception('озвучка реплики')
+        item['err'] = ApiError(502, 'ai_error', 'Не получилось озвучить ответ')
+    item['done'].set()
+
+def ai_say_put(uid, pid, text, roast, sid=None, start=True):
+    item = {'uid': uid, 'pid': pid, 'text': text, 'roast': roast, 'ts': time.time(), 'done': threading.Event(),
+            'audio': None, 'sec': 0.0, 'err': None, 'started': start}
     sid = sid or secrets.token_urlsafe(12)
-    now = time.time()
     with _ai_lock:
-        for k in [k for k, v in _ai_says.items() if now - v[3] > 900]:
+        for k in [k for k, v in _ai_says.items() if item['ts'] - v['ts'] > 900]:
             del _ai_says[k]
-        _ai_says[sid] = (uid, pid, text, now)
+        _ai_says[sid] = item
+    if start:
+        threading.Thread(target=ai_say_make, args=(item,), daemon=True).start()
     return sid
 
 def ai_say_take(uid, sid):
     with _ai_lock:
         v = _ai_says.get(sid)
-        if not v or v[0] != uid:
+        if not v or v['uid'] != uid:
             return None
         del _ai_says[sid]
         return v
@@ -1530,8 +1617,10 @@ class Handler(BaseHTTPRequestHandler):
         roast = ai_roast(u['id'])
         msgs = [{'role': 'system', 'content': AI_PROMPT + AI_ROAST[roast] + '\n\n' + ai_task_context(p, code)}, *hist,
                 {'role': 'user', 'content': text or ('Посмотри мой код ещё раз.' if hist else 'Разбери моё решение.')}]
-        r = rai_json('/chat/completions', {'model': AI_MODEL, 'messages': msgs, 'max_tokens': 1200,
-                                           'temperature': 0.8 if roast else 0.5}, 90)
+        body = {'model': AI_MODEL, 'messages': msgs, 'max_tokens': 1200, 'temperature': 0.8 if roast else 0.5}
+        if d.get('stream'):
+            return self.ai_turn_stream(u, p, body, roast, heard)
+        r = rai_json('/chat/completions', body, 90)
         try:
             content = r['choices'][0]['message']['content']
         except (KeyError, IndexError, TypeError):
@@ -1541,33 +1630,100 @@ class Handler(BaseHTTPRequestHandler):
         say, notes, voice, mood = ai_parse(content)
         if not say:
             say = voice = 'Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.'
-        self.send_json(200, {'heard': heard, 'say': say, 'notes': notes, 'mood': mood, 'speech': ai_say_put(u['id'], p['id'], (voice, roast)),
+        self.send_json(200, {'heard': heard, 'say': say, 'notes': notes, 'mood': mood, 'speech': ai_say_put(u['id'], p['id'], voice, roast),
                              'ai': ai_status(u['id'])})
 
+    def ai_turn_stream(self, u, p, body, roast, heard):
+        """Ответ потоком NDJSON: эмоция, как только модель её назвала; затем предложения по мере готовности — каждое
+        сразу уходит в озвучку, и браузер начинает говорить, пока модель дописывает остальное; в конце — подсказка с кодом."""
+        resp = rai_open('/chat/completions', dict(body, stream=True), 90)    # ошибка RouterAI — обычным ответом с причиной
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/x-ndjson; charset=utf-8')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Accel-Buffering', 'no')                          # nginx не копит поток
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        self.close_connection = True
+
+        def emit(obj):
+            self.wfile.write((json.dumps(obj, ensure_ascii=False) + '\n').encode())
+            self.wfile.flush()
+
+        if heard:
+            emit({'t': 'heard', 'heard': heard})
+        content, cost, mood_sent, pos, spoken, said = '', 0, False, 0, 0, []
+
+        def speak(piece):
+            nonlocal spoken
+            voice = ai_clean(piece)
+            if not voice or spoken >= AI_MAX_SAY:
+                return
+            spoken += len(voice)
+            shown = ai_shown(voice)
+            said.append(shown)
+            emit({'t': 'say', 'text': shown, 'speech': ai_say_put(u['id'], p['id'], voice, roast)})
+
+        try:
+            for line in resp:
+                line = line.decode('utf-8', 'replace').strip()
+                if not line.startswith('data:'):
+                    continue
+                data = line[5:].strip()
+                if data == '[DONE]':
+                    break
+                try:
+                    j = json.loads(data)
+                except ValueError:
+                    continue
+                if isinstance(j.get('usage'), dict):
+                    cost = j['usage'].get('cost') or cost
+                delta = (((j.get('choices') or [{}])[0] or {}).get('delta') or {}).get('content') or ''
+                if not delta:
+                    continue
+                content += delta
+                if not mood_sent:
+                    m = re.search(r'"mood"\s*:\s*"(\w+)"', content)
+                    if m:
+                        mood_sent = True
+                        emit({'t': 'mood', 'mood': m.group(1) if m.group(1) in AI_MOODS else 'calm'})
+                text, closed = json_partial(content, 'say')
+                if text is not None:
+                    pieces, pos = ai_pieces(text, closed, pos)
+                    for piece in pieces:
+                        speak(piece)
+        except (OSError, ValueError) as e:
+            log.warning('RouterAI chat stream: %s', e)
+            emit({'t': 'error', 'message': 'Связь с RouterAI оборвалась. Спросите ещё раз'})
+            return
+        finally:
+            resp.close()
+        ai_log(u['id'], 'llm', p['id'], 0, cost)
+        say, notes, voice, mood = ai_parse(content)
+        text, closed = json_partial(content, 'say')
+        if text is None:                                   # модель ответила не JSON — озвучиваем всё, что разобрали
+            for piece in ai_pieces(voice, True, 0)[0]:
+                speak(piece)
+        elif text[pos:].strip():
+            speak(text[pos:])
+        if not said:
+            speak('Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.')
+        emit({'t': 'done', 'say': ' '.join(said), 'notes': notes, 'mood': mood, 'ai': ai_status(u['id'])})
+
     def ai_speech(self):
-        """Озвучка реплики из ai_turn: WAV. Длительность звука списывается с недельного лимита."""
+        """Озвучка реплики: WAV (обычно уже готова — её начали делать в фоне). Длительность списывается с недельного лимита."""
         u = self.ai_user()
         sid = str(self.body().get('id', ''))
         v = ai_say_take(u['id'], sid)
         if not v:
             raise ApiError(404, 'not_found', 'Эта реплика уже озвучена или устарела')
-        try:
-            self.ai_limit_check(u['id'])
-            text, roast = v[2]
-            body = {'model': AI_TTS, 'input': text, 'voice': AI_VOICE, 'response_format': 'pcm'}
-            if AI_TTS.startswith('google/'):
-                body['provider'] = {'options': {'google-ai-studio': {'speech_metadata': {'style': AI_STYLES[roast]}}}}
-            raw, ctype = rai('/audio/speech', body, 60)
-            if 'json' in ctype or len(raw) < 2 * PCM_RATE // 10:
-                log.warning('RouterAI speech: не звук (%s): %s', ctype, raw[:300])
-                raise ApiError(502, 'ai_error', 'Не получилось озвучить ответ')
-        except ApiError:
-            ai_say_put(u['id'], v[1], v[2], sid)          # можно попробовать озвучить ещё раз
-            raise
-        pcm = raw[44:] if raw[:4] == b'RIFF' else raw
-        sec = len(pcm) / (2 * PCM_RATE)
-        ai_log(u['id'], 'tts', v[1], sec)
-        out = wav(pcm)
+        self.ai_limit_check(u['id'])
+        if not v['started']:
+            ai_say_make(v)
+        if not v['done'].wait(90) or v['err'] or not v['audio']:
+            ai_say_put(u['id'], v['pid'], v['text'], v['roast'], sid, start=False)    # можно попробовать озвучить ещё раз
+            raise v['err'] or ApiError(502, 'ai_error', 'Озвучка не успела — попробуйте ещё раз')
+        ai_log(u['id'], 'tts', v['pid'], v['sec'])
+        out = v['audio']
         self.send_response(200)
         self.send_header('Content-Type', 'audio/wav')
         self.send_header('Content-Length', str(len(out)))
