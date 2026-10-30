@@ -4119,7 +4119,7 @@ function stacklyApp() {
   function aiActsHTML(pid) {
     const st = aiSt(pid), out = aiLeft() <= 0, changed = st.hist.length && st.code !== st.sent;
     return `<button type="button" class="btn small" data-aigo="${pid}" ${out || st.busy ? 'disabled' : ''}>${I.mic}${!st.hist.length ? 'Разобрать с ИИ' : changed ? 'Проверить исправленный код' : 'Разобрать ещё раз'}</button>
-      ${aiLeftHTML()}<a class="ai-mode" href="#me" title="Стиль разбора меняется в настройках кабинета">${['обычный разбор', 'прожарка', 'жёсткая прожарка'][acct.ai.roast || 0]}</a>`;
+      ${aiLeftHTML()}<a class="ai-mode" href="#me" title="Стиль разбора меняется в настройках кабинета">${['обычный разбор', 'прожарка', 'жёсткая прожарка 18+'][acct.ai.roast || 0]}</a>`;
   }
 
   /* ── маскот: жёлтый шарик stackly с лицом. Состояние (слушает, думает, говорит) и эмоция — атрибуты data-state и data-mood:
@@ -5662,7 +5662,7 @@ function stacklyApp() {
   // стиль разбора кода с ИИ: прожарку и мат включает только сам пользователь
   const AI_STYLE_NAMES = [['Обычный', 'Спокойный разбор: где ошибка и как дойти до решения самому'],
     ['Прожарка', 'Шутки и сарказм про ваш код — но каждая по делу, с подсказкой. Без мата'],
-    ['Жёсткая прожарка', 'Дерзкий разнос вашего кода: сарказм, абсурд и мемы — и всё равно объясняет, как исправить']];
+    ['Жёсткая прожарка с матом · 18+', 'Дерзкий разнос вашего кода с матом: сарказм, абсурд и мемы — и всё равно объясняет, как исправить']];
   function aiStyleHTML() {
     const cur = acct.ai.roast || 0;
     return `<div class="panel"><div class="panel-h"><h2>Разбор кода с ИИ</h2></div>
@@ -5674,7 +5674,7 @@ function stacklyApp() {
   document.addEventListener('change', async e => {
     const r = e.target.closest('[data-airoast]'); if (!r) return;
     const msg = $('[data-airoast-msg]'), roast = +r.value;
-    if (roast === 2 && !confirm('Жёсткая прожарка: ИИ будет беспощадно высмеивать ошибки в вашем коде. Включить? Выключить можно здесь же.')) {
+    if (roast === 2 && !confirm('Жёсткая прожарка с матом: ИИ будет беспощадно высмеивать ваш код и материться. Мне есть 18 лет, и я хочу её включить. Выключить можно здесь же.')) {
       $$('[data-airoast]').forEach(x => { x.checked = +x.value === (acct.ai.roast || 0); }); return;
     }
     try { const d = await api('/ai/settings', 'POST', { roast }); acct.ai = d.ai; if (msg) { msg.textContent = 'Сохранено'; msg.className = 'form-msg ok'; } }

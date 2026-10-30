@@ -163,8 +163,9 @@ class AiTest(T.ServerCase):
         self.assertEqual(t.call('GET', '/auth/me')[1]['user']['ai']['roast'], 2)
         rr = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'жги'})[1]
         sent = self.rai.last('/chat/completions')
-        self.assertIn('ЖЁСТКАЯ КОМЕДИЙНАЯ ПРОЖАРКА', sent['messages'][0]['content'])
-        self.assertEqual(sent['temperature'], 0.8)
+        self.assertIn('ЖЁСТКАЯ КОМЕДИЙНАЯ ПРОЖАРКА С МАТОМ', sent['messages'][0]['content'])
+        self.assertIn('МАТ ОБЯЗАТЕЛЕН', sent['messages'][0]['content'])
+        self.assertEqual(sent['temperature'], 0.95)
         self.assertEqual(self.speech(t, rr['speech'])[0], 200)
         self.assertIn('жёсткой прожарке', self.rai.last('/audio/speech')['provider']['options']['google-ai-studio']['speech_metadata']['style'])
         t.call('POST', '/ai/settings', {'roast': 1})
@@ -254,6 +255,25 @@ class AiTest(T.ServerCase):
         st, _, e = self.stream(t, {'pid': '25-1', 'code': code})
         self.assertEqual((st, e['error']), (502, 'ai_error'))
         self.rai.fail = False
+
+
+class PcmTidyTest(unittest.TestCase):
+    """Края озвучки: тихое шипение до и после речи срезается, стыки сглажены."""
+    def test_trim(self):
+        import array, importlib.util, math, random
+        spec = importlib.util.spec_from_file_location('api', os.path.join(T.ROOT, 'app', 'stackly_api.py'))
+        api = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(api)
+        rnd, rate = random.Random(1), 24000
+        hiss = lambda n: [rnd.randint(-300, 300) for _ in range(n)]
+        tone = [int(8000 * math.sin(i / 8)) for i in range(rate)]
+        a = array.array('h', hiss(rate // 2) + tone + hiss(rate // 2))
+        out = array.array('h'); out.frombytes(api.pcm_tidy(a.tobytes(), rate))
+        self.assertTrue(rate <= len(out) <= rate + 8 * rate // 100)     # секунда речи и запас в 70 мс вместо двух секунд
+        self.assertEqual((out[0], out[-1]), (0, 0))                     # нарастание и затухание без щелчка
+        self.assertGreater(max(map(abs, out)), 7000)
+        quiet = array.array('h', hiss(rate))                            # одна тишина — не трогаем
+        self.assertEqual(api.pcm_tidy(quiet.tobytes(), rate), quiet.tobytes())
 
 
 if __name__ == '__main__':
