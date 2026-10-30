@@ -303,15 +303,15 @@ td.name .plan-chip { margin-top: 6px; }
 .fld { display: grid; gap: 7px; font-size: 13px; color: var(--mute); min-width: 0; }
 .fld > span:first-child { font: 600 14px/1.3 var(--f-body); color: var(--ink); }
 .fld input, .fld textarea, .fld select, .answer input, .answer textarea, .tbl select,
-.t-create input, .pk-bar input, .join-form input, .filter-sub input, .side .search, .bk-search input, .ai-ask input, .ai-src {
+.t-create input, .pk-bar input, .join-form input, .filter-sub input, .side .search, .bk-search input, .ai-ask input {
   width: 100%; border: 1px solid var(--line-2); border-radius: var(--r-s); background: var(--paper); color: var(--ink); font: 15.5px/1.4 var(--f-body);
   transition: border-color .15s, box-shadow .15s, background-color .15s;
 }
 .fld input, .fld select, .answer input { min-height: 44px; padding: 10px 13px; }
 .fld textarea { padding: 10px 13px; line-height: 1.6; min-height: 92px; resize: vertical; }
 .t-create input, .pk-bar input, .join-form input, .filter-sub input, .side .search, .ai-ask input { min-height: 42px; padding: 0 13px; }
-:is(.fld input, .fld textarea, .fld select, .answer input, .answer textarea, .t-create input, .pk-bar input, .join-form input, .filter-sub input, .side .search, .bk-search input, .ai-ask input, .ai-src):hover { border-color: var(--mute); }
-:is(.fld input, .fld textarea, .fld select, .answer input, .answer textarea, .t-create input, .pk-bar input, .join-form input, .filter-sub input, .side .search, .bk-search input, .tbl select, .ai-ask input, .ai-src):focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); background: var(--paper); }
+:is(.fld input, .fld textarea, .fld select, .answer input, .answer textarea, .t-create input, .pk-bar input, .join-form input, .filter-sub input, .side .search, .bk-search input, .ai-ask input):hover { border-color: var(--mute); }
+:is(.fld input, .fld textarea, .fld select, .answer input, .answer textarea, .t-create input, .pk-bar input, .join-form input, .filter-sub input, .side .search, .bk-search input, .tbl select, .ai-ask input):focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); background: var(--paper); }
 .fld input[type=file] { padding: 8px 10px; font-size: 14px; }
 .form-msg { font-size: 14px; }
 .form-msg:empty { display: none; }
@@ -907,7 +907,7 @@ a.bk-tile.empty:hover, a.bk-tile.add:hover { border-color: var(--blue); }
 .sol-md { padding: 14px 16px; border-radius: var(--r-s); background: var(--paper-2); }
 /* разбор кода с ИИ: код ученика, разговор голосом или текстом */
 .aibox:empty { display: none; }
-.aibox { margin-top: 16px; padding: 16px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--paper-2); display: grid; gap: 12px; animation: rise .35s var(--ease) both; }
+.aibox { margin-top: 4px; padding: 16px; border-radius: var(--r-s); border: 1px solid var(--line); background: var(--paper-2); display: grid; gap: 12px; animation: rise .35s var(--ease) both; }
 .ai-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .ai-head b { font: 650 16px/1.3 var(--f-display); color: var(--ink); }
 .ai-left { font: 600 12.5px/1 var(--f-mono); color: var(--mute); padding: 6px 8px; border-radius: 5px; background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); }
@@ -915,12 +915,18 @@ a.bk-tile.empty:hover, a.bk-tile.add:hover { border-color: var(--blue); }
 .ai-head .ai-x { margin-left: auto; }
 .ai-mode { font-size: 12.5px; color: var(--mute); }
 .role-pick.ai-style-pick { grid-template-columns: 1fr; }
-.ai-src { width: 100%; min-height: 180px; padding: 12px 14px; font: 500 13.5px/1.55 var(--f-mono); tab-size: 4; resize: vertical; white-space: pre; }
+.ai-codebox { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line-2); display: grid; gap: 10px; }
+.ai-cb-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ai-cb-h b { font: 650 15px/1.3 var(--f-display); color: var(--ink); }
+.ai-cb-lang { font: 600 12px/1 var(--f-mono); color: var(--mute); padding: 5px 7px; border-radius: 4px; background: var(--sunken); }
+.ai-cb-h label { margin-left: auto; }
+.ai-editor { display: grid; grid-template-columns: auto minmax(0, 1fr); border-radius: var(--r-s); background: var(--code-bg); box-shadow: inset 0 0 0 1px var(--code-line); overflow: hidden; }
+.ai-editor:focus-within { box-shadow: 0 0 0 2px var(--blue); }
+.ai-gutter { margin: 0; padding: 12px 10px 12px 14px; overflow: hidden; height: 100%; max-height: 100%; text-align: right; color: var(--c-com); font: 500 13.5px/1.55 var(--f-mono); user-select: none; border-right: 1px solid var(--code-line); }
+.ai-editor .ai-src { width: 100%; min-height: 200px; max-height: 520px; padding: 12px 14px; border: 0; outline: 0; border-radius: 0; background: transparent; color: var(--code-fg); font: 500 13.5px/1.55 var(--f-mono); tab-size: 4; resize: vertical; white-space: pre; overflow: auto; caret-color: var(--code-fg); }
+.ai-editor .ai-src::placeholder { color: var(--c-com); }
 .ai-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.ai-acts input[type=file] { display: none; }
-.ai-pre { margin: 0; max-height: 300px; overflow: auto; padding: 10px 0; border-radius: var(--r-s); background: var(--code-bg); color: var(--code-fg); font: 500 13px/1.6 var(--f-mono); counter-reset: ln; }
-.ai-pre span { display: block; padding: 0 14px 0 0; white-space: pre; }
-.ai-pre span::before { counter-increment: ln; content: counter(ln); display: inline-block; width: 3.2em; padding-right: 12px; text-align: right; color: var(--c-com); user-select: none; }
+.ai-cb-h input[type=file] { display: none; }
 .ai-chat { display: grid; gap: 10px; }
 .ai-msg { max-width: min(640px, 92%); padding: 10px 14px; border-radius: var(--r-s); font-size: 15px; line-height: 1.5; color: var(--ink); animation: rise .3s var(--ease) both; }
 .ai-msg p { margin: 0; }
@@ -930,7 +936,7 @@ a.bk-tile.empty:hover, a.bk-tile.add:hover { border-color: var(--blue); }
 .ai-msg.err { justify-self: stretch; max-width: none; background: var(--bad-soft); color: var(--bad); font-size: 14px; }
 .ai-msg .algo { margin: 8px 0 0; font-size: 13px; }
 .ai-msg .ai-play { margin-top: 8px; }
-[data-ai] svg, .ai-play svg { width: 16px; height: 16px; flex: none; }
+[data-aigo] svg, .ai-play svg { width: 16px; height: 16px; flex: none; }
 .ai-msg.wait { color: var(--mute); }
 .ai-dots i { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: 50%; background: currentColor; animation: aiDot 1.2s infinite both; }
 .ai-dots i:nth-child(2) { animation-delay: .15s; } .ai-dots i:nth-child(3) { animation-delay: .3s; }
@@ -3777,12 +3783,13 @@ function stacklyApp() {
         ${p.data ? `<div class="datafile"><span class="ico">TXT</span><span><span class="nm">${esc(p.dname)}</span><br><span class="sz">${lines} ${plural(lines, 'строка', 'строки', 'строк')} · ${kb} КБ</span></span>
           <span class="acts"><button type="button" class="btn small ghost" data-preview="${p.id}">Показать</button><button type="button" class="btn small" data-copydata="${p.id}">Скопировать</button></span></div><div class="pv"></div>` : ''}
       </div>
+      ${aiOn(p) ? aiCodeHTML(p.id) : ''}
       ${p.pts ? selfForm(p) : `<form class="answer" data-check="${p.id}">
         <label for="ans-${p.id}">Ответ${multi ? ' (все строки)' : ''}${multi ? `<textarea id="ans-${p.id}" placeholder="число число"></textarea>` : `<input id="ans-${p.id}" autocomplete="off" inputmode="text">`}</label>
         <button class="btn" type="submit">Проверить</button><span class="spacer"></span>
-        <span class="more"><button type="button" class="btn small ghost" data-show="ans" data-p="${p.id}">Показать ответ</button><button type="button" class="btn small ghost" data-show="sol" data-p="${p.id}">Решение</button>${aiOn(p) ? `<button type="button" class="btn small lime" data-ai="${p.id}">${I.mic}Разбор кода с ИИ</button>` : ''}${isTeacher() ? `<a class="btn small ghost" href="${canEditProblem(p) ? '#edit-p-' : '#edit-p-copy-'}${p.id}">${canEditProblem(p) ? 'Изменить' : 'Копия'}</a>` : ''}</span>
+        <span class="more"><button type="button" class="btn small ghost" data-show="ans" data-p="${p.id}">Показать ответ</button><button type="button" class="btn small ghost" data-show="sol" data-p="${p.id}">Решение</button>${isTeacher() ? `<a class="btn small ghost" href="${canEditProblem(p) ? '#edit-p-' : '#edit-p-copy-'}${p.id}">${canEditProblem(p) ? 'Изменить' : 'Копия'}</a>` : ''}</span>
         <div class="verdict" aria-live="polite"></div>
-      </form>`}<div class="reveal"></div>${aiOn(p) ? `<div class="aibox" data-aibox="${p.id}">${aiS[p.id] && aiS[p.id].open ? aiInner(p.id) : ''}</div>` : ''}
+      </form>`}<div class="reveal"></div>
     </article>`;
   }
   // часть 2: ученик решает на бумаге, открывает эталон с критериями и ставит себе балл; полный балл — задача решена.
@@ -3987,40 +3994,62 @@ function stacklyApp() {
      Задачи встроенного банка, которые решают на Python: ученик вставляет код, ИИ разбирает его и отвечает голосом,
      дальше разговор — в микрофон или текстом. Сервер открывает функцию не всем (acct.ai) и считает минуты звука
      за неделю: речь ученика и ответы голосом. Разговор живёт в памяти страницы, пока она открыта. */
-  const aiS = {};                     // id задачи → { open, code, edit, hist: [{ role, text, notes, voice, speech, url }], busy }
-  let aiAudio = null, aiRec = null;
+  const aiS = {};                     // id задачи → { open, code, sent, hist: [{ role, text, notes, voice, speech, url }], busy }
+  let aiAudio = null, aiRec = null, aiSaveT = null;
+  const aiCode = store.get('aicode', {});     // код учеников по задачам — в этом браузере, переживает перезагрузку
   const aiOn = p => !!acct.ai && !!p.task && (!p.src || p.src.builtin) && /python/i.test((egeBy[p.task] || {}).tool || '');
   const aiLeft = () => acct.ai ? Math.max(0, acct.ai.limit - acct.ai.used) : 0;
+  const aiSt = pid => aiS[pid] || (aiS[pid] = { open: false, code: aiCode[pid] || '', sent: '', hist: [], busy: '' });
+  const aiGutter = code => Array.from({ length: Math.max(1, code.split('\n').length) }, (_, i) => i + 1).join('\n');
+  function aiLeftHTML() {
+    const left = aiLeft();
+    return `<span class="ai-left ${left < 60 ? 'low' : ''}" title="Считаются минуты звука: ваша речь и ответы голосом">${left <= 0 ? 'время на неделю закончилось' : `осталось ${mmss(Math.floor(left))} из ${mmss(Math.floor(acct.ai.limit))}`}</span>`;
+  }
+  // блок «Ваш код» в задаче: редактор с номерами строк; отсюда ИИ берёт код на каждом шаге разговора
+  function aiCodeHTML(pid) {
+    const st = aiSt(pid);
+    return `<div class="ai-codebox" data-aicode="${pid}">
+        <div class="ai-cb-h"><b>Ваш код</b><span class="ai-cb-lang">Python</span>
+          <label class="btn small ghost">Загрузить .py<input type="file" accept=".py,.txt,text/plain" data-aifile="${pid}"></label></div>
+        <div class="ai-editor"><pre class="ai-gutter" aria-hidden="true">${aiGutter(st.code)}</pre><textarea class="ai-src" data-aisrc="${pid}" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off" placeholder="Вставьте сюда решение на Python" aria-label="Код решения">${esc(st.code)}</textarea></div>
+        <div class="ai-acts" data-aiacts="${pid}">${aiActsHTML(pid)}</div>
+      </div><div class="aibox" data-aibox="${pid}">${st.open ? aiInner(pid) : ''}</div>`;
+  }
+  function aiActsHTML(pid) {
+    const st = aiSt(pid), out = aiLeft() <= 0, changed = st.hist.length && st.code !== st.sent;
+    return `<button type="button" class="btn small" data-aigo="${pid}" ${out || st.busy ? 'disabled' : ''}>${I.mic}${!st.hist.length ? 'Разобрать с ИИ' : changed ? 'Проверить исправленный код' : 'Разобрать ещё раз'}</button>
+      ${aiLeftHTML()}<a class="ai-mode" href="#me" title="Стиль разбора меняется в настройках кабинета">${['обычный разбор', 'прожарка', 'прожарка с матом'][acct.ai.roast || 0]}</a>`;
+  }
+  // панель разговора под кодом: реплики, микрофон и поле вопроса
   function aiInner(pid) {
-    const st = aiS[pid], left = aiLeft(), lim = acct.ai.limit, out = left <= 0;
-    const lines = st.code.split('\n').map(l => `<span>${esc(l) || ' '}</span>`).join('');
+    const st = aiSt(pid), out = aiLeft() <= 0, rec = aiRec && aiRec.pid === pid, lock = out || !!st.busy;
     const msg = (m, i) => m.role === 'user'
       ? `<div class="ai-msg me">${m.voice ? '<span class="ai-voice">голосом · </span>' : ''}${esc(m.text)}</div>`
       : m.role === 'err' ? `<div class="ai-msg err">${esc(m.text)}</div>`
       : `<div class="ai-msg ai"><p>${esc(m.text)}</p>${m.notes ? md(m.notes) : ''}${m.url || m.speech ? `<button type="button" class="btn small ghost ai-play" data-aiplay="${i}" data-p="${pid}">${I.play}${m.url ? 'Прослушать ещё раз' : 'Озвучить'}</button>` : ''}</div>`;
-    return `<div class="ai-head"><b>Разбор кода с ИИ</b><span class="ai-left ${left < 60 ? 'low' : ''}" title="Считаются минуты звука: ваша речь и ответы голосом">${out ? 'время на неделю закончилось' : `осталось ${mmss(Math.floor(left))} из ${mmss(Math.floor(lim))} на неделе`}</span>
-        <a class="ai-mode" href="#me" title="Стиль разбора меняется в настройках кабинета">${['обычный разбор', 'прожарка', 'прожарка с матом'][acct.ai.roast || 0]}</a>
-        <button type="button" class="btn small ghost ai-x" data-aiclose="${pid}">Свернуть</button></div>
-      ${st.edit ? `<textarea class="ai-src" data-aisrc="${pid}" spellcheck="false" autocomplete="off" placeholder="Вставьте сюда код решения на Python" aria-label="Код решения">${esc(st.code)}</textarea>
-        <div class="ai-acts"><button type="button" class="btn small" data-aigo="${pid}" ${out || st.busy ? 'disabled' : ''}>${st.hist.length ? 'Разобрать заново' : 'Разобрать решение'}</button>
-          <label class="btn small ghost">Загрузить файл .py<input type="file" accept=".py,.txt,text/plain" data-aifile="${pid}"></label>
-          ${st.hist.length ? `<button type="button" class="btn small ghost" data-aikeep="${pid}">Отмена</button>` : ''}</div>`
-      : `<pre class="ai-pre" aria-label="Ваш код">${lines}</pre>
-        <div class="ai-acts"><button type="button" class="btn small ghost" data-aiedit="${pid}">Изменить код</button></div>`}
-      ${st.hist.length || st.busy ? `<div class="ai-chat" aria-live="polite">${st.hist.map(msg).join('')}${st.busy ? `<div class="ai-msg ai wait"><span class="ai-dots"><i></i><i></i><i></i></span>${st.busy}</div>` : ''}</div>` : ''}
-      ${st.hist.length && !st.edit ? `<form class="ai-ask" data-aiask="${pid}">
-          <button type="button" class="ai-mic ${aiRec && aiRec.pid === pid ? 'rec' : ''}" data-aimic="${pid}" aria-label="${aiRec && aiRec.pid === pid ? 'Закончить и отправить' : 'Сказать голосом'}" ${out || st.busy ? 'disabled' : ''}>${aiRec && aiRec.pid === pid ? I.stop : I.mic}</button>
-          ${aiRec && aiRec.pid === pid ? '<span class="ai-rec-t" data-aitimer>0:00</span>' : ''}
-          <input type="text" maxlength="2000" placeholder="Спросите голосом или напишите" aria-label="Вопрос" ${out || st.busy ? 'disabled' : ''}>
-          <button class="btn small" type="submit" ${out || st.busy ? 'disabled' : ''}>Отправить</button></form>` : ''}
-      <p class="ai-hint">${st.hist.length ? 'Нажмите микрофон, скажите вопрос и нажмите ещё раз — ответ придёт голосом.' : 'ИИ разберёт решение как репетитор: подскажет, где ошибка, но не выдаст готовый ответ.'} В неделю — ${Math.round(lim / 60)} минут звука.</p>`;
+    return `<div class="ai-head"><b>Разговор с ИИ</b><button type="button" class="btn small ghost ai-x" data-aiclose="${pid}">Свернуть</button></div>
+      <div class="ai-chat" aria-live="polite">${st.hist.map(msg).join('')}${st.busy ? `<div class="ai-msg ai wait"><span class="ai-dots"><i></i><i></i><i></i></span>${st.busy}</div>` : ''}</div>
+      ${st.hist.length ? `<form class="ai-ask" data-aiask="${pid}">
+          <button type="button" class="ai-mic ${rec ? 'rec' : ''}" data-aimic="${pid}" aria-label="${rec ? 'Закончить и отправить' : 'Сказать голосом'}" ${lock ? 'disabled' : ''}>${rec ? I.stop : I.mic}</button>
+          ${rec ? '<span class="ai-rec-t" data-aitimer>0:00</span>' : ''}
+          <input type="text" maxlength="2000" placeholder="Спросите голосом или напишите" aria-label="Вопрос" ${lock ? 'disabled' : ''}>
+          <button class="btn small" type="submit" ${lock ? 'disabled' : ''}>Отправить</button></form>
+        <p class="ai-hint">Нажмите микрофон, скажите вопрос и нажмите ещё раз — ответ придёт голосом. ИИ видит код из поля выше: поправьте его и спросите снова.</p>` : ''}`;
   }
   function aiDraw(pid) {
-    const box = $(`[data-aibox="${pid}"]`); if (!box) return;
-    const ta = $('.ai-src', box), keep = ta && document.activeElement === ta ? [ta.selectionStart, ta.selectionEnd] : null;
+    const box = $(`[data-aibox="${pid}"]`), acts = $(`[data-aiacts="${pid}"]`);
+    if (acts) acts.innerHTML = aiActsHTML(pid);
+    if (!box) return;
     box.innerHTML = aiS[pid].open ? aiInner(pid) : '';
     const chat = $('.ai-chat', box); if (chat) chat.lastElementChild?.scrollIntoView({ block: 'nearest' });
-    const t = keep && $('.ai-src', box); if (t) { t.focus(); t.setSelectionRange(...keep); }
+  }
+  function aiSetCode(pid, code, ta) {
+    const st = aiSt(pid); st.code = code.slice(0, 20000);
+    const box = $(`[data-aicode="${pid}"]`);
+    if (box) { const t = ta || $('.ai-src', box); if (!ta) t.value = st.code; $('.ai-gutter', box).textContent = aiGutter(st.code); }
+    if (st.code.trim()) aiCode[pid] = st.code; else delete aiCode[pid];
+    clearTimeout(aiSaveT); aiSaveT = setTimeout(() => store.set('aicode', aiCode), 400);
+    const acts = $(`[data-aiacts="${pid}"]`); if (acts && st.hist.length) acts.innerHTML = aiActsHTML(pid);
   }
   function aiStopAudio() { if (aiAudio) { aiAudio.pause(); aiAudio = null; } }
   function aiPlay(m) { aiStopAudio(); aiAudio = new Audio(m.url); aiAudio.play().catch(() => { }); }
@@ -4037,13 +4066,14 @@ function stacklyApp() {
     } catch (e) { toast(e.message || 'Не получилось озвучить ответ'); aiDraw(pid); }
   }
   async function aiTurn(pid, extra) {
-    const st = aiS[pid]; if (st.busy) return;
+    const st = aiSt(pid); if (st.busy) return;
     aiStopAudio();
-    st.busy = extra.audio ? 'Слушаю и думаю…' : 'Читаю код и думаю…'; aiDraw(pid);
+    st.open = true; st.busy = extra.audio ? 'Слушаю и думаю…' : 'Читаю код и думаю…'; aiDraw(pid);
     const history = st.hist.filter(m => m.role !== 'err').map(m => ({ role: m.role, text: m.role === 'assistant' && m.notes ? m.text + '\n' + m.notes : m.text }));
+    const code = st.code;
     try {
-      const r = await api('/ai/turn', 'POST', { pid, code: st.code, history, ...extra });
-      acct.ai = r.ai;
+      const r = await api('/ai/turn', 'POST', { pid, code, history, ...extra });
+      acct.ai = r.ai; st.sent = code;
       const said = r.heard || extra.text || (st.hist.length ? 'Посмотри мой код ещё раз.' : 'Разбери моё решение.');
       st.hist.push({ role: 'user', text: said, voice: !!r.heard }, { role: 'assistant', text: r.say, notes: r.notes, speech: r.speech });
       st.busy = ''; aiDraw(pid);
@@ -4082,33 +4112,30 @@ function stacklyApp() {
     rec.start(250); aiDraw(pid);
   }
   document.addEventListener('click', e => {
-    const b = e.target.closest('[data-ai], [data-aiclose], [data-aigo], [data-aiedit], [data-aikeep], [data-aimic], [data-aiplay]'); if (!b) return;
-    if (b.dataset.ai !== undefined) {
-      const pid = b.dataset.ai;
-      aiS[pid] = aiS[pid] || { open: false, code: '', edit: true, hist: [], busy: '' };
-      aiS[pid].open = !aiS[pid].open; aiDraw(pid);
-      if (aiS[pid].open) { const box = $(`[data-aibox="${pid}"]`); box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); const t = $('.ai-src', box); if (t) t.focus({ preventScroll: true }); }
-    } else if (b.dataset.aiclose) { if (aiRec) aiRec.cancel(); aiStopAudio(); aiS[b.dataset.aiclose].open = false; aiDraw(b.dataset.aiclose); }
+    const b = e.target.closest('[data-aiclose], [data-aigo], [data-aimic], [data-aiplay]'); if (!b) return;
+    if (b.dataset.aiclose) { if (aiRec) aiRec.cancel(); aiStopAudio(); aiS[b.dataset.aiclose].open = false; aiDraw(b.dataset.aiclose); }
     else if (b.dataset.aigo) {
-      const pid = b.dataset.aigo, st = aiS[pid];
-      if (!st.code.trim()) { toast('Вставьте код решения или загрузите файл'); return; }
-      const again = st.hist.length > 0; st.edit = false;
-      aiTurn(pid, again ? { text: 'Я поменял код. Посмотри ещё раз.' } : {});
-    } else if (b.dataset.aiedit) { aiS[b.dataset.aiedit].edit = true; aiS[b.dataset.aiedit].prev = aiS[b.dataset.aiedit].code; aiDraw(b.dataset.aiedit); }
-    else if (b.dataset.aikeep) { const st = aiS[b.dataset.aikeep]; st.code = st.prev ?? st.code; st.edit = false; aiDraw(b.dataset.aikeep); }
-    else if (b.dataset.aimic) aiMic(b.dataset.aimic);
+      const pid = b.dataset.aigo, st = aiSt(pid);
+      if (!st.code.trim()) { toast('Вставьте код решения или загрузите файл'); $(`[data-aisrc="${pid}"]`)?.focus(); return; }
+      aiTurn(pid, !st.hist.length ? {} : st.code !== st.sent ? { text: 'Я поменял код. Посмотри ещё раз.' } : { text: 'Посмотри мой код ещё раз.' });
+    } else if (b.dataset.aimic) aiMic(b.dataset.aimic);
     else if (b.dataset.aiplay) {
       const m = aiS[b.dataset.p].hist[+b.dataset.aiplay];
       if (m.url) aiPlay(m); else { b.disabled = true; aiSpeak(b.dataset.p, m); }
     }
   });
   window.addEventListener('hashchange', () => { if (aiRec) aiRec.cancel(); aiStopAudio(); });
-  document.addEventListener('input', e => { const t = e.target.closest('[data-aisrc]'); if (t) aiS[t.dataset.aisrc].code = t.value; });
+  document.addEventListener('input', e => { const t = e.target.closest('[data-aisrc]'); if (t) aiSetCode(t.dataset.aisrc, t.value, t); });
+  // номера строк едут вместе с кодом
+  document.addEventListener('scroll', e => {
+    const t = e.target.closest && e.target.closest('[data-aisrc]'); if (t) t.previousElementSibling.scrollTop = t.scrollTop;
+  }, true);
   document.addEventListener('change', e => {
     const t = e.target.closest('[data-aifile]'); if (!t || !t.files[0]) return;
     const f = t.files[0], pid = t.dataset.aifile;
     if (f.size > 100 * 1024) { toast('Файл слишком большой — нужен только код решения'); return; }
-    f.text().then(txt => { aiS[pid].code = txt.replace(/\r\n/g, '\n'); aiDraw(pid); });
+    f.text().then(txt => aiSetCode(pid, txt.replace(/\r\n/g, '\n')));
+    t.value = '';
   });
   document.addEventListener('submit', e => {
     const f = e.target.closest('[data-aiask]'); if (!f) return;
@@ -4119,7 +4146,7 @@ function stacklyApp() {
   // Tab в поле кода — отступ, а не переход к следующей кнопке
   document.addEventListener('keydown', e => {
     const t = e.target.closest('[data-aisrc]'); if (!t || e.key !== 'Tab' || e.shiftKey) return;
-    e.preventDefault(); t.setRangeText('    ', t.selectionStart, t.selectionEnd, 'end'); aiS[t.dataset.aisrc].code = t.value;
+    e.preventDefault(); t.setRangeText('    ', t.selectionStart, t.selectionEnd, 'end'); aiSetCode(t.dataset.aisrc, t.value, t);
   });
 
   /* ═════════════ ШПАРГАЛКА ═════════════ */
