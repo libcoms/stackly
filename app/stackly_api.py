@@ -890,8 +890,16 @@ def apply_payment(pid):
 # Ученик присылает код к задаче банка, модель разбирает его как репетитор и отвечает голосом; дальше разговор:
 # ученик говорит в микрофон (речь → текст) или пишет. Лимит — минуты звука в неделю: речь ученика и ответы голосом.
 # Все модели — через RouterAI (OpenAI-совместимый API, оплата в рублях). Без ключа функции на сайте нет.
-AI_KEY = os.environ.get('STACKLY_AI_KEY', '')
-AI_API = os.environ.get('STACKLY_AI_API', 'https://routerai.ru/api/v1').rstrip('/')
+AI_KEY = os.environ.get('STACKLY_AI_KEY', '').strip().strip('"\'').removeprefix('Bearer ').strip()
+
+def ai_base(url):
+    """Адрес API RouterAI: лишний хвост (/chat/completions, /) убираем, забытый /api/v1 у routerai.ru добавляем."""
+    url = re.sub(r'/(chat/completions|audio/\w+|models)/?$', '', (url or '').strip().rstrip('/')).rstrip('/')
+    if re.fullmatch(r'https?://(www\.)?routerai\.ru', url):
+        url += '/api/v1'
+    return url or 'https://routerai.ru/api/v1'
+
+AI_API = ai_base(os.environ.get('STACKLY_AI_API', ''))
 AI_MODEL = os.environ.get('STACKLY_AI_MODEL', 'anthropic/claude-sonnet-5.5')
 AI_STT = os.environ.get('STACKLY_AI_STT', 'openai/whisper-large-v3-turbo')
 AI_TTS = os.environ.get('STACKLY_AI_TTS', 'google/gemini-3.8-flash-tts')
@@ -957,10 +965,22 @@ def rai(path, body, timeout):
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.read(), r.headers.get('Content-Type') or ''
     except urllib.error.HTTPError as e:
-        log.warning('RouterAI %s: %s %s', path, e.code, e.read()[:500])
+        detail = e.read()[:500]
+        log.warning('RouterAI %s %s: %s %s', AI_API, path, e.code, detail)
+        try:
+            msg = str((json.loads(detail).get('error') or {}).get('message') or '')[:200]
+        except (ValueError, AttributeError):
+            msg = ''
+        # причина — на сайте: функцию сейчас видит только преподаватель, ему важно понять, что чинить
+        why = {401: 'RouterAI не принял ключ — проверьте STACKLY_AI_KEY на сервере',
+               402: 'На балансе RouterAI закончились деньги — пополните его в личном кабинете',
+               403: 'RouterAI запретил запрос — проверьте права ключа и доступ к модели',
+               404: 'RouterAI не нашёл модель или адрес — проверьте STACKLY_AI_MODEL/STT/TTS и уберите STACKLY_AI_API',
+               429: 'RouterAI просит подождать: слишком много запросов. Попробуйте через минуту'}.get(e.code)
+        raise ApiError(502, 'ai_error', why or f'RouterAI ответил ошибкой {e.code}' + (f': {msg}' if msg else '') + '. Попробуйте ещё раз через минуту')
     except (urllib.error.URLError, OSError) as e:
-        log.warning('RouterAI %s: %s', path, e)
-    raise ApiError(502, 'ai_error', 'ИИ сейчас не отвечает. Попробуйте ещё раз через минуту')
+        log.warning('RouterAI %s %s: %s', AI_API, path, e)
+        raise ApiError(502, 'ai_error', 'Нет связи с RouterAI (сервер не дозвонился или не дождался ответа). Попробуйте ещё раз через минуту')
 
 def rai_json(path, body, timeout):
     raw, _ = rai(path, body, timeout)

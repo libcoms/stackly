@@ -33,7 +33,7 @@ class FakeRouterAI:
                 body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
                 fake.calls.append((self.path, body))
                 if fake.fail:
-                    return self.send(b'{"error": {"message": "upstream"}}', code=500)
+                    return self.send(b'{"error": {"message": "upstream"}}', code=fake.fail if fake.fail is not True else 500)
                 if self.path == '/chat/completions':
                     return self.send(json.dumps({'choices': [{'message': {'content': fake.reply}}], 'usage': {'cost': 0.42}}).encode())
                 if self.path == '/audio/transcriptions':
@@ -166,8 +166,14 @@ class AiTest(T.ServerCase):
 
         # RouterAI упал — понятная ошибка, реплику можно озвучить потом
         self.rai.fail = True
-        self.assertEqual(t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})[0], 502)
+        st, e = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})
+        self.assertEqual((st, e['message']), (502, 'RouterAI ответил ошибкой 500: upstream. Попробуйте ещё раз через минуту'))
         self.assertEqual(self.speech(t, r3['speech'])[0], 502)
+        # причина ошибки RouterAI — понятными словами: что чинить
+        self.rai.fail = 401
+        self.assertIn('не принял ключ', t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})[1]['message'])
+        self.rai.fail = 402
+        self.assertIn('балансе RouterAI', t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code})[1]['message'])
         self.rai.fail = False
 
         # лимит: озвучка на 50 секунд добирает минуту, дальше — 429 до понедельника
