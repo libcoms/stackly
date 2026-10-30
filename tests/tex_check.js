@@ -24,7 +24,7 @@ const vm = require('vm');
 const ctx = { window: {} };
 vm.runInNewContext(src, ctx);
 const guide = ctx.window.MATH_EGE || [];
-if (guide.length < 13) { fails++; console.log(`FAIL разборов математики ${guide.length}, ожидалось 13`); }
+if (guide.length < 20) { fails++; console.log(`FAIL разборов математики ${guide.length}, ожидалось 20`); }
 const walk = (v, where) => {
   if (typeof v === 'string') {
     if (/[\f\v\b]/.test(v)) { fails++; console.log(`FAIL ${where}: управляющий символ — TeX в обычных кавычках?`); }

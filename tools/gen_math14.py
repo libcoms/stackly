@@ -12,7 +12,7 @@ sin x или cos x (один корень вспомогательного ур�
 import random, sys, os, math
 from fractions import Fraction as F
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mathkit import n, item2, emit, poly
+from mathkit import n, item2, emit, poly, tex_plain
 
 SEED = 20270114
 TOPIC = 'Уравнение с отбором корней'
@@ -169,7 +169,7 @@ def main():
             if r is None:
                 continue
             spec, eq, text, sol, ans = r
-            title = 'Уравнение: ' + eq.replace('\\', '').replace('{', '').replace('}', '') + ', отрезок ' + spec['seg'][0] + '…' + spec['seg'][1] + ' π'
+            title = (f'{tex_plain(eq)}, отрезок [{pi_txt(F(spec["seg"][0]))}; {pi_txt(F(spec["seg"][1]))}]')
             if title in seen:
                 continue
             seen.add(title)

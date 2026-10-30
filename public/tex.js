@@ -9,7 +9,7 @@
   const SYM = {
     alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', epsilon: 'ε', varepsilon: 'ε', theta: 'θ', lambda: 'λ', mu: 'μ',
     pi: 'π', rho: 'ρ', sigma: 'σ', tau: 'τ', phi: 'φ', varphi: 'φ', omega: 'ω', Delta: 'Δ', Omega: 'Ω',
-    nu: 'ν', eta: 'η', kappa: 'κ', xi: 'ξ', psi: 'ψ', chi: 'χ', zeta: 'ζ',
+    sim: '∼', equiv: '≡', nu: 'ν', eta: 'η', kappa: 'κ', xi: 'ξ', psi: 'ψ', chi: 'χ', zeta: 'ζ',
     cdot: '·', times: '×', le: '≤', leqslant: '≤', ge: '≥', geqslant: '≥', ne: '≠', neq: '≠', approx: '≈', pm: '±', mp: '∓',
     infty: '∞', in: '∈', notin: '∉', cup: '∪', cap: '∩', angle: '∠', triangle: '△', parallel: '∥', perp: '⊥', to: '→',
     Rightarrow: '⇒', Leftrightarrow: '⇔', ldots: '…', cdots: '⋯', circ: '∘', prime: '′', emptyset: '∅', varnothing: '∅',
@@ -17,7 +17,7 @@
     quad: ' ', qquad: '  ',
   };
   const FN = new Set(['sin', 'cos', 'tg', 'ctg', 'tan', 'cot', 'log', 'ln', 'lg', 'exp', 'arcsin', 'arccos', 'arctg', 'arcctg', 'min', 'max', 'sgn']);
-  const REL = new Set(['=', '<', '>', '≤', '≥', '≠', '≈', '∈', '⇒', '⇔', '→']);
+  const REL = new Set(['=', '<', '>', '≤', '≥', '≠', '≈', '∈', '⇒', '⇔', '→', '∼', '≡']);
   const BIN = new Set(['+', '−', '±', '∓', '·', '×']);
 
   function parse(src) {
@@ -51,6 +51,7 @@
         return ch ? `<span class="dl">${esc(ch)}</span>` : '';
       }
       if (FN.has(c)) return `<span class="fn">${c}</span>`;
+      if (c === 'pmod') return `<span class="fn"> (mod </span>${arg()})`;
       if (c === 'sum' || c === 'int') return `<span class="bop">${c === 'sum' ? '∑' : '∫'}</span>`;
       if (c in SYM) { const v = SYM[c]; return REL.has(v) ? `<span class="rel">${v}</span><wbr>` : BIN.has(v) ? `<span class="bin">${v}</span>` : esc(v); }
       return fail(`неизвестная команда \\${c}`);

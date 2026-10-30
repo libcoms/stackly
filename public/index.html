@@ -2090,7 +2090,7 @@ h1 .lk-badge svg { width: 18px; height: 18px; }
 <main id="app"></main>
 <!-- на телефоне разделы из шапки переезжают сюда, под большой палец; пункты собирает syncTabbar() -->
 <nav class="tabbar" id="tabbar" aria-label="Разделы сайта"></nav>
-<script src="/tex.js?v=2"></script>
+<script src="/tex.js?v=3"></script>
 <script src="/voice.js?v=1"></script>
 <footer class="foot" hidden><div class="wrap">
   <span><b>stackly</b> · платформа для репетиторов и преподавателей: группы, домашние задания и прогресс учеников.</span>
@@ -2988,7 +2988,7 @@ function stacklyApp() {
     { id: 'inf-ege', subj: 'Информатика', title: 'ЕГЭ: разборы 27 заданий', text: 'Типы заданий, теория, формулы, ход решения и код на Python.', href: '#ege-1', n: () => '27 разборов' },
     { id: 'inf-py', subj: 'Информатика', title: 'Учебник Python', text: 'Шесть блоков от print() до словарей. У каждой темы пример и вывод.', href: '#python', n: () => `${PY.length} тем` },
     { id: 'inf-cheat', subj: 'Информатика', title: 'Шпаргалка ЕГЭ', text: 'Формулы и главные конструкции Python на одной странице.', href: '#cheat', n: () => '1 страница' },
-    { id: 'math-ege', subj: 'Математика', title: 'ЕГЭ по математике: разборы заданий 1–13', text: 'Профильный уровень, формат 2027 года: типы заданий, теория, формулы, ход решения и разобранные примеры.', href: '#math-1', n: () => `${MEGE.length} разборов` },
+    { id: 'math-ege', subj: 'Математика', title: 'ЕГЭ по математике: разборы заданий 1–20', text: 'Профильный уровень, формат 2027 года: типы заданий, теория, формулы, ход решения, разобранные примеры и критерии части 2.', href: '#math-1', n: () => `${MEGE.length} разборов` },
     { id: 'inf-course', subj: 'Информатика', title: 'Обзор экзамена', text: 'Карта 27 заданий, время на каждое и изменения 2027 года.', href: '#course', n: () => 'карта ЕГЭ' },
   ];
   // материалы платформы входят в тариф Про: ученику их уже отфильтровал сервер, учителю нужен действующий Про
@@ -3618,11 +3618,11 @@ function stacklyApp() {
       </div></div>`;
   }
 
-  /* ═════════════ МЕТОДИЧКА ПО МАТЕМАТИКЕ (профиль, ЕГЭ-2027, задания 1–13) ═════════════
+  /* ═════════════ МЕТОДИЧКА ПО МАТЕМАТИКЕ (профиль, ЕГЭ-2027, задания 1–20) ═════════════
      Разборы — window.MATH_EGE из content/ege.js; формулы $…$ раскрывает public/tex.js. Задачи — банк «Математика». */
   const MEGE = window.MATH_EGE || [], mathBy = Object.fromEntries(MEGE.map(t => [t.n, t]));
   const mtx = s => window.StacklyTex ? window.StacklyTex.texify(String(s)) : esc(s);   // текст разбора — свой, не от пользователей
-  const MATH_PTS = { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1 };
+  const MATH_PTS = { 14: 2, 15: 3, 16: 2, 17: 2, 18: 3, 19: 4, 20: 4 };   // часть 2; задания 1–13 — по 1 баллу
   function pageMath(n) {
     const t = mathBy[n] || MEGE[0];
     if (!t) return pageNoContent();
@@ -3638,7 +3638,7 @@ function stacklyApp() {
           <header class="task-head">
             <div class="task-num"><span class="ball"></span>${n}</div>
             <div><span class="eyebrow">Математика (профиль) · задание ${n} · ${esc(t.sect)}</span><h1>${esc(t.title)}</h1>
-              <div class="task-meta"><span class="tag"><span class="lvl lvl-${t.level}">${t.level}</span>${lvName[t.level]} уровень</span><span class="tag">${MATH_PTS[n] || 1} балл</span><span class="tag">≈ ${t.time} мин</span><span class="tag">краткий ответ</span></div></div>
+              <div class="task-meta"><span class="tag"><span class="lvl lvl-${t.level}">${t.level}</span>${lvName[t.level]} уровень</span><span class="tag">${MATH_PTS[n] || 1} ${plural(MATH_PTS[n] || 1, 'балл', 'балла', 'баллов')}</span><span class="tag">≈ ${t.time} мин</span><span class="tag">${n > 13 ? 'развёрнутый ответ' : 'краткий ответ'}</span></div></div>
           </header>
           <p class="task-goal">${mtx(t.lead)}</p>
           ${t.changed ? `<div class="changed"><span class="newbadge">${t.isNew ? 'new' : '2027'}</span><span>${mtx(t.changed)}</span></div>` : ''}
@@ -3647,6 +3647,7 @@ function stacklyApp() {
           <section class="block"><h2><span class="ball"></span>Формулы и правила</h2><div class="formulas">${t.formulas.map(([f, d]) => `<div class="formula-row"><div class="f mf">${mtx(f)}</div><div class="d">${mtx(d)}</div></div>`).join('')}</div></section>
           <section class="block"><h2><span class="ball"></span>Ход решения</h2><ol class="steps">${t.steps.map(x => `<li><span>${mtx(x)}</span></li>`).join('')}</ol></section>
           <section class="block"><h2><span class="ball"></span>Разбор примеров</h2>${t.examples.map((e, i) => `<div class="mex"><p class="mex-q"><b>Пример ${i + 1}.</b> ${mtx(e.q)}</p><p class="mex-s">${mtx(e.s)}</p><p class="mex-a">Ответ: <b>${esc(e.a)}</b></p></div>`).join('')}</section>
+          ${t.crit ? `<section class="block"><h2><span class="ball"></span>Как оценивают</h2><table class="mtx crit-t">${t.crit.map(([b, x]) => `<tr><th>${b}</th><td>${esc(x)}</td></tr>`).join('')}</table></section>` : ''}
           <section class="block"><h2><span class="ball"></span>Частые ошибки</h2><div class="traps">${t.traps.map(x => `<div class="trap"><span>${mtx(x)}</span></div>`).join('')}</div></section>
           <section class="block"><div class="tipbox"><span class="ball"></span><div><b>Совет</b>${mtx(t.tip)}</div></div></section>
           ${bankN ? `<div class="practice"><b>${bankN} ${plural(bankN, 'задача', 'задачи', 'задач')} на задание ${n} в банке</b><a class="btn" href="${subjHref('Математика', n)}">Потренироваться <span class="arr">${I.arrow}</span></a></div>` : ''}
