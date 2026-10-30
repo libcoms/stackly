@@ -150,10 +150,10 @@ class AiTest(T.ServerCase):
         self.assertEqual(t.call('GET', '/auth/me')[1]['user']['ai']['roast'], 2)
         rr = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'жги'})[1]
         sent = self.rai.last('/chat/completions')
-        self.assertIn('ПРОЖАРКА С МАТОМ', sent['messages'][0]['content'])
+        self.assertIn('ЖЁСТКАЯ ПРОЖАРКА С МАТОМ', sent['messages'][0]['content'])
         self.assertEqual(sent['temperature'], 0.8)
         self.assertEqual(self.speech(t, rr['speech'])[0], 200)
-        self.assertIn('стендап', self.rai.last('/audio/speech')['provider']['options']['google-ai-studio']['speech_metadata']['style'])
+        self.assertIn('жёсткой прожарке', self.rai.last('/audio/speech')['provider']['options']['google-ai-studio']['speech_metadata']['style'])
         t.call('POST', '/ai/settings', {'roast': 1})
         t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'а без мата?'})
         self.assertIn('Без мата.', self.rai.last('/chat/completions')['messages'][0]['content'])
