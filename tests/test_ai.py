@@ -70,7 +70,7 @@ class AiTest(T.ServerCase):
     @classmethod
     def setUpClass(cls):
         cls.rai = FakeRouterAI()
-        cls.extra_env = {'STACKLY_AI_KEY': KEY, 'STACKLY_AI_API': cls.rai.url, 'STACKLY_AI_WEEK_SECONDS': '60',
+        cls.extra_env = {'STACKLY_AI_KEY': KEY, 'STACKLY_AI_API': cls.rai.url, 'STACKLY_AI_WEEK_SECONDS': '60', 'STACKLY_AI_TTS': 'google/gemini-3.8-flash-tts',
                          'STACKLY_AI_USERS': f'{AI_EMAIL}, {AI_STUDENT.upper()}, {AI_STREAM}'}
         super().setUpClass()
 
@@ -285,6 +285,26 @@ class PcmTidyTest(unittest.TestCase):
         self.assertGreater(max(map(abs, out)), 7000)
         quiet = array.array('h', hiss(rate))                            # одна тишина — не трогаем
         self.assertEqual(api.pcm_tidy(quiet.tobytes(), rate), quiet.tobytes())
+
+
+class ElevenTest(unittest.TestCase):
+    """Озвучка ElevenLabs: mp3 как есть, длительность — по кадрам, без параметров Gemini."""
+    def test_mp3(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('api_el', os.path.join(T.ROOT, 'app', 'stackly_api.py'))
+        api = importlib.util.module_from_spec(spec)
+        os.environ.pop('STACKLY_AI_TTS', None)
+        spec.loader.exec_module(api)
+        self.assertEqual((api.AI_TTS, api.AI_VOICES), ('elevenlabs/eleven-v4-turbo', ('liam', 'callum', 'callum')))
+        self.assertIn('[sarcastic]', api.AI_PROMPT)
+        frame = bytes([0xFF, 0xFB, 0x90, 0x64]) + bytes(413)          # MPEG-1 Layer III, 128 кбит/с, 44,1 кГц: 417 байт, 1152 сэмпла
+        mp3 = b'ID3' + bytes([4, 0, 0, 0, 0, 0, 10]) + bytes(10) + frame * 100
+        self.assertAlmostEqual(api.mp3_seconds(mp3), 100 * 1152 / 44100, places=3)
+        sent = []
+        api.rai = lambda path, body, timeout: (sent.append(body), (mp3, 'audio/mpeg'))[1]
+        audio, ctype, sec = api.ai_tts_once('Ну ты даёшь', 2)
+        self.assertEqual((audio, ctype, round(sec, 2)), (mp3, 'audio/mpeg', round(100 * 1152 / 44100, 2)))
+        self.assertEqual((sent[0]['voice'], sent[0]['response_format'], 'provider' in sent[0]), ('callum', 'mp3', False))
 
 
 if __name__ == '__main__':

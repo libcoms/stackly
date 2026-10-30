@@ -902,9 +902,13 @@ def ai_base(url):
 AI_API = ai_base(os.environ.get('STACKLY_AI_API', ''))
 AI_MODEL = os.environ.get('STACKLY_AI_MODEL', 'anthropic/claude-haiku-5.5')     # быстрая модель: голосовой разговор важнее задержки
 AI_STT = os.environ.get('STACKLY_AI_STT', 'openai/whisper-large-v3-turbo')
-AI_TTS = os.environ.get('STACKLY_AI_TTS', 'google/gemini-3.8-flash-tts')
-# голос по стилю разбора: Puck — живой и бодрый, Fenrir — заводной, для прожарки; STACKLY_AI_VOICE задаёт один голос на все
-AI_VOICES = (os.environ.get('STACKLY_AI_VOICE') or 'Puck', os.environ.get('STACKLY_AI_VOICE') or 'Fenrir', os.environ.get('STACKLY_AI_VOICE') or 'Fenrir')
+# озвучка: ElevenLabs — живой русский, теги эмоций, mp3 без шипения на краях. Gemini (google/…) — запасной вариант:
+# дешевле, но обрубает длинный текст и шумит на стыках
+AI_TTS = os.environ.get('STACKLY_AI_TTS', 'elevenlabs/eleven-v4-turbo')
+AI_GEMINI_TTS = AI_TTS.startswith('google/')
+# голос по стилю разбора: обычный, прожарка, жёсткая прожарка; STACKLY_AI_VOICE задаёт один голос на все.
+# ElevenLabs: liam — энергичный молодой, callum — хрипловатый «трикстер»; Gemini: Puck — бодрый, Fenrir — заводной
+AI_VOICES = tuple(os.environ.get('STACKLY_AI_VOICE') or v for v in (('Puck', 'Fenrir', 'Fenrir') if AI_GEMINI_TTS else ('liam', 'callum', 'callum')))
 # манера озвучки по стилю разбора: 0 — обычный, 1 — прожарка, 2 — жёсткая прожарка с матом (стиль выбирает сам ученик)
 AI_STYLES = (os.environ.get('STACKLY_AI_STYLE', 'живо и эмоционально, с выразительной интонацией, как увлечённый репетитор: '
                                                 'искренне радуется удачам, удивляется и сокрушается над ошибками'),
@@ -932,9 +936,14 @@ AI_PROMPT = '''Ты — репетитор по информатике на са
 
 Формат ответа — только JSON-объект, без текста вокруг, поля строго в этом порядке: {"mood": "…", "say": "…", "notes": "…"}
 say — то, что прозвучит голосом: 2–5 коротких предложений живой эмоциональной разговорной речи, не длиннее 600 символов. Первое предложение — короткое: оно начинает звучать, пока ты договариваешь остальное. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
-Говори с эмоциями: восклицания, удивление, радость, разочарование — как живой человек, а не диктор. Для озвучки можно вставить в say смех: [laughs] или [chuckle] — не больше одного за реплику, других звуков не вставляй; слово, которое надо выделить голосом, пиши ЗАГЛАВНЫМИ буквами.
+Говори с эмоциями: восклицания, удивление, радость, разочарование — как живой человек, а не диктор. Для озвучки можно вставлять в say теги эмоций в квадратных скобках: {tags}; слово, которое надо выделить голосом, пиши ЗАГЛАВНЫМИ буквами.
 notes — необязательная письменная подсказка к сказанному: исправленная строка или маленький фрагмент кода в блоке ``` (до 8 строк). Если показывать нечего — пустая строка.
 mood — эмоция маскота, который произносит реплику (ученик видит его вместо текста): одно из calm, happy, love, laugh, surprised, angry, sad. happy — похвала, love — умиление, laugh — смешно, surprised — неожиданная ошибка или находка, angry — злость и прожарка, sad — разочарование.'''
+
+# теги эмоций в голосе: ElevenLabs их отыгрывает, у Gemini вздох и пауза звучали как шипение — ему только смех
+AI_PROMPT = AI_PROMPT.replace('{tags}', '[laughs], [chuckle] — не больше одного за реплику, других звуков не вставляй' if AI_GEMINI_TTS else
+                              '[laughs], [sarcastic], [excited], [shouting], [whispers], [curious] — тег ставится перед фразой, '
+                              'к которой относится, не больше двух-трёх за реплику')
 
 def ai_allowed(u):
     return bool(AI_KEY) and u is not None and u['email'].lower() in AI_USERS
@@ -1190,7 +1199,7 @@ SENTENCE_RE = re.compile(r'.+?(?:[.!?…]+["»)]?(?=\s)|$)', re.S)
 
 def ai_pieces(text, closed, start):
     """Готовые к озвучке куски текста начиная с позиции start: целые предложения, не короче 25 символов
-    (самый первый — от 12 символов, чтобы голос зазвучал скорее; дальше — от 160: чем меньше стыков, тем меньше сбоев
+    (самый первый — от 12 символов, чтобы голос зазвучал скорее; дальше — от 100: чем меньше стыков, тем меньше сбоев
     озвучки). Возвращает (куски, новая позиция)."""
     out, buf, pos = [], '', start
     for m in SENTENCE_RE.finditer(text, start):
@@ -1199,7 +1208,7 @@ def ai_pieces(text, closed, start):
         if not ends and not (closed and m.end() == len(text)):
             break                                          # предложение ещё дописывается
         buf += part
-        if len(buf.strip()) >= (12 if start == 0 and not out else 160) or (closed and m.end() == len(text)):
+        if len(buf.strip()) >= (12 if start == 0 and not out else 100) or (closed and m.end() == len(text)):
             out.append(buf)
             buf, pos = '', m.end()
     return out, pos
@@ -1221,36 +1230,61 @@ BLEEP_RE = re.compile(r'\b(?:на|по|за|вы|у|от|раз|рас|съ|въ
 def bleep(text):
     return BLEEP_RE.sub('пи-и-ип', text)
 
+def mp3_seconds(data):
+    """Длительность mp3 по заголовкам кадров (подходит и для переменного битрейта)."""
+    i, sec = 0, 0.0
+    if data[:3] == b'ID3' and len(data) > 10:                 # тег ID3v2 в начале
+        i = 10 + ((data[6] & 127) << 21 | (data[7] & 127) << 14 | (data[8] & 127) << 7 | (data[9] & 127))
+    rates = {3: (44100, 48000, 32000), 2: (22050, 24000, 16000), 0: (11025, 12000, 8000)}
+    kbps = {3: (0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320), 2: (0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160)}
+    while i + 4 <= len(data):
+        h = int.from_bytes(data[i:i + 4], 'big')
+        ver, layer, br, sr, pad = h >> 19 & 3, h >> 17 & 3, h >> 12 & 15, h >> 10 & 3, h >> 9 & 1
+        if h >> 21 != 0x7FF or ver == 1 or layer != 1 or br in (0, 15) or sr == 3:
+            i += 1                                            # не кадр — ищем следующую синхронизацию
+            continue
+        rate, bitrate = rates[ver][sr], kbps[3 if ver == 3 else 2][br] * 1000
+        samples = 1152 if ver == 3 else 576
+        size = samples // 8 * bitrate // rate + pad
+        if size < 4:
+            break
+        sec += samples / rate
+        i += size
+    return sec
+
 def ai_tts_once(text, roast):
-    body = {'model': AI_TTS, 'input': text, 'voice': AI_VOICES[roast], 'response_format': 'pcm'}
-    if AI_TTS.startswith('google/'):
+    """Один запрос озвучки → (звук, тип, секунды)."""
+    body = {'model': AI_TTS, 'input': text, 'voice': AI_VOICES[roast], 'response_format': 'pcm' if AI_GEMINI_TTS else 'mp3'}
+    if AI_GEMINI_TTS:
         body['provider'] = {'options': {'google-ai-studio': {'speech_metadata': {'style': AI_STYLES[roast]}}}}
     raw, ctype = rai('/audio/speech', body, 60)
-    if 'json' in ctype or len(raw) < 2 * PCM_RATE // 10:
+    if 'json' in ctype or len(raw) < 2000:
         log.warning('RouterAI speech: не звук (%s): %s', ctype, raw[:300])
         raise ApiError(502, 'ai_error', 'Не получилось озвучить ответ')
-    return pcm_tidy(raw[44:] if raw[:4] == b'RIFF' else raw)
+    if AI_GEMINI_TTS:
+        pcm = pcm_tidy(raw[44:] if raw[:4] == b'RIFF' else raw)
+        return wav(pcm), 'audio/wav', len(pcm) / (2 * PCM_RATE)
+    return raw, 'audio/mpeg', mp3_seconds(raw) or len(raw) * 8 / 128000
 
 def ai_tts(text, roast):
-    """Текст → (WAV, секунды) через RouterAI. Ошибка — ApiError.
+    """Текст → (звук, тип, секунды) через RouterAI. Ошибка — ApiError.
     Не озвучилось (фильтр модели не пропустил мат) — повтор с «пи-и-ип». Звука подозрительно мало для такого текста
     (модель иногда обрубает конец) — один повтор, берём более длинный вариант."""
     try:
-        pcm = ai_tts_once(text, roast)
+        out = ai_tts_once(text, roast)
     except ApiError:
         if bleep(text) == text:
             raise
         log.info('озвучка: повтор с «пи-и-ип»')
-        pcm = ai_tts_once(bleep(text), roast)
-    words = len(re.findall(r'[а-яёa-z0-9]+', text, re.I))
-    if words >= 6 and len(pcm) / (2 * PCM_RATE) < words * .22:               # обычная речь — около 0,35 с на слово
-        log.info('озвучка: похоже, обрублена (%d слов, %.1f с) — повтор', words, len(pcm) / (2 * PCM_RATE))
+        out = ai_tts_once(bleep(text), roast)
+    words = len(re.findall(r'[а-яёa-z0-9]+', re.sub(r'\[[a-z ]+\]', '', text), re.I))
+    if words >= 6 and out[2] < words * .22:                               # обычная речь — около 0,35 с на слово
+        log.info('озвучка: похоже, обрублена (%d слов, %.1f с) — повтор', words, out[2])
         try:
-            again = ai_tts_once(text, roast)
-            pcm = max(pcm, again, key=len)
+            out = max(out, ai_tts_once(text, roast), key=lambda x: x[2])
         except ApiError:
             pass
-    return wav(pcm), len(pcm) / (2 * PCM_RATE)
+    return out
 
 def pcm_tidy(pcm, rate=PCM_RATE):
     """Края озвучки: модель оставляет перед речью и после неё тихое шипение — между кусками, которые звучат подряд,
@@ -1279,7 +1313,7 @@ def pcm_tidy(pcm, rate=PCM_RATE):
 
 def ai_say_make(item):
     try:
-        item['audio'], item['sec'] = ai_tts(item['text'], item['roast'])
+        item['audio'], item['type'], item['sec'] = ai_tts(item['text'], item['roast'])
     except ApiError as e:
         item['err'] = e
     except Exception:
@@ -1854,7 +1888,7 @@ class Handler(BaseHTTPRequestHandler):
         emit({'t': 'done', 'say': ' '.join(said), 'notes': notes, 'mood': mood, 'ai': ai_status(u['id'])})
 
     def ai_speech(self):
-        """Озвучка реплики: WAV (обычно уже готова — её начали делать в фоне). Длительность списывается с недельного лимита."""
+        """Озвучка реплики: mp3 или WAV (обычно уже готова — её начали делать в фоне). Длительность списывается с недельного лимита."""
         u = self.ai_user()
         sid = str(self.body().get('id', ''))
         v = ai_say_take(u['id'], sid)
@@ -1869,7 +1903,7 @@ class Handler(BaseHTTPRequestHandler):
         ai_log(u['id'], 'tts', v['pid'], v['sec'])
         out = v['audio']
         self.send_response(200)
-        self.send_header('Content-Type', 'audio/wav')
+        self.send_header('Content-Type', v.get('type') or 'audio/wav')
         self.send_header('Content-Length', str(len(out)))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-AI-Used', str(round(ai_used(u['id']), 1)))
