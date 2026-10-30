@@ -914,6 +914,99 @@ a.bk-tile.empty:hover, a.bk-tile.add:hover { border-color: var(--blue); }
 .ai-left.low { color: var(--bad); }
 .ai-head .ai-x { margin-left: auto; }
 .ai-mode { font-size: 12.5px; color: var(--mute); }
+.ai-stage { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 8px 22px; align-items: start; }
+.ai-mascot { padding-top: 6px; }
+.ai-side { display: grid; gap: 10px; min-width: 0; }
+.ai-status { display: flex; align-items: center; gap: 9px; min-height: 26px; font: 600 15px/1.35 var(--f-body); color: var(--ink); }
+.ai-status i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); }
+.ai-st-listening i { background: var(--ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 55%, transparent); animation: aiRec 1.6s infinite; }
+.ai-st-thinking i { background: var(--blue); animation: aiDot 1s infinite; }
+.ai-st-talking i { background: #E0A800; }
+.ai-st-out i, .ai-status .ai-err { color: var(--bad); }
+.ai-st-out i { background: var(--bad); }
+.ai-ctrl { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-ctrl svg { width: 15px; height: 15px; flex: none; }
+.ai-notes { padding: 10px 12px; border-radius: var(--r-s); background: var(--paper); box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; color: var(--ink-2); }
+.ai-notes > b { display: block; margin-bottom: 6px; font: 600 12.5px/1 var(--f-body); color: var(--mute); text-transform: uppercase; letter-spacing: .04em; }
+.ai-notes .algo { margin: 0; font-size: 13px; }
+.ai-notes p { margin: 0 0 6px; }
+.ai-side .ai-chat { max-height: 260px; overflow: auto; padding-right: 4px; }
+@media (max-width: 640px) { .ai-stage { grid-template-columns: 1fr; } .ai-mascot { width: 150px; margin: 0 auto; } }
+
+/* маскот */
+.mascot { --open: 0; --lvl: 0; display: block; width: 100%; max-width: 190px; margin: 0 auto; overflow: visible; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.mascot * { transform-box: fill-box; transform-origin: center; }
+.m-shadow { fill: rgb(0 0 0 / .18); animation: mShadow 3.2s ease-in-out infinite; }
+.m-body { animation: mFloat 3.2s ease-in-out infinite; }
+.m-ball { fill: #FFD84A; stroke: #141820; stroke-width: 4; }
+.m-red { fill: #FF5A4E; opacity: 0; transition: opacity .35s; }
+.m-shine { fill: #fff; }
+.m-cheek { fill: #FF8FA3; opacity: 0; transition: opacity .35s; }
+.m-face { transition: transform .45s var(--ease); }
+.m-eyes { transition: transform .3s var(--ease); }
+.m-eye { fill: #141820; animation: mBlink 4.8s infinite; transition: opacity .2s; }
+.m-eye:nth-child(2) { animation-delay: .05s; }
+.m-happy, .m-brow, .m-smile, .m-frown { fill: none; stroke: #141820; stroke-width: 4.5; stroke-linecap: round; }
+.m-happy { opacity: 0; transition: opacity .2s; }
+.m-brow { transition: transform .35s var(--ease); }
+.m-smile, .m-frown { transition: opacity .2s; }
+.m-frown { opacity: 0; }
+.m-open { fill: #6B1E24; stroke: #141820; stroke-width: 3.5; opacity: 0; transform: scaleY(calc(.15 + var(--open) * .95)) scaleX(calc(.85 + var(--open) * .2)); }
+.m-tear { fill: #6FB8FF; opacity: 0; }
+.m-ring { fill: none; stroke: var(--blue); stroke-width: 3; opacity: 0; transform: scale(calc(.97 + var(--lvl) * .2)); transition: opacity .3s; }
+.m-fx > g { opacity: 0; transition: opacity .3s; }
+.m-dots circle, .m-steam circle { fill: var(--paper); stroke: var(--ink-2); stroke-width: 2.5; }
+.m-hearts path { fill: #FF5A7A; }
+@keyframes mFloat { 50% { transform: translateY(-5px); } }
+@keyframes mShadow { 50% { transform: scaleX(.9); opacity: .7; } }
+@keyframes mBlink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+@keyframes mShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px) rotate(-2deg); } 75% { transform: translateX(3px) rotate(2deg); } }
+@keyframes mBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px) scale(1.02, .98); } }
+@keyframes mDot { 0%, 100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(-4px); opacity: 1; } }
+@keyframes mPuff { 0% { transform: translateY(4px) scale(.6); opacity: 0; } 40% { opacity: 1; } 100% { transform: translateY(-10px) scale(1.2); opacity: 0; } }
+@keyframes mHeart { 0% { transform: translateY(6px) scale(.6); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-14px) scale(1.1); opacity: 0; } }
+@keyframes mTear { 0% { transform: translateY(-3px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(14px); opacity: 0; } }
+/* состояния */
+.mascot[data-state="listening"] .m-ring { opacity: .6; }
+.mascot[data-state="listening"] .m-face { transform: translateY(2px); }
+.mascot[data-state="thinking"] .m-face { transform: translate(5px, -6px); }
+.mascot[data-state="thinking"] .m-dots { opacity: 1; }
+.mascot[data-state="thinking"] .m-dots circle { animation: mDot 1s infinite; }
+.mascot[data-state="thinking"] .m-dots circle:nth-child(2) { animation-delay: .15s; }
+.mascot[data-state="thinking"] .m-dots circle:nth-child(3) { animation-delay: .3s; }
+.mascot[data-state="talking"] .m-smile, .mascot[data-state="talking"] .m-frown { opacity: 0 !important; }
+.mascot[data-state="talking"] .m-open { opacity: 1; }
+/* эмоции */
+.mascot:is([data-mood="happy"], [data-mood="love"], [data-mood="laugh"]) .m-eye { opacity: 0; }
+.mascot:is([data-mood="happy"], [data-mood="love"], [data-mood="laugh"]) .m-happy { opacity: 1; }
+.mascot:is([data-mood="happy"], [data-mood="laugh"]) .m-cheek { opacity: .55; }
+.mascot[data-mood="love"] .m-cheek { opacity: .9; }
+.mascot[data-mood="love"] .m-hearts { opacity: 1; }
+.mascot[data-mood="love"] .m-hearts path { animation: mHeart 1.6s infinite; }
+.mascot[data-mood="love"] .m-hearts path:nth-child(2) { animation-delay: .8s; }
+.mascot[data-mood="laugh"] .m-body { animation: mBounce .38s infinite; }
+.mascot[data-mood="laugh"] .m-open { transform: scaleY(calc(.55 + var(--open) * .6)) scaleX(1.05); }
+.mascot[data-mood="surprised"] .m-eyes { transform: scale(1.3); }
+.mascot[data-mood="surprised"] .m-brow { transform: translateY(-6px); }
+.mascot[data-mood="surprised"] .m-smile { opacity: 0; }
+.mascot[data-mood="surprised"] .m-open { opacity: 1; transform: scaleY(calc(.45 + var(--open) * .7)) scaleX(.7); }
+.mascot[data-mood="angry"] .m-red { opacity: .38; }
+.mascot[data-mood="angry"] .m-bl { transform: translateY(6px) rotate(28deg); }
+.mascot[data-mood="angry"] .m-br { transform: translateY(6px) rotate(-28deg); }
+.mascot[data-mood="angry"] .m-eyes { transform: scaleY(.8); }
+.mascot[data-mood="angry"] .m-smile { opacity: 0; }
+.mascot[data-mood="angry"] .m-frown { opacity: 1; }
+.mascot[data-mood="angry"] .m-body { animation: mShake .22s infinite; }
+.mascot[data-mood="angry"] .m-steam { opacity: 1; }
+.mascot[data-mood="angry"] .m-steam circle { animation: mPuff 1.1s infinite; }
+.mascot[data-mood="angry"] .m-steam circle:nth-child(even) { animation-delay: .55s; }
+.mascot[data-mood="sad"] .m-bl { transform: translateY(-2px) rotate(-18deg); }
+.mascot[data-mood="sad"] .m-br { transform: translateY(-2px) rotate(18deg); }
+.mascot[data-mood="sad"] .m-smile { opacity: 0; }
+.mascot[data-mood="sad"] .m-frown { opacity: 1; }
+.mascot[data-mood="sad"] .m-face { transform: translateY(4px); }
+.mascot[data-mood="sad"] .m-tear { animation: mTear 1.8s infinite; }
+@media (prefers-reduced-motion: reduce) { .mascot .m-body, .mascot .m-shadow { animation: none !important; } }
 .role-pick.ai-style-pick { grid-template-columns: 1fr; }
 .ai-codebox { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line-2); display: grid; gap: 10px; }
 .ai-cb-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
@@ -4003,15 +4096,19 @@ function stacklyApp() {
   }
 
   /* ═════════════ РАЗБОР КОДА С ИИ ═════════════
-     Задачи встроенного банка, которые решают на Python: ученик вставляет код, ИИ разбирает его и отвечает голосом,
-     дальше разговор — в микрофон или текстом. Сервер открывает функцию не всем (acct.ai) и считает минуты звука
-     за неделю: речь ученика и ответы голосом. Разговор живёт в памяти страницы, пока она открыта. */
-  const aiS = {};                     // id задачи → { open, code, sent, hist: [{ role, text, notes, voice, speech, url }], busy }
-  let aiAudio = null, aiRec = null, aiSaveT = null;
+     Задачи встроенного банка, которые решают на Python: ученик пишет код в блоке «Ваш код» и нажимает «Разобрать с ИИ».
+     Появляется маскот: он озвучивает ответы сам, а микрофон слушает постоянно — фраза уходит ИИ, когда ученик замолкает.
+     Пока ИИ думает и говорит, микрофон на паузе (иначе он услышит сам себя); тап по маскоту — перебить.
+     Звук идёт через Web Audio: контекст запускается кликом по кнопке, поэтому дальше браузер не блокирует автоозвучку.
+     Сервер открывает функцию не всем (acct.ai) и считает минуты звука за неделю: речь ученика и ответы голосом. */
+  const aiS = {};                     // id задачи → { open, code, sent, hist: [{ role, text, notes, mood, voice, speech, buf }], busy, err }
+  let aiSaveT = null, aiAC = null, aiAn = null, aiOut = null, vs = null, aiRaf = 0;
+  const aiFace = { pid: '', state: 'idle', mood: 'calm', open: 0, lvl: 0, moodT: 0 };
+  let aiSub = store.get('aisub', false);      // субтитры: показывать ли текст реплик
   const aiCode = store.get('aicode', {});     // код учеников по задачам — в этом браузере, переживает перезагрузку
   const aiOn = p => !!acct.ai && !!p.task && (!p.src || p.src.builtin) && /python/i.test((egeBy[p.task] || {}).tool || '');
   const aiLeft = () => acct.ai ? Math.max(0, acct.ai.limit - acct.ai.used) : 0;
-  const aiSt = pid => aiS[pid] || (aiS[pid] = { open: false, code: aiCode[pid] || '', sent: '', hist: [], busy: '' });
+  const aiSt = pid => aiS[pid] || (aiS[pid] = { open: false, code: aiCode[pid] || '', sent: '', hist: [], busy: '', err: '' });
   const aiGutter = code => Array.from({ length: Math.max(1, code.split('\n').length) }, (_, i) => i + 1).join('\n');
   function aiLeftHTML() {
     const left = aiLeft();
@@ -4025,36 +4122,252 @@ function stacklyApp() {
           <label class="btn small ghost">Загрузить .py<input type="file" accept=".py,.txt,text/plain" data-aifile="${pid}"></label></div>
         <div class="ai-editor"><pre class="ai-gutter" aria-hidden="true">${aiGutter(st.code)}</pre><div class="ai-ed"><pre class="ai-hl" aria-hidden="true"><code>${hl(st.code)}\n</code></pre><textarea class="ai-src" data-aisrc="${pid}" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" wrap="off" placeholder="Вставьте сюда решение на Python или начните писать — появятся подсказки" aria-label="Код решения" aria-autocomplete="list">${esc(st.code)}</textarea></div></div>
         <div class="ai-acts" data-aiacts="${pid}">${aiActsHTML(pid)}</div>
-      </div><div class="aibox" data-aibox="${pid}">${st.open ? aiInner(pid) : ''}</div>`;
+      </div><div class="aibox" data-aibox="${pid}"></div>`;
   }
   function aiActsHTML(pid) {
     const st = aiSt(pid), out = aiLeft() <= 0, changed = st.hist.length && st.code !== st.sent;
     return `<button type="button" class="btn small" data-aigo="${pid}" ${out || st.busy ? 'disabled' : ''}>${I.mic}${!st.hist.length ? 'Разобрать с ИИ' : changed ? 'Проверить исправленный код' : 'Разобрать ещё раз'}</button>
       ${aiLeftHTML()}<a class="ai-mode" href="#me" title="Стиль разбора меняется в настройках кабинета">${['обычный разбор', 'прожарка', 'жёсткая прожарка 18+'][acct.ai.roast || 0]}</a>`;
   }
-  // панель разговора под кодом: реплики, микрофон и поле вопроса
-  function aiInner(pid) {
-    const st = aiSt(pid), out = aiLeft() <= 0, rec = aiRec && aiRec.pid === pid, lock = out || !!st.busy;
-    const msg = (m, i) => m.role === 'user'
-      ? `<div class="ai-msg me">${m.voice ? '<span class="ai-voice">голосом · </span>' : ''}${esc(m.text)}</div>`
-      : m.role === 'err' ? `<div class="ai-msg err">${esc(m.text)}</div>`
-      : `<div class="ai-msg ai"><p>${esc(m.text)}</p>${m.notes ? md(m.notes) : ''}${m.url || m.speech ? `<button type="button" class="btn small ghost ai-play" data-aiplay="${i}" data-p="${pid}">${I.play}${m.url ? 'Прослушать ещё раз' : 'Озвучить'}</button>` : ''}</div>`;
-    return `<div class="ai-head"><b>Разговор с ИИ</b><button type="button" class="btn small ghost ai-x" data-aiclose="${pid}">Свернуть</button></div>
-      <div class="ai-chat" aria-live="polite">${st.hist.map(msg).join('')}${st.busy ? `<div class="ai-msg ai wait"><span class="ai-dots"><i></i><i></i><i></i></span>${st.busy}</div>` : ''}</div>
-      ${st.hist.length ? `<form class="ai-ask" data-aiask="${pid}">
-          <button type="button" class="ai-mic ${rec ? 'rec' : ''}" data-aimic="${pid}" aria-label="${rec ? 'Закончить и отправить' : 'Сказать голосом'}" ${lock ? 'disabled' : ''}>${rec ? I.stop : I.mic}</button>
-          ${rec ? '<span class="ai-rec-t" data-aitimer>0:00</span>' : ''}
-          <input type="text" maxlength="2000" placeholder="Спросите голосом или напишите" aria-label="Вопрос" ${lock ? 'disabled' : ''}>
-          <button class="btn small" type="submit" ${lock ? 'disabled' : ''}>Отправить</button></form>
-        <p class="ai-hint">Нажмите микрофон, скажите вопрос и нажмите ещё раз — ответ придёт голосом. ИИ видит код из поля выше: поправьте его и спросите снова.</p>` : ''}`;
+
+  /* ── маскот: жёлтый шарик stackly с лицом. Состояние (слушает, думает, говорит) и эмоция — атрибуты data-state и data-mood,
+     рот при озвучке и пульс при прослушивании — CSS-переменные --open и --lvl, их обновляет aiTick ── */
+  const aiMascot = pid => `<svg class="mascot" data-mascot="${pid}" data-state="idle" data-mood="calm" viewBox="0 0 160 172" role="img" aria-label="ИИ-репетитор: нажмите, чтобы перебить">
+      <ellipse class="m-shadow" cx="80" cy="164" rx="42" ry="5"/>
+      <g class="m-body">
+        <circle class="m-ring" cx="80" cy="92" r="67"/>
+        <circle class="m-ball" cx="80" cy="92" r="58"/>
+        <circle class="m-red" cx="80" cy="92" r="56"/>
+        <circle class="m-shine" cx="113" cy="61" r="9"/>
+        <ellipse class="m-cheek" cx="49" cy="105" rx="9" ry="5.5"/><ellipse class="m-cheek" cx="111" cy="105" rx="9" ry="5.5"/>
+        <g class="m-face">
+          <path class="m-brow m-bl" d="M49 70 q10 -7 21 -2"/><path class="m-brow m-br" d="M90 68 q11 -5 21 2"/>
+          <g class="m-eyes"><ellipse class="m-eye" cx="60" cy="85" rx="6.5" ry="9"/><ellipse class="m-eye" cx="100" cy="85" rx="6.5" ry="9"/></g>
+          <path class="m-happy" d="M52 89 q8 -12 16 0"/><path class="m-happy" d="M92 89 q8 -12 16 0"/>
+          <path class="m-smile" d="M64 109 q16 14 32 0"/><path class="m-frown" d="M66 119 q14 -11 28 0"/>
+          <ellipse class="m-open" cx="80" cy="114" rx="13" ry="11"/>
+          <path class="m-tear" d="M55 96 q-5 8 0 11 q5 -3 0 -11z"/>
+        </g>
+      </g>
+      <g class="m-fx">
+        <g class="m-dots"><circle cx="122" cy="26" r="4"/><circle cx="135" cy="16" r="5.5"/><circle cx="150" cy="5" r="7"/></g>
+        <g class="m-steam"><circle cx="30" cy="40" r="7"/><circle cx="22" cy="30" r="5"/><circle cx="130" cy="40" r="7"/><circle cx="138" cy="30" r="5"/></g>
+        <g class="m-hearts"><path d="M128 34 c-6 -7 -15 0 -8 7 l8 7 l8 -7 c7 -7 -2 -14 -8 -7z"/><path d="M30 26 c-4 -5 -11 0 -6 5 l6 5 l6 -5 c5 -5 -2 -10 -6 -5z"/></g>
+      </g>
+    </svg>`;
+  const AI_STATUS = { idle: '', listening: 'Слушаю — говорите', thinking: 'Думаю…', talking: 'Говорю — нажмите на меня, чтобы перебить',
+    muted: 'Микрофон на паузе', nomic: 'Микрофон недоступен — напишите вопрос ниже', out: 'Время на этой неделе закончилось' };
+  function aiStatusKey(st) {
+    if (aiLeft() <= 0 && aiFace.state !== 'talking') return 'out';
+    if (aiFace.state === 'thinking' || aiFace.state === 'talking') return aiFace.state;
+    if (!vs) return 'idle';
+    return vs.nomic ? 'nomic' : vs.muted ? 'muted' : 'listening';
+  }
+  function aiStatusHTML(pid) {
+    const st = aiSt(pid), key = aiStatusKey(st);
+    return `<div class="ai-status ai-st-${key}" aria-live="polite"><i></i>${st.err ? `<span class="ai-err">${esc(st.err)}</span>` : AI_STATUS[key]}</div>`;
+  }
+  // правая часть панели: состояние, управление, подсказка с кодом, субтитры, поле для вопроса текстом
+  function aiSideHTML(pid) {
+    const st = aiSt(pid), last = [...st.hist].reverse().find(m => m.role === 'assistant'), lock = aiLeft() <= 0 || !!st.busy;
+    const line = (m) => m.role === 'user' ? `<div class="ai-msg me">${m.voice ? '<span class="ai-voice">голосом · </span>' : ''}${esc(m.text)}</div>` : `<div class="ai-msg ai"><p>${esc(m.text)}</p></div>`;
+    return `${aiStatusHTML(pid)}
+      <div class="ai-ctrl">
+        ${vs && !vs.nomic ? `<button type="button" class="btn small ghost" data-aimute="${pid}" aria-pressed="${vs.muted}">${vs.muted ? I.mic + 'Слушать' : I.stop + 'Пауза'}</button>` : ''}
+        ${last && last.buf ? `<button type="button" class="btn small ghost" data-aireplay="${pid}">${I.play}Повторить</button>` : ''}
+        <button type="button" class="btn small ghost" data-aisub="${pid}" aria-pressed="${aiSub}">${aiSub ? 'Скрыть текст' : 'Субтитры'}</button>
+        <button type="button" class="btn small ghost" data-aiclose="${pid}">Завершить</button>
+      </div>
+      ${last && last.notes ? `<div class="ai-notes"><b>Подсказка</b>${md(last.notes)}</div>` : ''}
+      ${aiSub && st.hist.length ? `<div class="ai-chat">${st.hist.filter(m => m.role !== 'err').map(line).join('')}</div>` : ''}
+      <form class="ai-ask" data-aiask="${pid}"><input type="text" maxlength="2000" placeholder="${vs && !vs.nomic ? 'Или напишите вопрос' : 'Напишите вопрос'}" aria-label="Вопрос" ${lock ? 'disabled' : ''}><button class="btn small" type="submit" ${lock ? 'disabled' : ''}>Отправить</button></form>`;
   }
   function aiDraw(pid) {
-    const box = $(`[data-aibox="${pid}"]`), acts = $(`[data-aiacts="${pid}"]`);
+    const box = $(`[data-aibox="${pid}"]`), acts = $(`[data-aiacts="${pid}"]`), st = aiSt(pid);
     if (acts) acts.innerHTML = aiActsHTML(pid);
     if (!box) return;
-    box.innerHTML = aiS[pid].open ? aiInner(pid) : '';
-    const chat = $('.ai-chat', box); if (chat) chat.lastElementChild?.scrollIntoView({ block: 'nearest' });
+    if (!st.open) { box.innerHTML = ''; return; }
+    if (!$('.mascot', box)) box.innerHTML = `<div class="ai-stage"><div class="ai-mascot">${aiMascot(pid)}</div><div class="ai-side"></div></div>`;
+    $('.ai-side', box).innerHTML = aiSideHTML(pid);
+    aiFaceApply();
+    const chat = $('.ai-chat', box); if (chat) chat.scrollTop = chat.scrollHeight;
   }
+  function aiFaceApply() {
+    const m = $(`[data-mascot="${aiFace.pid}"]`);
+    if (!m) return;
+    const st = aiFace.state === 'idle' && vs && !vs.muted && !vs.nomic ? 'listening' : aiFace.state;
+    m.dataset.state = st; m.dataset.mood = aiFace.mood;
+  }
+  function aiSetFace(state, mood) {
+    aiFace.state = state; clearTimeout(aiFace.moodT);
+    if (mood) aiFace.mood = mood;
+    else if (state !== 'talking') aiFace.moodT = setTimeout(() => { aiFace.mood = 'calm'; aiFaceApply(); }, 1600);   // эмоция гаснет не сразу
+    aiFaceApply();
+    const el = aiFace.pid && $(`[data-aibox="${aiFace.pid}"] .ai-status`); if (el) el.outerHTML = aiStatusHTML(aiFace.pid);   // поле вопроса не трогаем
+    aiLoop();
+  }
+  // кадр анимации: рот по громкости озвучки, пульс кольца по громкости микрофона
+  function aiTick() {
+    aiRaf = 0;
+    const m = $(`[data-mascot="${aiFace.pid}"]`); if (!m) return;
+    let open = 0;
+    if (aiOut && aiAn) {
+      const d = new Float32Array(aiAn.fftSize); aiAn.getFloatTimeDomainData(d);
+      let sum = 0; for (let i = 0; i < d.length; i++) sum += d[i] * d[i];
+      open = Math.min(1, Math.sqrt(sum / d.length) * 7);
+    }
+    aiFace.open += (open - aiFace.open) * (open > aiFace.open ? .55 : .25);
+    const lvl = vs && aiFace.state === 'idle' ? Math.min(1, (vs.lvl || 0) * 14) : 0;
+    aiFace.lvl += (lvl - aiFace.lvl) * .3;
+    m.style.setProperty('--open', aiFace.open.toFixed(3)); m.style.setProperty('--lvl', aiFace.lvl.toFixed(3));
+    aiLoop();
+  }
+  function aiLoop() { if (!aiRaf && (vs || aiOut)) aiRaf = requestAnimationFrame(aiTick); }
+
+  /* ── звук: контекст, озвучка ответов ── */
+  function aiCtx() {
+    if (!aiAC) {
+      aiAC = new (window.AudioContext || window.webkitAudioContext)();
+      aiAn = aiAC.createAnalyser(); aiAn.fftSize = 1024; aiAn.connect(aiAC.destination);
+    }
+    if (aiAC.state === 'suspended') aiAC.resume();
+    return aiAC;
+  }
+  function aiHush() { if (aiOut) { const o = aiOut; aiOut = null; try { o.onended = null; o.stop(); } catch (e) { } } }
+  function aiPlay(pid, m) {
+    aiHush();
+    const src = aiCtx().createBufferSource(); src.buffer = m.buf; src.connect(aiAn);
+    aiOut = src; aiSetFace('talking', m.mood || 'calm');
+    src.onended = () => { if (aiOut === src) { aiOut = null; aiSetFace('idle'); } };
+    src.start();
+  }
+  async function aiVoice(pid, m) {
+    if (!m.speech) return aiSetFace('idle');
+    const id = m.speech; m.speech = '';
+    try {
+      const res = await fetch(API + '/ai/speech', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!res.ok) { let d = {}; try { d = await res.json(); } catch (e) { } throw { message: d.message || 'Не получилось озвучить ответ' }; }
+      const used = res.headers.get('X-AI-Used'); if (acct.ai && used !== null) acct.ai.used = +used;
+      m.buf = await aiCtx().decodeAudioData(await res.arrayBuffer());
+      aiDraw(pid);                                         // появилась кнопка «Повторить», обновился остаток минут
+      if (aiS[pid].open) aiPlay(pid, m);
+    } catch (e) { aiS[pid].err = e.message || 'Не получилось озвучить ответ'; aiSetFace('idle'); }
+  }
+  async function aiTurn(pid, extra) {
+    const st = aiSt(pid); if (st.busy) return;
+    aiHush();
+    st.open = true; st.err = ''; st.busy = 'думаю'; aiFace.pid = pid; aiDraw(pid); aiSetFace('thinking', 'calm');
+    const history = st.hist.filter(m => m.role !== 'err').map(m => ({ role: m.role, text: m.role === 'assistant' && m.notes ? m.text + '\n' + m.notes : m.text }));
+    const code = st.code;
+    try {
+      const r = await api('/ai/turn', 'POST', { pid, code, history, ...extra });
+      acct.ai = r.ai; st.sent = code;
+      const said = r.heard || extra.text || (st.hist.length ? 'Посмотри мой код ещё раз.' : 'Разбери моё решение.');
+      const m = { role: 'assistant', text: r.say, notes: r.notes, mood: r.mood || 'calm', speech: r.speech };
+      st.hist.push({ role: 'user', text: said, voice: !!r.heard }, m);
+      st.busy = ''; aiDraw(pid);
+      await aiVoice(pid, m);
+    } catch (e) {
+      st.busy = '';
+      if (e.code !== 'ai_silence') st.err = e.message || 'Не получилось — попробуйте ещё раз';      // не расслышал — просто слушаем дальше
+      if (e.status === 429 && e.code === 'ai_limit' && acct.ai) acct.ai.used = acct.ai.limit;
+      aiDraw(pid); aiSetFace('idle', e.code === 'ai_silence' ? 'calm' : 'sad');
+    }
+    if (aiLeft() <= 0 && vs) vs.muted = true;
+  }
+
+  /* ── микрофон: слушаем постоянно, фразу режем по паузе ──
+     Громкость сравнивается с уровнем шума комнаты; речь — дольше 0,35 с громче порога, конец фразы — 1,1 с тишины.
+     Полсекунды до начала речи тоже уходят в запись, чтобы не съедалось первое слово. Отправляем WAV 16 кГц. */
+  async function aiMicOn(pid) {
+    const v = vs;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { v.nomic = true; return aiDraw(pid); }
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+    catch (e) { v.nomic = true; toast('Нет доступа к микрофону — разрешите его в настройках браузера или пишите вопросы текстом'); return aiDraw(pid); }
+    if (vs !== v) { stream.getTracks().forEach(t => t.stop()); return; }                 // режим уже выключили
+    const ctx = aiCtx(), src = ctx.createMediaStreamSource(stream), proc = ctx.createScriptProcessor(2048, 1, 1), sink = ctx.createGain();
+    sink.gain.value = 0; src.connect(proc); proc.connect(sink); sink.connect(ctx.destination);
+    Object.assign(v, { stream, src, proc, sink, nf: .004, pre: [], buf: [], run: 0, speaking: false, voiced: 0, silent: 0, lvl: 0 });
+    proc.onaudioprocess = e => aiHear(v, e.inputBuffer.getChannelData(0), ctx.sampleRate);
+    aiDraw(pid); aiLoop();
+  }
+  function aiHear(v, d, rate) {
+    if (vs !== v) return;
+    let sum = 0; for (let i = 0; i < d.length; i++) sum += d[i] * d[i];
+    const rms = Math.sqrt(sum / d.length), dt = d.length / rate, thr = Math.max(.012, v.nf * 3);
+    v.lvl = rms;
+    if (v.muted || aiFace.state !== 'idle' || aiSt(v.pid).busy) { v.speaking = false; v.pre = []; v.run = 0; return; }
+    const chunk = new Float32Array(d);
+    if (!v.speaking) {
+      v.pre.push(chunk); while (v.pre.length * dt > .5) v.pre.shift();
+      if (rms > thr) { if (++v.run >= 2) Object.assign(v, { speaking: true, buf: v.pre.slice(), pre: [], voiced: v.run * dt, silent: 0 }); }
+      else { v.run = 0; v.nf = v.nf * .97 + rms * .03; }
+      return;
+    }
+    v.buf.push(chunk);
+    if (rms > thr * .6) { v.silent = 0; if (rms > thr) v.voiced += dt; } else v.silent += dt;
+    if (v.silent >= 1.1 || v.buf.length * dt >= 30) {
+      const chunks = v.buf, sec = chunks.length * dt;
+      Object.assign(v, { speaking: false, buf: [], run: 0 });
+      if (v.voiced >= .35) aiTurn(v.pid, { audio: { data: aiB64(aiWav(chunks, rate)), format: 'wav', seconds: Math.round(sec * 10) / 10 } });
+    }
+  }
+  function aiWav(chunks, rate) {
+    const n = chunks.reduce((a, c) => a + c.length, 0), all = new Float32Array(n);
+    let o = 0; chunks.forEach(c => { all.set(c, o); o += c.length; });
+    const out = 16000, k = rate / out, m = Math.floor(n / k), dv = new DataView(new ArrayBuffer(44 + m * 2));
+    const str = (at, t) => { for (let i = 0; i < t.length; i++) dv.setUint8(at + i, t.charCodeAt(i)); };
+    str(0, 'RIFF'); dv.setUint32(4, 36 + m * 2, true); str(8, 'WAVE'); str(12, 'fmt '); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+    dv.setUint16(22, 1, true); dv.setUint32(24, out, true); dv.setUint32(28, out * 2, true); dv.setUint16(32, 2, true); dv.setUint16(34, 16, true);
+    str(36, 'data'); dv.setUint32(40, m * 2, true);
+    for (let i = 0; i < m; i++) {                          // понижаем частоту усреднением соседних сэмплов
+      const a = Math.floor(i * k), b = Math.max(a + 1, Math.floor((i + 1) * k));
+      let s = 0; for (let j = a; j < b; j++) s += all[j];
+      dv.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s / (b - a))) * 32767, true);
+    }
+    return dv.buffer;
+  }
+  function aiB64(buf) {
+    const u = new Uint8Array(buf); let t = '';
+    for (let i = 0; i < u.length; i += 0x8000) t += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+    return btoa(t);
+  }
+  function aiStop() {
+    const v = vs; vs = null; aiHush();
+    if (v) {
+      if (v.stream) v.stream.getTracks().forEach(t => t.stop());
+      try { v.proc && v.proc.disconnect(); v.src && v.src.disconnect(); v.sink && v.sink.disconnect(); } catch (e) { }
+      if (aiS[v.pid]) { aiS[v.pid].open = false; aiDraw(v.pid); }
+    }
+    aiFace.state = 'idle'; aiFace.mood = 'calm';
+  }
+  // «Разобрать с ИИ»: клик — жест пользователя, в нём запускаем звук и просим микрофон
+  function aiStart(pid) {
+    const st = aiSt(pid);
+    if (!st.code.trim()) { toast('Вставьте код решения или загрузите файл'); $(`[data-aisrc="${pid}"]`)?.focus(); return; }
+    if (vs && vs.pid !== pid) aiStop();
+    aiCtx();
+    const first = !st.hist.length, changed = st.code !== st.sent;
+    st.open = true;
+    if (!vs) { vs = { pid, muted: aiLeft() <= 0 }; aiMicOn(pid); }
+    aiTurn(pid, first ? {} : changed ? { text: 'Я поменял код. Посмотри ещё раз.' } : { text: 'Посмотри мой код ещё раз.' });
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-aiclose], [data-aigo], [data-aimute], [data-aireplay], [data-aisub], [data-mascot]'); if (!b) return;
+    if (b.dataset.aigo) aiStart(b.dataset.aigo);
+    else if (b.dataset.aiclose) aiStop();
+    else if (b.dataset.aimute) { if (vs) { vs.muted = !vs.muted || aiLeft() <= 0; aiSetFace(aiFace.state); } }
+    else if (b.dataset.aireplay) { const st = aiSt(b.dataset.aireplay), m = [...st.hist].reverse().find(x => x.role === 'assistant'); if (m && m.buf) { aiCtx(); aiPlay(b.dataset.aireplay, m); } }
+    else if (b.dataset.aisub) { aiSub = !aiSub; store.set('aisub', aiSub); aiDraw(b.dataset.aisub); }
+    else if (b.dataset.mascot && aiOut) { aiHush(); aiSetFace('idle'); }               // перебить: замолкает и слушает
+  });
+  window.addEventListener('hashchange', aiStop);
+  document.addEventListener('input', e => {
+    const t = e.target.closest('[data-aisrc]'); if (!t) return;
+    aiSetCode(t.dataset.aisrc, t.value, t);
+    if (/^insert(Text|CompositionText)$|^delete/.test(e.inputType || '')) acShow(t, /^delete/.test(e.inputType)); else acHide();
+  });
   function aiSetCode(pid, code, ta) {
     const st = aiSt(pid); st.code = code.slice(0, 20000);
     const box = $(`[data-aicode="${pid}"]`);
@@ -4066,85 +4379,6 @@ function stacklyApp() {
     clearTimeout(aiSaveT); aiSaveT = setTimeout(() => store.set('aicode', aiCode), 400);
     const acts = $(`[data-aiacts="${pid}"]`); if (acts && st.hist.length) acts.innerHTML = aiActsHTML(pid);
   }
-  function aiStopAudio() { if (aiAudio) { aiAudio.pause(); aiAudio = null; } }
-  function aiPlay(m) { aiStopAudio(); aiAudio = new Audio(m.url); aiAudio.play().catch(() => { }); }
-  // озвучка приходит отдельным запросом: текст уже на экране, голос догоняет
-  async function aiSpeak(pid, m) {
-    if (!m.speech) return;
-    const id = m.speech;
-    try {
-      const res = await fetch(API + '/ai/speech', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-      if (!res.ok) { let d = {}; try { d = await res.json(); } catch (e) { } throw { message: d.message || 'Не получилось озвучить ответ' }; }
-      const used = res.headers.get('X-AI-Used'); if (acct.ai && used !== null) acct.ai.used = +used;
-      m.url = URL.createObjectURL(await res.blob()); m.speech = '';
-      aiDraw(pid); aiPlay(m);
-    } catch (e) { toast(e.message || 'Не получилось озвучить ответ'); aiDraw(pid); }
-  }
-  async function aiTurn(pid, extra) {
-    const st = aiSt(pid); if (st.busy) return;
-    aiStopAudio();
-    st.open = true; st.busy = extra.audio ? 'Слушаю и думаю…' : 'Читаю код и думаю…'; aiDraw(pid);
-    const history = st.hist.filter(m => m.role !== 'err').map(m => ({ role: m.role, text: m.role === 'assistant' && m.notes ? m.text + '\n' + m.notes : m.text }));
-    const code = st.code;
-    try {
-      const r = await api('/ai/turn', 'POST', { pid, code, history, ...extra });
-      acct.ai = r.ai; st.sent = code;
-      const said = r.heard || extra.text || (st.hist.length ? 'Посмотри мой код ещё раз.' : 'Разбери моё решение.');
-      st.hist.push({ role: 'user', text: said, voice: !!r.heard }, { role: 'assistant', text: r.say, notes: r.notes, speech: r.speech });
-      st.busy = ''; aiDraw(pid);
-      aiSpeak(pid, st.hist[st.hist.length - 1]);
-    } catch (e) {
-      st.busy = '';
-      if (e.status === 429 && e.code === 'ai_limit' && acct.ai) acct.ai.used = acct.ai.limit;
-      st.hist.push({ role: 'err', text: e.message || 'Не получилось — попробуйте ещё раз' }); aiDraw(pid);
-    }
-  }
-  // запись с микрофона: первое нажатие — начать, второе — закончить и отправить; не дольше минуты
-  async function aiMic(pid) {
-    if (aiRec) { const same = aiRec.pid === pid; aiRec.stop(); if (same) return; }
-    if (!navigator.mediaDevices || !window.MediaRecorder) { toast('Этот браузер не умеет записывать звук — напишите вопрос текстом'); return; }
-    let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
-    catch (e) { toast('Нет доступа к микрофону — разрешите его в настройках браузера'); return; }
-    aiStopAudio();
-    const type = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'].find(t => MediaRecorder.isTypeSupported(t)) || '';
-    const rec = new MediaRecorder(stream, type ? { mimeType: type } : undefined), chunks = [], t0 = Date.now();
-    let cancelled = false;
-    rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-    const tick = setInterval(() => { const el = $('[data-aitimer]'); const s = (Date.now() - t0) / 1000; if (el) el.textContent = mmss(Math.floor(s)); if (s >= 60) stop(); }, 250);
-    function stop() { if (rec.state !== 'inactive') rec.stop(); }
-    rec.onstop = () => {
-      clearInterval(tick); stream.getTracks().forEach(t => t.stop()); aiRec = null;
-      const sec = (Date.now() - t0) / 1000;
-      if (cancelled || sec < 0.8 || !chunks.length) { aiDraw(pid); if (!cancelled) toast('Слишком коротко — нажмите микрофон, скажите вопрос и нажмите ещё раз'); return; }
-      const blob = new Blob(chunks, { type: rec.mimeType || type }), mt = blob.type;
-      const format = /webm/.test(mt) ? 'webm' : /ogg/.test(mt) ? 'ogg' : /mp4|aac|m4a/.test(mt) ? 'm4a' : 'webm';
-      const fr = new FileReader();
-      fr.onload = () => aiTurn(pid, { audio: { data: String(fr.result).split(',')[1] || '', format, seconds: Math.round(sec * 10) / 10 } });
-      fr.readAsDataURL(blob);
-    };
-    aiRec = { pid, stop, cancel() { cancelled = true; stop(); } };
-    rec.start(250); aiDraw(pid);
-  }
-  document.addEventListener('click', e => {
-    const b = e.target.closest('[data-aiclose], [data-aigo], [data-aimic], [data-aiplay]'); if (!b) return;
-    if (b.dataset.aiclose) { if (aiRec) aiRec.cancel(); aiStopAudio(); aiS[b.dataset.aiclose].open = false; aiDraw(b.dataset.aiclose); }
-    else if (b.dataset.aigo) {
-      const pid = b.dataset.aigo, st = aiSt(pid);
-      if (!st.code.trim()) { toast('Вставьте код решения или загрузите файл'); $(`[data-aisrc="${pid}"]`)?.focus(); return; }
-      aiTurn(pid, !st.hist.length ? {} : st.code !== st.sent ? { text: 'Я поменял код. Посмотри ещё раз.' } : { text: 'Посмотри мой код ещё раз.' });
-    } else if (b.dataset.aimic) aiMic(b.dataset.aimic);
-    else if (b.dataset.aiplay) {
-      const m = aiS[b.dataset.p].hist[+b.dataset.aiplay];
-      if (m.url) aiPlay(m); else { b.disabled = true; aiSpeak(b.dataset.p, m); }
-    }
-  });
-  window.addEventListener('hashchange', () => { if (aiRec) aiRec.cancel(); aiStopAudio(); });
-  document.addEventListener('input', e => {
-    const t = e.target.closest('[data-aisrc]'); if (!t) return;
-    aiSetCode(t.dataset.aisrc, t.value, t);
-    if (/^insert(Text|CompositionText)$|^delete/.test(e.inputType || '')) acShow(t, /^delete/.test(e.inputType)); else acHide();
-  });
   // номера строк и подсветка едут вместе с кодом; подсказка при прокрутке страницы закрывается
   function edSync(t) {
     const ed = t.closest('.ai-editor'); if (!ed) return;
@@ -4166,7 +4400,7 @@ function stacklyApp() {
     const f = e.target.closest('[data-aiask]'); if (!f) return;
     e.preventDefault();
     const inp = $('input', f), text = inp.value.trim(); if (!text) { inp.focus(); return; }
-    aiTurn(f.dataset.aiask, { text });
+    aiCtx(); aiTurn(f.dataset.aiask, { text });
   });
   /* ── редактор кода: отступы, парные скобки, подсказки ──
      Подсветка — тот же hl(), что у решений на сайте: прозрачный текст поля лежит поверх раскрашенной копии.

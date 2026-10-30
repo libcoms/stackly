@@ -13,7 +13,7 @@ class FakeRouterAI:
     """Чат, распознавание и озвучка: запросы складываются в self.calls, ответы задаёт тест."""
     def __init__(self):
         self.calls, self.auth_ok = [], True
-        self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```'})
+        self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```', 'mood': 'angry'})
         self.heard, self.speech_sec, self.fail = 'а почему шаг не тот', 10, False
         fake = self
 
@@ -104,6 +104,7 @@ class AiTest(T.ServerCase):
         self.assertEqual(st, 200, r)
         self.assertEqual(r['say'], 'В пятой строке шаг цикла НЕ тот. Подумай, с какого числа начинать.')   # звуки — только в голосе
         self.assertTrue('range(2027' in r['notes'] and r['speech'])
+        self.assertEqual(r['mood'], 'angry')
         self.assertNotIn('ПРОЖАРКА', self.rai.last('/chat/completions')['messages'][0]['content'])
         self.assertEqual(r['heard'], '')
         sent = self.rai.last('/chat/completions')
@@ -162,7 +163,7 @@ class AiTest(T.ServerCase):
         # модель ответила не JSON — текст целиком идёт в речь, без markdown
         self.rai.reply = 'Всё **верно**, молодец!'
         r3 = t.call('POST', '/ai/turn', {'pid': '25-1', 'code': code, 'text': 'а так?'})[1]
-        self.assertEqual((r3['say'], r3['notes']), ('Всё верно, молодец!', ''))
+        self.assertEqual((r3['say'], r3['notes'], r3['mood']), ('Всё верно, молодец!', '', 'calm'))
 
         # RouterAI упал — понятная ошибка, реплику можно озвучить потом
         self.rai.fail = True

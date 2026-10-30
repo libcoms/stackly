@@ -929,10 +929,11 @@ AI_PROMPT = '''Ты — репетитор по информатике на са
 - Дальше отвечай на вопросы ученика об этой задаче и его коде. На посторонние темы мягко возвращай к задаче.
 - Речь ученика распознаётся автоматически и может быть с ошибками — понимай по смыслу.
 
-Формат ответа — только JSON-объект, без текста вокруг: {"say": "…", "notes": "…"}
+Формат ответа — только JSON-объект, без текста вокруг: {"say": "…", "notes": "…", "mood": "…"}
 say — то, что прозвучит голосом: 2–5 коротких предложений живой эмоциональной разговорной речи, не длиннее 600 символов. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
 Говори с эмоциями: восклицания, удивление, радость, разочарование — как живой человек, а не диктор. Для озвучки можно вставлять в say звуки в квадратных скобках: [laughs], [chuckle], [sigh], [short pause] — не больше двух-трёх за реплику; слово, которое надо выделить голосом, пиши ЗАГЛАВНЫМИ буквами.
-notes — необязательная письменная подсказка к сказанному: исправленная строка или маленький фрагмент кода в блоке ``` (до 8 строк). Если показывать нечего — пустая строка.'''
+notes — необязательная письменная подсказка к сказанному: исправленная строка или маленький фрагмент кода в блоке ``` (до 8 строк). Если показывать нечего — пустая строка.
+mood — эмоция маскота, который произносит реплику (ученик видит его вместо текста): одно из calm, happy, love, laugh, surprised, angry, sad. happy — похвала, love — умиление, laugh — смешно, surprised — неожиданная ошибка или находка, angry — злость и прожарка, sad — разочарование.'''
 
 def ai_allowed(u):
     return bool(AI_KEY) and u is not None and u['email'].lower() in AI_USERS
@@ -1023,8 +1024,11 @@ def ai_task_context(p, code):
     parts.append('КОД УЧЕНИКА (номера строк добавлены для ссылок):\n' + numbered)
     return '\n\n'.join(x for x in parts if x)
 
+AI_MOODS = ('calm', 'happy', 'love', 'laugh', 'surprised', 'angry', 'sad')
+
 def ai_parse(content):
-    """Ответ модели → (say, notes, voice): say — для экрана, voice — для озвучки, со звуками [laughs] и ударениями.
+    """Ответ модели → (say, notes, voice, mood): say — для экрана, voice — для озвучки, со звуками [laughs] и ударениями,
+    mood — эмоция маскота.
     Если модель не соблюла JSON — весь текст идёт в речь."""
     content = str(content or '').strip()
     m = re.search(r'\{.*\}', content, re.S)
@@ -1034,14 +1038,15 @@ def ai_parse(content):
         d = None
     if isinstance(d, dict) and isinstance(d.get('say'), str):
         say, notes = d['say'], d.get('notes') if isinstance(d.get('notes'), str) else ''
+        mood = d.get('mood') if d.get('mood') in AI_MOODS else 'calm'
     else:
-        say, notes = re.sub(r'```.*?```', '', content, flags=re.S), ''
+        say, notes, mood = re.sub(r'```.*?```', '', content, flags=re.S), '', 'calm'
     say = re.sub(r'\s+', ' ', re.sub(r'[`*#_]', '', say)).strip()
     if len(say) > AI_MAX_SAY:                 # длинную реплику режем по концу предложения
         cut = say[:AI_MAX_SAY]
         say = cut[:max(cut.rfind('. '), cut.rfind('? '), cut.rfind('! ')) + 1] or cut
     shown = re.sub(r'\s+([,.!?…])', r'\1', re.sub(r'\s*[\[<][a-z ]{2,20}[\]>]\s*', ' ', say)).strip()
-    return shown, notes.strip()[:3000], say
+    return shown, notes.strip()[:3000], say, mood
 
 def wav(pcm, rate=PCM_RATE):
     """Сырые 16-битные моно-сэмплы → WAV, который играет любой браузер."""
@@ -1503,7 +1508,10 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 told = 0.0
             # длительность — по данным распознавания; если её нет, по словам браузера, но не меньше оценки по размеру
-            sec = min(max(float(usage.get('seconds') or 0) or max(told, len(raw) / 6000), 1.0), 120.0)
+            est = len(raw) / 6000                     # сжатый звук: ~6 КБ/с; у WAV длительность точно по заголовку
+            if raw[:4] == b'RIFF' and len(raw) > 44 and int.from_bytes(raw[28:32], 'little'):
+                est = (len(raw) - 44) / int.from_bytes(raw[28:32], 'little')
+            sec = min(max(float(usage.get('seconds') or 0) or max(told, est), 1.0), 120.0)
             ai_log(u['id'], 'stt', p['id'], sec, usage.get('cost') or 0)
             heard = re.sub(r'\s+', ' ', str(r.get('text') or '')).strip()[:2000]
             if not heard:
@@ -1530,10 +1538,10 @@ class Handler(BaseHTTPRequestHandler):
             log.warning('RouterAI chat: нет ответа: %s', str(r)[:300])
             raise ApiError(502, 'ai_error', 'ИИ не ответил. Попробуйте ещё раз')
         ai_log(u['id'], 'llm', p['id'], 0, (r.get('usage') or {}).get('cost') or 0)
-        say, notes, voice = ai_parse(content)
+        say, notes, voice, mood = ai_parse(content)
         if not say:
             say = voice = 'Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.'
-        self.send_json(200, {'heard': heard, 'say': say, 'notes': notes, 'speech': ai_say_put(u['id'], p['id'], (voice, roast)),
+        self.send_json(200, {'heard': heard, 'say': say, 'notes': notes, 'mood': mood, 'speech': ai_say_put(u['id'], p['id'], (voice, roast)),
                              'ai': ai_status(u['id'])})
 
     def ai_speech(self):
