@@ -14,7 +14,7 @@ class FakeRouterAI:
     def __init__(self):
         self.calls, self.auth_ok = [], True
         self.reply = json.dumps({'say': 'В пятой строке шаг цикла [sigh] НЕ тот. Подумай, с какого числа начинать.', 'notes': '```\nfor x in range(2027, 10**10, 2027):\n```', 'mood': 'angry'})
-        self.heard, self.speech_sec, self.fail, self.fail_tts, self.block_swear = 'а почему шаг не тот', 10, False, False, False
+        self.heard, self.speech_sec, self.fail, self.fail_tts, self.block_swear, self.stream_cost = 'а почему шаг не тот', 10, False, False, False, 0.3
         fake = self
 
         class H(BaseHTTPRequestHandler):
@@ -42,7 +42,7 @@ class FakeRouterAI:
                     self.close_connection = True
                     for i in range(0, len(fake.reply), 7):
                         self.wfile.write(b'data: ' + json.dumps({'choices': [{'delta': {'content': fake.reply[i:i + 7]}}]}).encode() + b'\n\n')
-                    self.wfile.write(b'data: ' + json.dumps({'choices': [{'delta': {}}], 'usage': {'cost': 0.3}}).encode() + b'\n\ndata: [DONE]\n\n')
+                    self.wfile.write(b'data: ' + json.dumps({'choices': [{'delta': {}}], 'usage': {'cost': fake.stream_cost}}).encode() + b'\n\ndata: [DONE]\n\n')
                     return
                 if self.path == '/chat/completions':
                     return self.send(json.dumps({'choices': [{'message': {'content': fake.reply}}], 'usage': {'cost': 0.42}}).encode())
@@ -257,6 +257,13 @@ class AiTest(T.ServerCase):
         self.assertEqual(self.speech(t, say['speech'])[0], 200)
         self.assertEqual(self.rai.last('/audio/speech')['input'], 'пи-и-ип, ты range от единицы запустил!')
         self.rai.block_swear = False
+        # цена пришла не числом — ответ всё равно договаривается до конца
+        self.rai.stream_cost = {'total': '0.5'}
+        self.rai.reply = json.dumps({'mood': 'laugh', 'say': 'Ха! Первое. Второе предложение подлиннее, чтобы было что копить в хвосте ответа. Третье.', 'notes': ''}, ensure_ascii=False)
+        ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'ну?'})[2]
+        self.assertEqual(ev[-1]['t'], 'done')
+        self.assertEqual(' '.join(e['text'] for e in ev if e['t'] == 'say'), 'Ха! Первое. Второе предложение подлиннее, чтобы было что копить в хвосте ответа. Третье.')
+        self.rai.stream_cost = 0.3
         # ответ не JSON — всё равно звучит
         self.rai.reply = 'Отлично. Всё работает, молодец!'
         ev = self.stream(t, {'pid': '25-1', 'code': code, 'text': 'а так?'})[2]

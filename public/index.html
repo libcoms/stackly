@@ -4174,6 +4174,7 @@ function stacklyApp() {
         ${last && (last.parts || []).some(x => x.buf) ? `<button type="button" class="btn small ghost" data-aireplay="${pid}">${I.play}Повторить</button>` : ''}
         <button type="button" class="btn small ghost" data-aisub="${pid}" aria-pressed="${aiSub}">${aiSub ? 'Скрыть текст' : 'Субтитры'}</button>
         <button type="button" class="btn small ghost" data-aiclose="${pid}">Завершить</button>
+        ${isTeacher() ? `<button type="button" class="btn small ghost" data-aidiag="${pid}" title="Скопировать хронологию последних ответов для разбора неполадок">Отчёт</button>` : ''}
       </div>
       ${last && last.notes ? `<div class="ai-notes"><b>Подсказка</b>${md(last.notes)}</div>` : ''}
       ${aiSub && st.hist.length ? `<div class="ai-chat">${st.hist.filter(m => m.role !== 'err').map(line).join('')}</div>` : ''}
@@ -4298,7 +4299,7 @@ function stacklyApp() {
     if (aiAC.state === 'suspended') aiAC.resume();
     return aiAC;
   }
-  function aiHush() { aiQ = null; if (aiOut) { const o = aiOut; aiOut = null; try { o.onended = null; o.stop(); } catch (e) { } } }
+  function aiHush() { if (aiQ || aiOut) aiNote('звук остановлен', new Error().stack.split('\n')[2]?.trim() || ''); aiQ = null; if (aiOut) { const o = aiOut; aiOut = null; try { o.onended = null; o.stop(); } catch (e) { } } }
   function aiQueue(pid, parts, done, mood) { aiHush(); aiQ = { pid, parts, i: 0, done, playing: false, mood }; return aiQ; }
   function aiPump(q) {
     if (q !== aiQ || q.playing) return;
@@ -4306,11 +4307,12 @@ function stacklyApp() {
     if (!part) { if (q.done) { aiQ = null; aiSetFace('idle'); aiDraw(q.pid); } return; }        // всё сказал — снова слушает
     if (!part.ready) return;                                                                     // звук ещё в пути
     q.i++;
-    if (!part.buf) return aiPump(q);
+    if (!part.buf) { aiNote('кусок без звука — пропущен'); return aiPump(q); }
     const src = aiCtx().createBufferSource(); src.buffer = part.buf; src.connect(aiAn);
+    aiNote('звучит кусок', q.i, part.buf.duration.toFixed(1) + ' с', 'звук:', aiAC.state);
     q.playing = true; aiOut = src;
     if (aiFace.state !== 'talking' || aiFace.mood !== q.mood) aiSetFace('talking', q.mood);
-    src.onended = () => { if (aiOut === src) aiOut = null; q.playing = false; aiPump(q); };
+    src.onended = () => { aiNote('кусок закончился', q.i); if (aiOut === src) aiOut = null; q.playing = false; aiPump(q); };
     src.start();
   }
   async function aiFetchPart(pid, q, part) {
@@ -4319,11 +4321,20 @@ function stacklyApp() {
       if (!res.ok) { let d = {}; try { d = await res.json(); } catch (e) { } throw { message: d.message || 'Не получилось озвучить ответ' }; }
       const used = res.headers.get('X-AI-Used'); if (acct.ai && used !== null) acct.ai.used = +used;
       part.buf = await aiCtx().decodeAudioData(await res.arrayBuffer());
-    } catch (e) { aiS[pid].err = e.message || 'Не получилось озвучить ответ'; }
+      aiNote('озвучка получена', part.buf.duration.toFixed(1) + ' с');
+    } catch (e) { aiNote('озвучка не получена:', e.message || e); aiS[pid].err = e.message || 'Не получилось озвучить ответ'; }
     part.ready = true; aiPump(q);
+  }
+  // хронология последних ответов — для кнопки «Отчёт»: что пришло, что прозвучало, какие ошибки
+  const aiDiag = [];
+  const aiNote = (...a) => { aiDiag.push(`${(performance.now() / 1000).toFixed(2)} ${a.join(' ')}`); if (aiDiag.length > 120) aiDiag.shift(); };
+  function aiLine(line) {
+    try { const ev = JSON.parse(line); aiNote('событие', ev.t, ev.t === 'say' ? ev.text.length + ' симв.' : ev.t === 'error' ? ev.message : ''); return ev; }
+    catch (e) { aiNote('нераспознанная строка', line.slice(0, 120)); return { t: 'skip' }; }
   }
   async function aiTurn(pid, extra) {
     const st = aiSt(pid); if (st.busy) return;
+    aiNote('вопрос', extra.audio ? 'голосом' : extra.text ? 'текстом' : 'разбор кода');
     st.open = true; st.err = ''; st.busy = 'думаю'; aiFace.pid = pid; aiDraw(pid);
     const q = aiQueue(pid, [], false, 'calm'); aiSetFace('thinking', 'calm');
     const history = st.hist.filter(m => m.role !== 'err').map(m => ({ role: m.role, text: m.role === 'assistant' && m.notes ? m.text + '\n' + m.notes : m.text }));
@@ -4346,10 +4357,10 @@ function stacklyApp() {
       for (;;) {
         const { value, done } = await rd.read();
         buf += dec.decode(value || new Uint8Array(), { stream: !done });
-        let i; while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (line) on(JSON.parse(line)); }
+        let i; while ((i = buf.indexOf('\n')) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (line) on(aiLine(line)); }
         if (done) break;
       }
-      if (buf.trim()) on(JSON.parse(buf));
+      if (buf.trim()) on(aiLine(buf.trim()));
       if (!q.done) throw { message: 'Ответ оборвался — спросите ещё раз' };
     } catch (e) {
       st.busy = '';
@@ -4439,7 +4450,8 @@ function stacklyApp() {
     aiTurn(pid, first ? {} : changed ? { text: 'Я поменял код. Посмотри ещё раз.' } : { text: 'Посмотри мой код ещё раз.' });
   }
   document.addEventListener('click', e => {
-    const b = e.target.closest('[data-aiclose], [data-aigo], [data-aimute], [data-aireplay], [data-aisub], [data-mascot]'); if (!b) return;
+    const b = e.target.closest('[data-aiclose], [data-aigo], [data-aimute], [data-aireplay], [data-aisub], [data-aidiag], [data-mascot]'); if (!b) return;
+    if (b.dataset.aidiag) { copyText([navigator.userAgent, 'микрофон: ' + (vs ? (vs.nomic ? 'нет' : vs.muted ? 'пауза' : 'слушает') : 'выкл'), ...aiDiag].join('\n'), null); toast('Отчёт скопирован — вставьте его в сообщение'); return; }
     if (b.dataset.aigo) aiStart(b.dataset.aigo);
     else if (b.dataset.aiclose) aiStop();
     else if (b.dataset.aimute) { if (vs) { vs.muted = !vs.muted || aiLeft() <= 0; aiSetFace(aiFace.state); } }

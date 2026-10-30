@@ -1070,6 +1070,10 @@ def ai_status(uid):
     return {'limit': AI_WEEK_SECONDS, 'used': round(ai_used(uid), 1), 'reset': week_start() + 7 * 86400, 'roast': ai_roast(uid)}
 
 def ai_log(uid, kind, pid, seconds=0.0, cost=0.0):
+    try:
+        cost = float(cost or 0)
+    except (TypeError, ValueError):
+        cost = 0.0
     db().execute('INSERT INTO ai_log (user_id, ts, kind, pid, seconds, cost) VALUES (?,?,?,?,?,?)',
                  (uid, int(time.time()), kind, pid, float(seconds or 0), float(cost or 0)))
 
@@ -1827,6 +1831,20 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write((json.dumps(obj, ensure_ascii=False) + '\n').encode())
             self.wfile.flush()
 
+        # заголовки уже ушли: любая ошибка дальше — событием в потоке, иначе общий обработчик допишет
+        # в поток вторую HTTP-страницу и браузер проиграет только начало ответа
+        try:
+            self.ai_stream_body(u, p, resp, roast, heard, emit)
+        except Exception:
+            log.exception('ответ ИИ потоком')
+            try:
+                emit({'t': 'error', 'message': 'Ошибка на сервере — спросите ещё раз'})
+            except OSError:
+                pass
+        finally:
+            resp.close()
+
+    def ai_stream_body(self, u, p, resp, roast, heard, emit):
         if heard:
             emit({'t': 'heard', 'heard': heard})
         content, cost, mood_sent, pos, spoken, said = '', 0, False, 0, 0, []
@@ -1853,10 +1871,13 @@ class Handler(BaseHTTPRequestHandler):
                     j = json.loads(data)
                 except ValueError:
                     continue
+                if not isinstance(j, dict):
+                    continue
                 if isinstance(j.get('usage'), dict):
                     cost = j['usage'].get('cost') or cost
-                delta = (((j.get('choices') or [{}])[0] or {}).get('delta') or {}).get('content') or ''
-                if not delta:
+                ch = (j.get('choices') or [{}])[0]
+                delta = ((ch.get('delta') if isinstance(ch, dict) else None) or {}).get('content') or ''
+                if not isinstance(delta, str) or not delta:
                     continue
                 content += delta
                 if not mood_sent:
@@ -1871,11 +1892,10 @@ class Handler(BaseHTTPRequestHandler):
                         speak(piece)
         except (OSError, ValueError) as e:
             log.warning('RouterAI chat stream: %s', e)
-            emit({'t': 'error', 'message': 'Связь с RouterAI оборвалась. Спросите ещё раз'})
-            return
-        finally:
-            resp.close()
-        ai_log(u['id'], 'llm', p['id'], 0, cost)
+            if not said:
+                emit({'t': 'error', 'message': 'Связь с RouterAI оборвалась. Спросите ещё раз'})
+                return
+        # хвост ответа — сразу, до записи в журнал
         say, notes, voice, mood = ai_parse(content)
         text, closed = json_partial(content, 'say')
         if text is None:                                   # модель ответила не JSON — озвучиваем всё, что разобрали
@@ -1886,6 +1906,7 @@ class Handler(BaseHTTPRequestHandler):
         if not said:
             speak('Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.')
         emit({'t': 'done', 'say': ' '.join(said), 'notes': notes, 'mood': mood, 'ai': ai_status(u['id'])})
+        ai_log(u['id'], 'llm', p['id'], 0, cost)
 
     def ai_speech(self):
         """Озвучка реплики: mp3 или WAV (обычно уже готова — её начали делать в фоне). Длительность списывается с недельного лимита."""

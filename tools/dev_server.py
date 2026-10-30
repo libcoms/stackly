@@ -28,6 +28,18 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             r = urllib.request.urlopen(req)
         except urllib.error.HTTPError as e:
             r = e
+        if (r.headers.get('Content-Type') or '').startswith('application/x-ndjson'):
+            # ответ ИИ идёт потоком — отдаём куски сразу, как nginx с proxy_buffering off
+            self.send_response(r.status)
+            self.send_header('Content-Type', r.headers['Content-Type'])
+            self.end_headers()
+            self.close_connection = True
+            while True:
+                line = r.readline()
+                if not line:
+                    return
+                self.wfile.write(line)
+                self.wfile.flush()
         data = r.read()
         self.send_response(r.status)
         for k, v in r.headers.items():
