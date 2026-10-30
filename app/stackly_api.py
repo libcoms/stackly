@@ -11,8 +11,10 @@
   STACKLY_COOKIE_SECURE 1 — cookie только по HTTPS (выключать лишь для локальной проверки)
   STACKLY_CONTENT   папка с закрытыми материалами (content/ рядом с app/, на сервере /opt/stackly/content)
   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM — почта для восстановления пароля
+  STACKLY_AI_KEY    ключ RouterAI для разбора кода с ИИ; STACKLY_AI_USERS — кому открыт (почты через запятую),
+                    STACKLY_AI_MODEL/STT/TTS/VOICE — модели, STACKLY_AI_WEEK_SECONDS — лимит звука в неделю (600)
 """
-import base64, calendar, hashlib, hmac, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
+import base64, calendar, hashlib, hmac, html, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
 import urllib.error, urllib.request
 from urllib.parse import parse_qs
 from email.message import EmailMessage
@@ -219,6 +221,12 @@ def migrate():
       CREATE TABLE IF NOT EXISTS poll_votes (
         poll_id INTEGER NOT NULL REFERENCES polls(id) ON DELETE CASCADE, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         choice INTEGER NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (poll_id, user_id));
+      -- разговор с ИИ о коде задачи: kind — llm (ответ модели), stt (речь ученика), tts (ответ голосом);
+      -- seconds — секунды звука в счёт недельного лимита, cost — цена запроса в рублях по RouterAI
+      CREATE TABLE IF NOT EXISTS ai_log (
+        id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, ts INTEGER NOT NULL,
+        kind TEXT NOT NULL, pid TEXT NOT NULL DEFAULT '', seconds REAL NOT NULL DEFAULT 0, cost REAL NOT NULL DEFAULT 0);
+      CREATE INDEX IF NOT EXISTS ai_log_user ON ai_log(user_id, ts);
     ''')
     # сообщения в эфир больше не ждут проверки учителя: старые «на проверке» закрываем, чтобы не всплыли
     db().execute("UPDATE spends SET status = 'shown' WHERE kind = 'alert' AND status = 'pending'")
@@ -875,6 +883,143 @@ def apply_payment(pid):
         db().execute('UPDATE payments SET status = ? WHERE id = ?', (status, pid))
     return db().execute('SELECT * FROM payments WHERE id = ?', (pid,)).fetchone()
 
+# ---------------------------------------------------------------- разбор кода с ИИ (RouterAI)
+# Ученик присылает код к задаче банка, модель разбирает его как репетитор и отвечает голосом; дальше разговор:
+# ученик говорит в микрофон (речь → текст) или пишет. Лимит — минуты звука в неделю: речь ученика и ответы голосом.
+# Все модели — через RouterAI (OpenAI-совместимый API, оплата в рублях). Без ключа функции на сайте нет.
+AI_KEY = os.environ.get('STACKLY_AI_KEY', '')
+AI_API = os.environ.get('STACKLY_AI_API', 'https://routerai.ru/api/v1').rstrip('/')
+AI_MODEL = os.environ.get('STACKLY_AI_MODEL', 'anthropic/claude-sonnet-5.5')
+AI_STT = os.environ.get('STACKLY_AI_STT', 'openai/whisper-large-v3-turbo')
+AI_TTS = os.environ.get('STACKLY_AI_TTS', 'google/gemini-3.8-flash-tts')
+AI_VOICE = os.environ.get('STACKLY_AI_VOICE', 'Kore')
+AI_STYLE = os.environ.get('STACKLY_AI_STYLE', 'дружелюбно и спокойно, как репетитор на занятии, в живом разговорном темпе')
+# кому открыт разбор: почты через запятую; пока функция в проверке — только у одного преподавателя
+AI_USERS = {e.strip().lower() for e in os.environ.get('STACKLY_AI_USERS', 'dglumov4@gmail.com').split(',') if e.strip()}
+AI_WEEK_SECONDS = int(os.environ.get('STACKLY_AI_WEEK_SECONDS', '600'))
+AI_MAX_CODE = 20000
+AI_MAX_AUDIO = 1536 * 1024            # запись ученика до минуты (opus ~30 КБ/с, с запасом)
+AI_MAX_SAY = 700                      # реплика голосом — до ~45 секунд
+AI_HISTORY = 12                       # сколько последних реплик разговора видит модель
+AI_AUDIO_FORMATS = ('webm', 'ogg', 'm4a', 'mp3', 'wav', 'aac', 'flac')
+PCM_RATE = 24000                      # Gemini TTS: 16 бит, 24 кГц, моно
+
+AI_PROMPT = '''Ты — репетитор по информатике на сайте stackly и разговариваешь с учеником голосом. Ученик решает задание ЕГЭ по информатике и прислал свой код на Python.
+
+Как вести разбор:
+- В первом ответе коротко скажи, верен ли подход и получится ли правильный ответ. Затем назови главную ошибку или слабое место конкретно: какая строка или конструкция и почему она не работает. Подскажи, как исправить, — намёком или наводящим вопросом.
+- Не диктуй готовое решение целиком и не называй правильный ответ, пока ученик сам об этом не попросит. Эталон ниже — только для тебя, ученику его не показывай.
+- Если решение верное — коротко похвали и скажи, что можно упростить или ускорить, либо на чём обычно ошибаются в этом задании.
+- Дальше отвечай на вопросы ученика об этой задаче и его коде. На посторонние темы мягко возвращай к задаче.
+- Речь ученика распознаётся автоматически и может быть с ошибками — понимай по смыслу.
+
+Формат ответа — только JSON-объект, без текста вокруг: {"say": "…", "notes": "…"}
+say — то, что прозвучит голосом: 2–5 коротких предложений живой разговорной речи, не длиннее 600 символов. Без кода, markdown и спецсимволов: код не зачитывай, строки называй по номерам («в четвёртой строке»), конструкции — словами («условие в цикле», «функция range»).
+notes — необязательная письменная подсказка к сказанному: исправленная строка или маленький фрагмент кода в блоке ``` (до 8 строк). Если показывать нечего — пустая строка.'''
+
+def ai_allowed(u):
+    return bool(AI_KEY) and u is not None and u['email'].lower() in AI_USERS
+
+def ai_used(uid, now=None):
+    """Секунды звука за текущую неделю (с понедельника)."""
+    return db().execute('SELECT COALESCE(SUM(seconds), 0) FROM ai_log WHERE user_id = ? AND ts >= ?',
+                        (uid, week_start(now))).fetchone()[0]
+
+def ai_status(uid):
+    return {'limit': AI_WEEK_SECONDS, 'used': round(ai_used(uid), 1), 'reset': week_start() + 7 * 86400}
+
+def ai_log(uid, kind, pid, seconds=0.0, cost=0.0):
+    db().execute('INSERT INTO ai_log (user_id, ts, kind, pid, seconds, cost) VALUES (?,?,?,?,?,?)',
+                 (uid, int(time.time()), kind, pid, float(seconds or 0), float(cost or 0)))
+
+def rai(path, body, timeout):
+    """POST в RouterAI. Ответ — (байты, Content-Type). Ошибка — ApiError 502."""
+    req = urllib.request.Request(AI_API + path, method='POST', data=json.dumps(body, ensure_ascii=False).encode(),
+                                 headers={'Authorization': 'Bearer ' + AI_KEY, 'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read(), r.headers.get('Content-Type') or ''
+    except urllib.error.HTTPError as e:
+        log.warning('RouterAI %s: %s %s', path, e.code, e.read()[:500])
+    except (urllib.error.URLError, OSError) as e:
+        log.warning('RouterAI %s: %s', path, e)
+    raise ApiError(502, 'ai_error', 'ИИ сейчас не отвечает. Попробуйте ещё раз через минуту')
+
+def rai_json(path, body, timeout):
+    raw, _ = rai(path, body, timeout)
+    try:
+        return json.loads(raw)
+    except ValueError:
+        log.warning('RouterAI %s: не JSON: %s', path, raw[:300])
+        raise ApiError(502, 'ai_error', 'ИИ ответил что-то непонятное. Попробуйте ещё раз')
+
+def plain_text(h, limit=4000):
+    """HTML условия → текст для модели: ячейки таблиц через табуляцию, строки и абзацы — с новой строки."""
+    s = re.sub(r'<svg\b.*?</svg>', ' [рисунок] ', str(h or ''), flags=re.S | re.I)
+    s = re.sub(r'</t[dh]>', '\t', s, flags=re.I)
+    s = re.sub(r'<br\s*/?>|</(p|tr|li|div|h\d)>', '\n', s, flags=re.I)
+    s = html.unescape(re.sub(r'<[^>]+>', '', s))
+    s = re.sub(r'[ \t]*\n\s*\n+', '\n\n', re.sub(r'[ ]{2,}', ' ', s)).strip()
+    return s[:limit]
+
+def ai_task_context(p, code):
+    """Сообщение с задачей, эталоном и кодом ученика (строки пронумерованы, чтобы модель ссылалась на них)."""
+    parts = [f'Задание ЕГЭ №{p["task"]}. {p.get("title") or ""}', plain_text(p.get('text')), plain_text(p.get('extra'), 2500)]
+    if p.get('data'):
+        lines = str(p['data']).split('\n')
+        parts.append(f'К задаче приложен файл {p.get("dname") or "data.txt"} ({len(lines)} строк), начало:\n' + '\n'.join(lines[:12]))
+    parts.append('ЭТАЛОН (только для тебя, ученику не показывать):\nОтвет: ' + str(p.get('answer') or '')
+                 + ('\nРешение:\n' + str(p['code'])[:4000] if p.get('code') else ''))
+    numbered = '\n'.join(f'{i + 1:>3}| {l}' for i, l in enumerate(code.split('\n')))
+    parts.append('КОД УЧЕНИКА (номера строк добавлены для ссылок):\n' + numbered)
+    return '\n\n'.join(x for x in parts if x)
+
+def ai_parse(content):
+    """Ответ модели → (say, notes). Если модель не соблюла JSON — весь текст идёт в речь."""
+    content = str(content or '').strip()
+    m = re.search(r'\{.*\}', content, re.S)
+    try:
+        d = json.loads(m.group(0)) if m else None
+    except ValueError:
+        d = None
+    if isinstance(d, dict) and isinstance(d.get('say'), str):
+        say, notes = d['say'], d.get('notes') if isinstance(d.get('notes'), str) else ''
+    else:
+        say, notes = re.sub(r'```.*?```', '', content, flags=re.S), ''
+    say = re.sub(r'\s+', ' ', re.sub(r'[`*#_]', '', say)).strip()
+    if len(say) > AI_MAX_SAY:                 # длинную реплику режем по концу предложения
+        cut = say[:AI_MAX_SAY]
+        say = cut[:max(cut.rfind('. '), cut.rfind('? '), cut.rfind('! ')) + 1] or cut
+    return say, notes.strip()[:3000]
+
+def wav(pcm, rate=PCM_RATE):
+    """Сырые 16-битные моно-сэмплы → WAV, который играет любой браузер."""
+    return (b'RIFF' + (36 + len(pcm)).to_bytes(4, 'little') + b'WAVEfmt ' + (16).to_bytes(4, 'little')
+            + (1).to_bytes(2, 'little') + (1).to_bytes(2, 'little') + rate.to_bytes(4, 'little')
+            + (rate * 2).to_bytes(4, 'little') + (2).to_bytes(2, 'little') + (16).to_bytes(2, 'little')
+            + b'data' + len(pcm).to_bytes(4, 'little') + pcm)
+
+# реплики, которые ещё предстоит озвучить: id → (ученик, задача, текст, время). Озвучка — отдельным запросом,
+# чтобы текст ответа появился сразу, а голос догнал; каждая реплика озвучивается (и списывается с лимита) один раз
+_ai_says, _ai_lock = {}, threading.Lock()
+
+def ai_say_put(uid, pid, text, sid=None):
+    sid = sid or secrets.token_urlsafe(12)
+    now = time.time()
+    with _ai_lock:
+        for k in [k for k, v in _ai_says.items() if now - v[3] > 900]:
+            del _ai_says[k]
+        _ai_says[sid] = (uid, pid, text, now)
+    return sid
+
+def ai_say_take(uid, sid):
+    with _ai_lock:
+        v = _ai_says.get(sid)
+        if not v or v[0] != uid:
+            return None
+        del _ai_says[sid]
+        return v
+
 # ---------------------------------------------------------------- Telegram: очередь сообщений
 # Бот (app/stackly_bot.py) забирает сообщения из tg_outbox и отправляет их; API в Telegram сам не ходит.
 TG_TOKEN = os.environ.get('STACKLY_TG_TOKEN', '')
@@ -1167,6 +1312,10 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/polls'): self.polls,
             ('POST', '/api/polls/vote'): self.poll_vote,
             # свои материалы учителей
+            # разбор кода с ИИ: реплика (текст или голос ученика) → ответ модели → его озвучка
+            ('GET', '/api/ai/status'): self.ai_get_status,
+            ('POST', '/api/ai/turn'): self.ai_turn,
+            ('POST', '/api/ai/speech'): self.ai_speech,
             ('GET', '/api/materials'): self.materials,
             ('POST', '/api/materials'): self.material_save,
             ('POST', '/api/materials/delete'): self.material_delete,
@@ -1212,6 +1361,8 @@ class Handler(BaseHTTPRequestHandler):
             j['limits'] = FREE_LIMITS
             j['pay'] = bool(YK_SHOP and YK_KEY) and u['role'] == 'teacher'
             j['prices'] = {k: v[0] // 100 for k, v in PRO_PRICES.items()}
+        if ai_allowed(u):
+            j['ai'] = ai_status(u['id'])
         return j
 
     def save_teaching(self):
@@ -1226,6 +1377,132 @@ class Handler(BaseHTTPRequestHandler):
 
     def me(self):
         self.send_json(200, {'user': self.user_json(self.current_user())})
+
+    # --- разбор кода с ИИ
+    def ai_user(self):
+        u = self.current_user()
+        if not ai_allowed(u):
+            raise ApiError(403, 'forbidden', 'Разбор кода с ИИ пока недоступен')
+        return u
+
+    @staticmethod
+    def ai_problem(u, pid):
+        """Задача встроенного банка по информатике (с номером ЕГЭ), которую пользователь видит в банке."""
+        _, items, _ = content_bank()
+        p = next((x for x in items if x['id'] == pid and x.get('task') and not x.get('subject')), None)
+        if p and u['role'] != 'admin':
+            ids = student_builtin_ids(u['id'], items) if u['role'] == 'student' else teacher_builtin_ids(u, items)
+            p = p if pid in ids else None
+        if not p:
+            raise ApiError(404, 'not_found', 'Задача не найдена')
+        return p
+
+    @staticmethod
+    def ai_limit_check(uid):
+        st = ai_status(uid)
+        if st['used'] >= st['limit']:
+            raise ApiError(429, 'ai_limit', f'Время разговора с ИИ на этой неделе закончилось ({st["limit"] // 60} мин). '
+                                            'Новое начнётся в понедельник')
+        return st
+
+    def ai_get_status(self):
+        self.send_json(200, {'ai': ai_status(self.ai_user()['id'])})
+
+    def ai_turn(self):
+        u = self.ai_user()
+        d = self.body(4 * 1024 * 1024)
+        p = self.ai_problem(u, str(d.get('pid', '')))
+        code = str(d.get('code') or '').replace('\r\n', '\n').rstrip()
+        if not code.strip():
+            raise ApiError(400, 'no_code', 'Вставьте код решения')
+        if len(code) > AI_MAX_CODE:
+            raise ApiError(413, 'too_large', 'Код слишком длинный — оставьте только решение задачи')
+        self.ai_limit_check(u['id'])
+        if too_many(f'ai:{u["id"]}', 30, 600):
+            raise ApiError(429, 'rate_limited', 'Слишком много вопросов подряд. Передохните пару минут')
+        hit(f'ai:{u["id"]}')
+        heard, audio = '', d.get('audio')
+        if isinstance(audio, dict):
+            fmt = str(audio.get('format', ''))
+            if fmt not in AI_AUDIO_FORMATS:
+                raise ApiError(400, 'bad_audio', 'Этот формат записи не поддерживается')
+            try:
+                raw = base64.b64decode(str(audio.get('data', '')), validate=True)
+            except ValueError:
+                raise ApiError(400, 'bad_audio', 'Запись повреждена — попробуйте ещё раз')
+            if not raw:
+                raise ApiError(400, 'bad_audio', 'Запись пустая — попробуйте ещё раз')
+            if len(raw) > AI_MAX_AUDIO:
+                raise ApiError(413, 'too_large', 'Запись слишком длинная — говорите не дольше минуты')
+            r = rai_json('/audio/transcriptions', {'model': AI_STT, 'language': 'ru',
+                                                   'input_audio': {'data': base64.b64encode(raw).decode(), 'format': fmt}}, 60)
+            usage = r.get('usage') if isinstance(r.get('usage'), dict) else {}
+            try:
+                told = float(audio.get('seconds') or 0)
+            except (TypeError, ValueError):
+                told = 0.0
+            # длительность — по данным распознавания; если её нет, по словам браузера, но не меньше оценки по размеру
+            sec = min(max(float(usage.get('seconds') or 0) or max(told, len(raw) / 6000), 1.0), 120.0)
+            ai_log(u['id'], 'stt', p['id'], sec, usage.get('cost') or 0)
+            heard = re.sub(r'\s+', ' ', str(r.get('text') or '')).strip()[:2000]
+            if not heard:
+                raise ApiError(422, 'ai_silence', 'Не получилось разобрать речь — скажите ещё раз')
+            text = heard
+        else:
+            text = re.sub(r'\s+', ' ', str(d.get('text') or '')).strip()[:2000]
+        # разговор хранит браузер: последние реплики по очереди «ученик — ИИ», последняя — ИИ
+        hist = []
+        for m in (d.get('history') if isinstance(d.get('history'), list) else [])[-AI_HISTORY:]:
+            if isinstance(m, dict) and m.get('role') in ('user', 'assistant') and isinstance(m.get('text'), str) and m['text'].strip():
+                if (hist[-1]['role'] if hist else 'assistant') != m['role']:
+                    hist.append({'role': m['role'], 'content': m['text'][:3000]})
+        if hist and hist[-1]['role'] == 'user':
+            hist.pop()
+        msgs = [{'role': 'system', 'content': AI_PROMPT + '\n\n' + ai_task_context(p, code)}, *hist,
+                {'role': 'user', 'content': text or ('Посмотри мой код ещё раз.' if hist else 'Разбери моё решение.')}]
+        r = rai_json('/chat/completions', {'model': AI_MODEL, 'messages': msgs, 'max_tokens': 1200, 'temperature': 0.4}, 90)
+        try:
+            content = r['choices'][0]['message']['content']
+        except (KeyError, IndexError, TypeError):
+            log.warning('RouterAI chat: нет ответа: %s', str(r)[:300])
+            raise ApiError(502, 'ai_error', 'ИИ не ответил. Попробуйте ещё раз')
+        ai_log(u['id'], 'llm', p['id'], 0, (r.get('usage') or {}).get('cost') or 0)
+        say, notes = ai_parse(content)
+        if not say:
+            say = 'Не получилось сформулировать ответ. Спросите, пожалуйста, ещё раз.'
+        self.send_json(200, {'heard': heard, 'say': say, 'notes': notes, 'speech': ai_say_put(u['id'], p['id'], say),
+                             'ai': ai_status(u['id'])})
+
+    def ai_speech(self):
+        """Озвучка реплики из ai_turn: WAV. Длительность звука списывается с недельного лимита."""
+        u = self.ai_user()
+        sid = str(self.body().get('id', ''))
+        v = ai_say_take(u['id'], sid)
+        if not v:
+            raise ApiError(404, 'not_found', 'Эта реплика уже озвучена или устарела')
+        try:
+            self.ai_limit_check(u['id'])
+            body = {'model': AI_TTS, 'input': v[2], 'voice': AI_VOICE, 'response_format': 'pcm'}
+            if AI_TTS.startswith('google/'):
+                body['provider'] = {'options': {'google-ai-studio': {'speech_metadata': {'style': AI_STYLE}}}}
+            raw, ctype = rai('/audio/speech', body, 60)
+            if 'json' in ctype or len(raw) < 2 * PCM_RATE // 10:
+                log.warning('RouterAI speech: не звук (%s): %s', ctype, raw[:300])
+                raise ApiError(502, 'ai_error', 'Не получилось озвучить ответ')
+        except ApiError:
+            ai_say_put(u['id'], v[1], v[2], sid)          # можно попробовать озвучить ещё раз
+            raise
+        pcm = raw[44:] if raw[:4] == b'RIFF' else raw
+        sec = len(pcm) / (2 * PCM_RATE)
+        ai_log(u['id'], 'tts', v[1], sec)
+        out = wav(pcm)
+        self.send_response(200)
+        self.send_header('Content-Type', 'audio/wav')
+        self.send_header('Content-Length', str(len(out)))
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-AI-Used', str(round(ai_used(u['id']), 1)))
+        self.end_headers()
+        self.wfile.write(out)
 
     def register(self):
         d = self.body()

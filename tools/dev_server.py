@@ -31,7 +31,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         data = r.read()
         self.send_response(r.status)
         for k, v in r.headers.items():
-            if k.lower() in ('content-type', 'set-cookie', 'cache-control'):
+            if k.lower() in ('content-type', 'set-cookie', 'cache-control', 'x-ai-used'):
                 self.send_header(k, v)
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
