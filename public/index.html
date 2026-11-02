@@ -3674,7 +3674,7 @@ function stacklyApp() {
       <header class="t-head"><div><span class="eyebrow">stackly</span><h1>Тарифы и оплата</h1>
         <p>stackly — онлайн-платформа для репетиторов и преподавателей: группы учеников, домашние задания с автоматической проверкой ответов, банк задач, свои материалы и статистика по каждому ученику. Услуга — доступ к платформе на сайте stackly.su на выбранный срок. Ничего не нужно устанавливать или получать: всё работает в браузере на компьютере и телефоне.</p></div></header>
       <section class="t-sec">${plansHTML()}</section>
-      <section class="t-sec"><h2 class="sec-h">Как оплатить и получить доступ</h2><ol class="steps pay-steps">${steps.map(([b, t]) => `<li><b>${b}</b><span>${t}</span></li>`).join('')}</ol></section>
+      <section class="t-sec"><h2 class="sec-h">Как оплатить и получить доступ</h2><ol class="steps pay-steps">${steps.map(([b, t]) => `<li><span><b>${b}</b>${t}</span></li>`).join('')}</ol></section>
       <section class="t-sec pay-facts">
         <div class="panel"><div class="panel-h"><h2>Что входит в услугу</h2></div><p class="plan-note">Доступ к функциям тарифа Про на 1 или 12 месяцев: без ограничений по группам, ученикам и месту, с материалами платформы. Ученикам платить не нужно — для них stackly бесплатен.</p></div>
         <div class="panel"><div class="panel-h"><h2>Продление и отказ</h2></div><p class="plan-note">Тариф не продлевается автоматически — деньги не спишутся без вашего действия. Отказаться можно в любой момент: стоимость неиспользованных дней вернём в течение 10 дней. Подробно — в разделах 4–6 <a href="#offer">оферты</a>.</p></div>
