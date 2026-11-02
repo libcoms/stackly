@@ -1,5 +1,5 @@
 """Saved variants: persistence, Russian search and access boundaries, without an HTTP process."""
-import sys, os, sqlite3, unittest
+import sys, os, sqlite3, unittest, shutil, subprocess
 from unittest.mock import patch
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'app'))
 import stackly_api as A
@@ -58,3 +58,11 @@ class VariantTest(unittest.TestCase):
             self.h.variants()
         with self.assertRaises(A.ApiError):
             self.save()
+
+
+class VariantNavigationTest(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('node'), 'Node.js is not installed')
+    def test_variant_task_navigation(self):
+        result = subprocess.run(['node', os.path.join(os.path.dirname(__file__), 'variants_check.js')],
+                                capture_output=True, text=True, encoding='utf-8', timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)

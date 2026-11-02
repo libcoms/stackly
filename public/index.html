@@ -694,6 +694,20 @@ button.hwi { font-family: inherit; cursor: pointer; }
   .variant-footer .btn { width: 100%; }
 }
 
+.variant-library { max-width: 880px; }
+.variant-library-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.variant-library-head h2 { font: 650 19px/1.3 var(--f-body); margin: 0; }
+.variant-library-head > span { color: var(--mute); font-size: 14px; white-space: nowrap; }
+.variant-library > .fld { margin-bottom: 16px; }
+.variant-library .bk-row { min-height: 88px; }
+.variant-library .bk-t > b { overflow-wrap: anywhere; white-space: normal; overflow: visible; text-overflow: clip; }
+.variant-library-count { display: grid; gap: 4px; align-content: center; justify-items: center; }
+.variant-library-count b { font: 500 19px/1.1 var(--f-mono); }
+.variant-library-count small { font: 400 11px/1.2 var(--f-body); }
+.variant-open { display: inline-flex; align-items: center; gap: 6px; padding-right: 20px; color: var(--blue-fg); font-size: 14px; font-weight: 600; }
+.variant-open svg { width: 16px; height: 16px; }
+@media (max-width: 560px) { .variant-open { font-size: 13px; padding-right: 12px; } }
+
 /* редактор задания: подбор пунктов */
 .hw-form { display: grid; gap: 16px; max-width: 880px; }
 .hw-form .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 14px; }
@@ -3998,10 +4012,10 @@ function stacklyApp() {
     const a = stats.att[p.id];
     return a && a.n ? '<span class="bk-mark">есть попытки</span>' : '';
   }
-  const rowHTML = (p, i) => `<li><a class="bk-row" href="#p-${p.id}"><span class="bk-i">${i + 1}</span>
+  const rowHTML = (p, i, href = `#p-${p.id}`) => `<li><a class="bk-row" href="${href}"><span class="bk-i">${i + 1}</span>
       <span class="bk-t"><b>${esc(p.title)}</b><span class="bk-meta"><span class="pnum">#${pnum[p.id]}</span>${p.task ? '' : `<span>${esc(ptag(p))}</span>`}${dotsHTML(p)}${p.src && !p.src.builtin ? `<span>${esc(p.src.author || 'учитель')}</span>` : ''}</span></span>
       ${markHTML(p)}<span class="bk-chev">${I.chev}</span></a></li>`;
-  const listHTML = list => list.length ? `<ol class="bk-list">${list.map(rowHTML).join('')}</ol>`
+  const listHTML = (list, hrefFor) => list.length ? `<ol class="bk-list">${list.map((p, i) => rowHTML(p, i, hrefFor ? hrefFor(p) : undefined)).join('')}</ol>`
     : '<div class="t-empty"><b>Задач не найдено</b>Сбросьте фильтры или поищите по-другому.</div>';
   const segHTML = (key, label, opts) => `<div class="seg" role="group" aria-label="${label}">${opts.map(([v, n]) => `<button type="button" class="${bankF[key] === v ? 'on' : ''}" data-f="${key}" data-v="${v}" aria-pressed="${bankF[key] === v}">${n}</button>`).join('')}</div>`;
   const srcSeg = () => BANK.some(p => psrc(p) !== 'platform')
@@ -4073,16 +4087,20 @@ function stacklyApp() {
     </div>`;
   }
 
-  function pageTask(p) {
-    // соседи — по всему номеру (или предмету), без фильтров: «Следующая» не должна пропадать
-    const list = BANK.filter(x => inGroup(x, p.task ? { task: p.task } : { subj: psubj(p), n: psnum(p) })), i = list.findIndex(x => x.id === p.id);
-    const prev = list[i - 1], next = list[i + 1];
-    return `<div class="page wrap bk bk-narrow">
-      <a class="bk-back" href="${bankGroupHref(p)}">${I.chevL}${p.task ? `Задание ${p.task}` : esc(psubj(p)) + (psnum(p) ? ` · задание ${psnum(p)}` : '')}</a>
-      <div class="plist bk-one">${probHTML(p, 0)}</div>
-      <nav class="bk-pager" aria-label="Соседние задачи">${prev ? `<a class="btn ghost" href="#p-${prev.id}">${I.chevL}Предыдущая</a>` : '<span></span>'}
-        <span class="bk-pos">${i + 1} из ${list.length}</span>
-        ${next ? `<a class="btn ${solved.has(p.id) ? '' : 'ghost'} bk-next" href="#p-${next.id}">Следующая${I.chev}</a>` : `<a class="btn ghost" href="${bankGroupHref(p)}">К списку</a>`}</nav>
+  function pageTask(p, variant = null) {
+    // В варианте сохраняем его порядок; в банке — переходы по номеру/предмету.
+    const list = variant ? variant.bank.map(id => BANK.find(x => x.id === id)).filter(Boolean)
+      : BANK.filter(x => inGroup(x, p.task ? { task: p.task } : { subj: psubj(p), n: psnum(p) }));
+    const i = list.findIndex(x => x.id === p.id), prev = list[i - 1], next = list[i + 1];
+    const back = variant ? `#teach-variant-${variant.id}` : bankGroupHref(p);
+    const href = item => variant ? `#teach-variant-${variant.id}/p-${item.id}` : `#p-${item.id}`;
+    return `<div class="${variant ? 'bk bk-narrow' : 'page wrap bk bk-narrow'}">
+      <a class="bk-back" href="${back}">${I.chevL}${variant ? 'К варианту «' + esc(variant.title) + '»' : p.task ? `Задание ${p.task}` : esc(psubj(p)) + (psnum(p) ? ` · задание ${psnum(p)}` : '')}</a>
+      ${variant ? `<header class="bk-head"><h1>${esc(variant.title)}</h1><p class="bk-lead">Задача ${variant.bank.indexOf(p.id) + 1} из ${variant.bank.length} в варианте</p></header>` : ''}
+      <div class="plist bk-one">${probHTML(p, variant ? variant.bank.indexOf(p.id) : 0)}</div>
+      <nav class="bk-pager" aria-label="${variant ? 'Задачи варианта' : 'Соседние задачи'}">${prev ? `<a class="btn ghost" href="${href(prev)}">${I.chevL}Предыдущая</a>` : '<span></span>'}
+        <span class="bk-pos">${variant ? variant.bank.indexOf(p.id) + 1 : i + 1} из ${variant ? variant.bank.length : list.length}</span>
+        ${next ? `<a class="btn ${solved.has(p.id) ? '' : 'ghost'} bk-next" href="${href(next)}">Следующая${I.chev}</a>` : `<a class="btn ghost" href="${back}">${variant ? 'К варианту' : 'К списку'}</a>`}</nav>
     </div>`;
   }
 
@@ -6892,9 +6910,22 @@ function stacklyApp() {
     return [...groups].sort((a,b) => a[0].localeCompare(b[0], 'ru', {numeric:true}));
   };
   function variantsHTML(variants, h) {
-    const id = /^teach-variant-(\d+)$/.exec(h), v = id && variants.find(x => x.id === +id[1]);
+    const id = /^teach-variant-(\d+)(?:\/p-([\w.-]+))?$/.exec(h), v = id && variants.find(x => x.id === +id[1]);
     const top = '<a class="t-back" href="#bank">Банк задач</a><h1>Варианты</h1>';
-    if (id) return top + (v ? `<h2>${esc(v.title)}</h2><p>${v.bank.length} задач. Добавьте вариант в домашнее задание через поле «Из варианта».</p>${listHTML(v.bank.map(id => BANK.find(p => p.id === id)).filter(Boolean))}${v.bank.some(id => !BANK.some(p => p.id === id)) ? '<p role="status">Часть задач больше недоступна в вашем банке.</p>' : ''}<a class="btn ghost" href="#teach-variants">Все варианты</a>` : '<p>Вариант не найден.</p>');
+    if (id) {
+      if (!v) return top + '<div class="t-empty"><b>Вариант не найден</b><a href="#teach-variants">К моим вариантам</a></div>';
+      const tasks = v.bank.map(id => BANK.find(p => p.id === id)).filter(Boolean);
+      if (id[2]) {
+        const task = tasks.find(p => p.id === id[2]);
+        return task ? pageTask(task, v) : `<div class="t-empty"><b>Задача недоступна в этом варианте</b><a href="#teach-variant-${v.id}">К варианту «${esc(v.title)}»</a></div>`;
+      }
+      return `<a class="t-back" href="#teach-variants">${I.chevL}Мои варианты</a>
+        <header class="bk-head"><h1>${esc(v.title)}</h1><p class="bk-lead">${v.bank.length} ${plural(v.bank.length, 'задача', 'задачи', 'задач')} · порядок сохранён</p></header>
+        <p class="variant-hint">Откройте задачу, чтобы пройти вариант по порядку. Выдать его ученикам можно в форме домашнего задания через поле «Из варианта».</p>
+        ${tasks.length ? `<div class="form-acts"><a class="btn blue" href="#teach-variant-${v.id}/p-${tasks[0].id}">Начать вариант ${I.arrow}</a></div>` : ''}
+        ${tasks.length !== v.bank.length ? '<p role="status">Часть задач больше недоступна в вашем банке. Они пропущены при переходах.</p>' : ''}
+        ${listHTML(tasks, p => `#teach-variant-${v.id}/p-${p.id}`)}`;
+    }
     const subjects = [...new Set(BANK.map(psubj))].sort();
     return top + `<section class="t-sec"><h2>Создать вариант</h2><form id="variant-form" class="hw-form variant-builder">
       <div class="two"><label class="fld"><span>Название</span><input name="title" required maxlength="120" placeholder="Например: Пробник · ноябрь"></label>
@@ -6908,8 +6939,13 @@ function stacklyApp() {
       <p class="form-msg" role="alert"></p>
       <div class="variant-footer"><div class="variant-total" role="status" aria-live="polite" aria-atomic="true" id="variant-total"><strong>Задачи не выбраны</strong><small>До 200 задач в одном варианте</small></div>
       <button class="btn blue" type="submit" disabled>Сгенерировать и сохранить</button></div></form></section>
-      <section class="t-sec"><h2>Мои варианты</h2><label class="fld"><span>Поиск по названию</span><input type="search" id="variant-search" placeholder="Название варианта"></label>
-      <div id="variant-results">${variants.map(v => `<p data-variant-title="${esc(v.title.toLocaleLowerCase('ru'))}"><a href="#teach-variant-${v.id}">${esc(v.title)}</a> · ${v.bank.length} задач</p>`).join('')}</div><p id="variant-empty" ${variants.length ? 'hidden' : ''}>Варианты не найдены.</p></section>`;
+      <section class="t-sec variant-library"><div class="variant-library-head"><h2>Мои варианты</h2><span>${variants.length} ${plural(variants.length, 'вариант', 'варианта', 'вариантов')}</span></div>
+        <label class="fld"><span>Поиск по названию</span><input type="search" id="variant-search" placeholder="Найти сохранённый вариант"></label>
+        <ol class="bk-list" id="variant-results" ${variants.length ? '' : 'hidden'}>${variants.map(v => `<li data-variant-title="${esc(v.title.toLocaleLowerCase('ru'))}"><a class="bk-row" href="#teach-variant-${v.id}">
+          <span class="bk-i variant-library-count"><b>${v.bank.length}</b><small>${plural(v.bank.length, 'задача', 'задачи', 'задач')}</small></span>
+          <span class="bk-t"><b>${esc(v.title)}</b><span class="bk-meta"><span>Создан ${new Date(v.created * 1000).toLocaleDateString('ru-RU', {day:'numeric', month:'long', year:'numeric', timeZone:'Europe/Moscow'})}</span></span></span>
+          <span class="variant-open">Открыть ${I.chev}</span></a></li>`).join('')}</ol>
+        <div class="t-empty" id="variant-empty" ${variants.length ? 'hidden' : ''}><b>${variants.length ? 'Варианты не найдены' : 'Пока нет сохранённых вариантов'}</b>${variants.length ? 'Попробуйте другое название.' : 'Соберите состав выше и сохраните первый вариант.'}</div></section>`;
   }
   function variantCounts(subject) {
     return variantGroups(subject).map(([key, ps], i) => {
@@ -6956,7 +6992,7 @@ function stacklyApp() {
     if (e.target.id !== 'variant-search') return;
     const q = e.target.value.trim().toLocaleLowerCase('ru'); let found = 0;
     $$('[data-variant-title]').forEach(row => { row.hidden = !row.dataset.variantTitle.includes(q); if (!row.hidden) found++; });
-    $('#variant-empty').hidden = !!found;
+    $('#variant-empty').hidden = !!found; $('#variant-results').hidden = !found;
   });
   document.addEventListener('change', e => {
     if (e.target.id === 'variant-selected-only') updateVariantSelection();
