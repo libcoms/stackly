@@ -5,7 +5,7 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 
 const between = (a,b) => src.slice(src.indexOf(a),src.indexOf(b,src.indexOf(a)));
 const bank = [{id:'1-first',task:1,title:'First'},{id:'1-other',task:1,title:'Outside variant'}, {id:'2-second',task:2,title:'Second'}];
 const variant = {id:7,title:'Пробник <май>',bank:['1-first','2-second'],created:1800000000};
-const ctx = {document:{addEventListener(){}}, BANK:bank, EGE:[], mathBy:{}, I:{chevL:'',chev:'',arrow:''}, pnum:{}, solved:new Set(),
+const ctx = {acct:{uid:1},store:{get:(k,d)=>d},document:{addEventListener(){}}, BANK:bank, EGE:[], mathBy:{}, I:{chevL:'',chev:'',arrow:''}, pnum:{}, solved:new Set(),
   esc:s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
   psubj:p=>'Информатика', psnum:()=>0, gameSet:()=>null, probHTML:p=>'<article>'+p.title+'</article>',
   inGroup:(p,g)=>p.task===g.task,bankGroupHref:p=>'#bank-'+p.task,
@@ -19,6 +19,8 @@ const first = vm.runInContext(`variantsHTML([${JSON.stringify(variant)}], 'teach
 assert(first.includes('#teach-variant-7/p-2-second'),'Next must be second task in variant, not another task 1 from bank');
 assert(!first.includes('#p-1-other'),'Task outside variant must not enter navigation');
 assert(first.includes('href="#teach-variant-7"'),'Back link must return to variant');
+assert(first.includes('aria-label="Задания пробника"'),'Exam needs numbered task navigation above the question');
+assert(first.includes('data-exam-progress'),'Exam needs an answered progress indicator');
 const second = vm.runInContext(`variantsHTML([${JSON.stringify(variant)}], 'teach-variant-7/p-2-second')`,ctx);
 assert(second.includes('#teach-variant-7/p-1-first'),'Previous must stay in variant');
 assert(second.includes('К варианту'),'Last task must return to variant');

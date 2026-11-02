@@ -722,6 +722,41 @@ button.hwi { font-family: inherit; cursor: pointer; }
 .exam-results .exam-ok { color: var(--ok); font-weight: 600; }
 .exam-results .exam-bad { color: var(--bad); font-weight: 600; }
 
+/* пробник: постоянный каркас, прокрутка только условия */
+html:has(.exam-shell) { scrollbar-gutter: stable; }
+#tpage:has(.exam-shell) { animation: none; }
+.exam-shell { width: 100%; max-width: 960px; height: max(760px, calc(100dvh - 120px)); display: flex; flex-direction: column; gap: 16px; }
+.exam-shell > .bk-back { align-self: flex-start; flex: none; margin: 0; }
+.exam-heading { flex: none; }
+.exam-heading h1 { font: 650 clamp(24px, 3vw, 34px)/1.15 var(--f-body); letter-spacing: -.025em; margin: 0; overflow-wrap: anywhere; }
+.exam-heading p { color: var(--ink-2); margin: 8px 0 0; font-size: 14px; }
+.exam-progress { flex: none; display: grid; gap: 10px; }
+.exam-progress-meta { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; }
+.exam-progress-meta span { color: var(--mute); font-size: 13px; }
+.exam-progress progress { appearance: none; width: 100%; height: 4px; border: 0; border-radius: 4px; background: var(--sunken); color: var(--blue); overflow: hidden; }
+.exam-progress progress::-webkit-progress-bar { background: var(--sunken); }
+.exam-progress progress::-webkit-progress-value { background: var(--blue); }
+.exam-progress progress::-moz-progress-bar { background: var(--blue); }
+.exam-numbers { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; max-height: 150px; overflow-y: auto; }
+.exam-number { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line-2); border-radius: var(--r-s); background: var(--paper); color: var(--ink-2); font: 500 14px/1 var(--f-mono); text-decoration: none; }
+.exam-number:hover { background: var(--paper-2); text-decoration: none; }
+.exam-number.has-answer { background: var(--blue-soft); border-color: var(--blue-mid); color: var(--blue-ink); }
+.exam-number[aria-current=step] { background: var(--blue); border-color: var(--blue); color: var(--on-blue); font-weight: 700; }
+.exam-number[aria-disabled] { opacity: .45; }
+.exam-stage { flex: 1 1 0; min-height: 0; overflow: auto; scrollbar-gutter: stable; scrollbar-color: var(--line-2) var(--bg); border-radius: var(--r); }
+.exam-stage .plist { padding: 0; min-height: 100%; }
+.exam-stage .prob { animation: none; margin: 0; }
+.exam-footer { flex: none; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px 24px; align-items: center; border-top: 1px solid var(--line); padding-top: 16px; }
+.exam-pager { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 12px; align-items: center; }
+.exam-pager .bk-pos { display: block; white-space: nowrap; }
+.exam-pager > :first-child { justify-self: start; }
+.exam-pager > :last-child { justify-self: end; }
+.exam-footer #exam-message { grid-column: 1 / -1; margin: 0; }
+.exam-footer #exam-message:empty { display: none; }
+@media (max-width: 999px) { .exam-shell { height: max(760px, calc(100dvh - 180px)); } }
+@media (max-width: 700px) { .exam-footer { grid-template-columns: minmax(0,1fr); gap: 12px; } .exam-finish { justify-self: end; } }
+@media (max-width: 560px) { .exam-shell { gap: 12px; height: max(900px, calc(100dvh - 180px)); } .exam-progress-meta span { display: none; } .exam-numbers { max-height: 200px; } .exam-pager { gap: 8px; } .exam-pager .btn { padding-inline: 12px; font-size: 13px; } }
+
 /* редактор задания: подбор пунктов */
 .hw-form { display: grid; gap: 16px; max-width: 880px; }
 .hw-form .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 14px; }
@@ -4108,14 +4143,38 @@ function stacklyApp() {
     const i = list.findIndex(x => x.id === p.id), prev = list[i - 1], next = list[i + 1];
     const back = variant ? `#teach-variant-${variant.id}` : bankGroupHref(p);
     const href = item => variant ? `#teach-variant-${variant.id}/p-${item.id}` : `#p-${item.id}`;
-    return `<div class="${variant ? 'bk bk-narrow' : 'page wrap bk bk-narrow'}">
-      <a class="bk-back" href="${back}">${I.chevL}${variant ? 'К варианту «' + esc(variant.title) + '»' : p.task ? `Задание ${p.task}` : esc(psubj(p)) + (psnum(p) ? ` · задание ${psnum(p)}` : '')}</a>
-      ${variant ? `<header class="bk-head"><h1>${esc(variant.title)}</h1><p class="bk-lead">Задача ${variant.bank.indexOf(p.id) + 1} из ${variant.bank.length} в варианте</p></header>` : ''}
-      <div class="plist bk-one">${probHTML(p, variant ? variant.bank.indexOf(p.id) : 0, variant ? {variant} : null)}</div>
-      <nav class="bk-pager" aria-label="${variant ? 'Задачи варианта' : 'Соседние задачи'}">${prev ? `<a class="btn ghost" href="${href(prev)}">${I.chevL}Предыдущая</a>` : '<span></span>'}
-        <span class="bk-pos">${variant ? variant.bank.indexOf(p.id) + 1 : i + 1} из ${variant ? variant.bank.length : list.length}</span>
-        ${next ? `<a class="btn ${solved.has(p.id) ? '' : 'ghost'} bk-next" href="${href(next)}">Следующая${I.chev}</a>` : `<a class="btn ghost" href="${back}">${variant ? 'К варианту' : 'К списку'}</a>`}</nav>
-      ${variant ? `<div class="variant-detail-actions"><button type="button" class="btn blue" data-exam-finish="${variant.id}">${variant.attempt?.finished ? 'Результаты пробника' : 'Завершить пробник'}</button><p class="form-msg" role="alert" id="exam-message"></p></div>` : ''}
+    if (variant) return examTaskHTML(p, variant, list, i);
+    return `<div class="page wrap bk bk-narrow">
+      <a class="bk-back" href="${back}">${I.chevL}${p.task ? `Задание ${p.task}` : esc(psubj(p)) + (psnum(p) ? ` · задание ${psnum(p)}` : '')}</a>
+      <div class="plist bk-one">${probHTML(p,0)}</div>
+      <nav class="bk-pager" aria-label="Соседние задачи">${prev ? `<a class="btn ghost" href="${href(prev)}">${I.chevL}Предыдущая</a>` : '<span></span>'}
+        <span class="bk-pos">${i+1} из ${list.length}</span>
+        ${next ? `<a class="btn ${solved.has(p.id) ? '' : 'ghost'} bk-next" href="${href(next)}">Следующая${I.chev}</a>` : `<a class="btn ghost" href="${back}">К списку</a>`}</nav>
+    </div>`;
+  }
+
+  function examTaskHTML(p, v, list, i) {
+    const answers = {...(v.attempt?.answers || {}), ...(v.attempt?.finished ? {} : store.get(examKey(v.id), {}))};
+    const count = v.bank.filter(id => (answers[id] || '').trim()).length;
+    const link = item => `#teach-variant-${v.id}/p-${item.id}`;
+    return `<div class="exam-shell" data-exam-id="${v.id}">
+      <a class="bk-back" href="#teach-variant-${v.id}">${I.chevL}К варианту</a>
+      <header class="exam-heading"><h1>${esc(v.title)}</h1><p>Задача ${v.bank.indexOf(p.id)+1} из ${v.bank.length}</p></header>
+      <section class="exam-progress" aria-label="Прогресс пробника">
+        <div class="exam-progress-meta"><strong data-exam-progress>С ответом: ${count} из ${v.bank.length}</strong><span>С ответом — выделено синим</span></div>
+        <progress max="${v.bank.length}" value="${count}" aria-label="Количество заданий с ответом"></progress>
+        <nav aria-label="Задания пробника"><ol class="exam-numbers">${v.bank.map((id,n) => {
+          const available = list.some(p => p.id === id), answered = !!(answers[id] || '').trim();
+          return `<li>${available ? `<a href="#teach-variant-${v.id}/p-${id}" data-exam-task="${id}" data-answered="${answered}" class="exam-number ${answered ? 'has-answer' : ''}" ${id === p.id ? 'aria-current="step"' : ''} aria-label="Задача ${n+1}: ${answered ? 'с ответом' : 'без ответа'}">${n+1}</a>` : `<span class="exam-number" aria-label="Задача ${n+1} недоступна" aria-disabled="true">${n+1}</span>`}</li>`;
+        }).join('')}</ol></nav>
+      </section>
+      <div class="exam-stage" role="region" aria-label="Условие и ответ" tabindex="0"><div class="plist bk-one">${probHTML(p,v.bank.indexOf(p.id),{variant:v})}</div></div>
+      <footer class="exam-footer"><nav class="exam-pager" aria-label="Задачи варианта">
+        ${list[i-1] ? `<a class="btn ghost" href="${link(list[i-1])}">${I.chevL}Предыдущая</a>` : '<span></span>'}
+        <span class="bk-pos">${v.bank.indexOf(p.id)+1} из ${v.bank.length}</span>
+        ${list[i+1] ? `<a class="btn blue bk-next" href="${link(list[i+1])}">Следующая${I.chev}</a>` : `<a class="btn ghost" href="#teach-variant-${v.id}">К варианту</a>`}
+      </nav><button type="button" class="btn ghost exam-finish" data-exam-finish="${v.id}">${v.attempt?.finished ? 'Результаты пробника' : 'Завершить пробник'}</button>
+      <p class="form-msg" role="alert" id="exam-message"></p></footer>
     </div>`;
   }
 
@@ -6974,6 +7033,16 @@ function stacklyApp() {
       ${done ? '' : '<button type="submit" class="btn">Сохранить ответ</button>'}
       <div class="verdict" role="status">${done ? 'Пробник завершён. Ответ сохранён.' : 'Ответ проверяется только после завершения пробника.'}</div></form>`;
   }
+  function updateExamProgress(pid, value) {
+    const shell = $('.exam-shell'); if (!shell) return;
+    const links = $$('[data-exam-task]',shell), answered = !!value.trim();
+    links.forEach((a,n) => { if (a.dataset.examTask !== pid) return;
+      a.dataset.answered = String(answered); a.classList.toggle('has-answer',answered);
+      a.setAttribute('aria-label', `Задача ${a.textContent}: ${answered ? 'с ответом' : 'без ответа'}`);
+    });
+    const count = links.filter(a => a.dataset.answered === 'true').length, bar = $('progress',shell);
+    bar.value = count; $('[data-exam-progress]',shell).textContent = `С ответом: ${count} из ${bar.max}`;
+  }
   function flushExam(id, finish = false) {
     const key = examKey(id), patch = {...store.get(key, {})};
     const request = examSaveQueue.catch(() => {}).then(async () => {
@@ -7002,6 +7071,7 @@ function stacklyApp() {
     const f = e.target.closest('[data-exam-answer]'); if (!f || e.target.readOnly) return;
     const key = examKey(f.dataset.examAnswer), draft = store.get(key, {});
     draft[f.dataset.pid] = e.target.value; store.set(key, draft);
+    updateExamProgress(f.dataset.pid, e.target.value);
     $('.verdict',f).textContent = 'Ответ сохраняется…';
     clearTimeout(examSaveTimers.get(f.dataset.examAnswer));
     examSaveTimers.set(f.dataset.examAnswer, setTimeout(() => flushExam(f.dataset.examAnswer).then(() => { if (f.isConnected) $('.verdict',f).textContent = 'Ответ сохранён. Проверка — после завершения.'; }).catch(() => { if (f.isConnected) $('.verdict',f).textContent = 'Нет связи. Черновик сохранён в браузере; нажмите «Сохранить ответ», чтобы повторить.'; }), 600));
