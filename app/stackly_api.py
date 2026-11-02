@@ -14,7 +14,7 @@
   STACKLY_AI_KEY    ключ RouterAI для разбора кода с ИИ; STACKLY_AI_USERS — кому открыт (почты через запятую),
                     STACKLY_AI_MODEL/STT/TTS/VOICE — модели, STACKLY_AI_WEEK_SECONDS — лимит звука в неделю (600)
 """
-import array, base64, calendar, hashlib, hmac, html, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
+import array, base64, calendar, decimal, hashlib, hmac, html, json, logging, os, re, secrets, smtplib, sqlite3, sys, threading, time
 import urllib.error, urllib.request
 from urllib.parse import parse_qs
 from email.message import EmailMessage
@@ -91,6 +91,9 @@ def migrate():
       CREATE TABLE IF NOT EXISTS variants (
         id INTEGER PRIMARY KEY, author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         title TEXT NOT NULL, bank TEXT NOT NULL, created INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS variant_runs (
+        variant_id INTEGER PRIMARY KEY REFERENCES variants(id) ON DELETE CASCADE,
+        answers TEXT NOT NULL DEFAULT '{}', finished INTEGER, results TEXT);
       CREATE INDEX IF NOT EXISTS variants_author ON variants(author_id);
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
@@ -394,6 +397,15 @@ def content_file(name):
     return c[1], c[2]
 
 BANK_LINE_RE = re.compile(r'^window\.BANK = (\[.*\]);\r?$', re.M)     # \r — файл, выписанный git на Windows
+
+def variant_same_answer(a, b):
+    number = r'[-−–]?\d+(?:[.,]\d+)?'
+    if re.fullmatch(number, str(b).strip()) and re.search(r'[-−–.,]', str(b)) and re.fullmatch(number, a.strip()):
+        clean = lambda x: str(x).strip().replace('−', '-').replace('–', '-').replace(',', '.')
+        return decimal.Decimal(clean(a)) == decimal.Decimal(clean(b))
+    norm = lambda x: ' '.join(re.sub(r'[,;]', ' ', str(x).strip().lower()).split())
+    return norm(a) == norm(b)
+
 
 def content_bank():
     """ege.js в трёх частях: текст до банка, задачи банка, текст после. У каждой задачи — n, её сквозной
@@ -1611,6 +1623,7 @@ class Handler(BaseHTTPRequestHandler):
             # учитель
             ('GET', '/api/teach/variants'): self.variants,
             ('POST', '/api/teach/variants'): self.variant_save,
+            ('POST', '/api/teach/variants/attempt'): self.variant_attempt,
             ('GET', '/api/teach/groups'): self.t_groups,
             ('POST', '/api/teach/groups'): self.t_group_create,
             ('POST', '/api/teach/groups/update'): self.t_group_update,
@@ -2580,8 +2593,52 @@ class Handler(BaseHTTPRequestHandler):
         u = self.teacher()
         rows = db().execute('SELECT * FROM variants WHERE author_id = ? ORDER BY id DESC', (u['id'],))
         q = self.query.get('q', '').strip().casefold()
-        self.send_json(200, {'variants': [dict(r) | {'bank': json.loads(r['bank'])} for r in rows
+        self.send_json(200, {'variants': [dict(r) | {'bank': json.loads(r['bank']), 'attempt': self.variant_run(r['id'])} for r in rows
                                          if q in r['title'].casefold()]})
+
+    @staticmethod
+    def variant_run(vid):
+        r = db().execute('SELECT * FROM variant_runs WHERE variant_id=?', (vid,)).fetchone()
+        return {'answers': json.loads(r['answers']), 'finished': r['finished'],
+                'results': json.loads(r['results']) if r['results'] else None} if r else {'answers': {}, 'finished': None, 'results': None}
+
+    def variant_attempt(self):
+        u, d = self.teacher(), self.body()
+        vid = self.int_arg(d, 'id')
+        v = db().execute('SELECT * FROM variants WHERE id=? AND author_id=?', (vid, u['id'])).fetchone()
+        if not v:
+            raise ApiError(404, 'not_found', 'Вариант не найден')
+        patch = d.get('answers', {})
+        ids = json.loads(v['bank'])
+        if not isinstance(patch, dict) or any(k not in ids or not isinstance(a, str) or len(a) > 4000 for k, a in patch.items()):
+            raise ApiError(400, 'bad_answer', 'Некорректные ответы варианта')
+        con = db()
+        con.execute('BEGIN IMMEDIATE')
+        try:
+            run = self.variant_run(vid)
+            if run['finished']:
+                raise ApiError(409, 'finished', 'Пробник уже завершён. Откройте результаты.')
+            answers = run['answers'] | patch
+            results, finished = None, None
+            if d.get('finish') is True:
+                _, items, _ = content_bank()
+                tasks = {p['id']: p for p in items}
+                for p in con.execute('SELECT id, answer FROM problems WHERE id IN (SELECT value FROM json_each(?))', (json.dumps(ids),)):
+                    tasks[p['id']] = dict(tasks.get(p['id'], {}), answer=p['answer'])
+                results = []
+                for pid in ids:
+                    p, answer = tasks.get(pid), answers.get(pid, '').strip()
+                    status = ('unavailable' if not p else 'unanswered' if not answer else 'manual' if p.get('pts') and not p.get('auto')
+                              else 'correct' if variant_same_answer(answer, p['answer']) else 'incorrect')
+                    results.append({'id': pid, 'status': status, 'answer': answer, 'expected': p.get('answer', '') if p else ''})
+                finished = int(time.time())
+            con.execute('INSERT OR REPLACE INTO variant_runs(variant_id,answers,finished,results) VALUES(?,?,?,?)',
+                        (vid, json.dumps(answers), finished, json.dumps(results) if results is not None else None))
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        self.send_json(200, {'attempt': self.variant_run(vid)})
 
     def variant_save(self):
         u, d = self.teacher(), self.body()

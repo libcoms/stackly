@@ -5,7 +5,7 @@ const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 
 const between = (a,b) => src.slice(src.indexOf(a),src.indexOf(b,src.indexOf(a)));
 const bank = [{id:'1-first',task:1,title:'First'},{id:'1-other',task:1,title:'Outside variant'}, {id:'2-second',task:2,title:'Second'}];
 const variant = {id:7,title:'Пробник <май>',bank:['1-first','2-second'],created:1800000000};
-const ctx = {BANK:bank, EGE:[], mathBy:{}, I:{chevL:'',chev:'',arrow:''}, pnum:{}, solved:new Set(),
+const ctx = {document:{addEventListener(){}}, BANK:bank, EGE:[], mathBy:{}, I:{chevL:'',chev:'',arrow:''}, pnum:{}, solved:new Set(),
   esc:s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
   psubj:p=>'Информатика', psnum:()=>0, gameSet:()=>null, probHTML:p=>'<article>'+p.title+'</article>',
   inGroup:(p,g)=>p.task===g.task,bankGroupHref:p=>'#bank-'+p.task,
@@ -27,3 +27,17 @@ assert(!missing.includes('<article>'),'A task not in variant must not render as 
 const ordinary = vm.runInContext(`pageTask(BANK[0])`,ctx);
 assert(ordinary.includes('#p-1-other'),'Normal bank navigation must still work');
 console.log('Variant entry, next/previous, direct routes, back, membership and normal bank navigation: OK');
+
+// Exercise the actual task renderer: exam mode cannot expose immediate grading or solution controls.
+Object.assign(ctx, {Blob, acct:{uid:1}, store:{get:()=>({'1-first':'draft <answer>'})},
+  lvWord:{},lvDots:{},shownExtra:()=>false,setHTML:()=>'',aiOn:()=>false,isTeacher:()=>false});
+ctx.BANK[0].answer='7';ctx.BANK[0].text='Question';
+vm.runInContext(between('  function probHTML(', '  // часть 2:'),ctx);
+const exam = vm.runInContext(`probHTML(BANK[0],0,{variant:{id:7,bank:['1-first']}})`,ctx);
+assert(exam.includes('data-exam-answer="7"'));
+assert(exam.includes('draft &lt;answer&gt;'));
+assert(!exam.includes('data-check'));
+assert(!exam.includes('data-show'));
+const normal = vm.runInContext('probHTML(BANK[0],0)',ctx);
+assert(normal.includes('data-check'));
+console.log('Exam answers saved without immediate checking or spoilers; ordinary practice unchanged: OK');

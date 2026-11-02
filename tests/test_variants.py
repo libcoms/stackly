@@ -59,6 +59,43 @@ class VariantTest(unittest.TestCase):
         with self.assertRaises(A.ApiError):
             self.save()
 
+    def test_attempt_is_saved_without_grading_until_finish(self):
+        self.save()
+        vid = self.response[1]['id']
+        expected = next(p['answer'] for p in A.content_bank()[1] if p['id'] == self.allowed)
+        def call(answers, finish=False):
+            self.h.body = lambda: {'id': vid, 'answers': answers, 'finish': finish}
+            self.h.variant_attempt()
+            return self.response[1]['attempt']
+        draft = call({self.allowed: 'wrong'})
+        self.assertEqual(draft['answers'][self.allowed], 'wrong')
+        self.assertIsNone(draft['results'])
+        self.assertIsNone(draft['finished'])
+        self.h.variants()
+        self.assertEqual(self.response[1]['variants'][0]['attempt']['answers'][self.allowed], 'wrong')
+        final = call({self.allowed: expected}, True)
+        self.assertTrue(final['finished'])
+        self.assertEqual(final['results'][0]['status'], 'correct')
+        with self.assertRaises(A.ApiError):
+            call({self.allowed: 'changed'})
+        self.assertEqual(self.h.variant_run(vid)['answers'][self.allowed], expected)
+        self.h.current_user = lambda: self.con.execute('SELECT * FROM users WHERE id=2').fetchone()
+        with self.assertRaises(A.ApiError):
+            call({})
+
+    def test_attempt_validation_empty_and_decimal_answers(self):
+        self.save()
+        vid = self.response[1]['id']
+        for answers in ({'not-in-variant': '1'}, {self.allowed: 1}, {self.allowed: 'x'*4001}):
+            self.h.body = lambda: {'id': vid, 'answers': answers}
+            with self.assertRaises(A.ApiError):
+                self.h.variant_attempt()
+        self.h.body = lambda: {'id': vid, 'finish': True}
+        self.h.variant_attempt()
+        self.assertEqual(self.response[1]['attempt']['results'][0]['status'], 'unanswered')
+        for a, b, expected in [('0.25','0,25',True), ('−3','-3',True), ('007','7',False), ('1; 2','1 2',True)]:
+            self.assertEqual(A.variant_same_answer(a,b), expected)
+
 
 class VariantNavigationTest(unittest.TestCase):
     @unittest.skipUnless(shutil.which('node'), 'Node.js is not installed')

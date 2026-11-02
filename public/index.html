@@ -708,6 +708,20 @@ button.hwi { font-family: inherit; cursor: pointer; }
 .variant-open svg { width: 16px; height: 16px; }
 @media (max-width: 560px) { .variant-open { font-size: 13px; padding-right: 12px; } }
 
+.variant-detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 24px 0; }
+[data-exam-answer] { align-items: start; }
+[data-exam-answer] label { flex: 1 1 100%; }
+[data-exam-answer] textarea { min-height: 88px; width: 100%; }
+.exam-results-scroll { overflow-x: auto; margin: 24px 0; border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
+.exam-results { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+.exam-results caption { text-align: left; padding: 16px; font-weight: 600; }
+.exam-results th, .exam-results td { padding: 12px 16px; border-top: 1px solid var(--line); max-width: 320px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.exam-results thead { background: var(--paper-2); }
+.exam-results th { overflow-wrap: normal; }
+.exam-results td:last-child { white-space: nowrap; overflow-wrap: normal; }
+.exam-results .exam-ok { color: var(--ok); font-weight: 600; }
+.exam-results .exam-bad { color: var(--bad); font-weight: 600; }
+
 /* редактор задания: подбор пунктов */
 .hw-form { display: grid; gap: 16px; max-width: 880px; }
 .hw-form .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 14px; }
@@ -3928,18 +3942,18 @@ function stacklyApp() {
     return `<div class="pset"><span class="lbl">Комплект 19–21</span>${g.set.map(q => `<span class="${q.id === p.id ? 'on' : ''} ${solved.has(q.id) ? 'ok' : ''}">№${q.task} · #${pnum[q.id]}${solved.has(q.id) ? I.check : ''}</span>`).join('')}<a href="#set-${g.key}">Решать комплектом →</a></div>`
       + (p.task === 19 ? '' : `<details class="pgame"><summary>Игра из задания 19 (#${pnum[g19.id]})</summary><div>${gameText(g19)}</div></details>`);
   }
-  function probHTML(p, i) {
-    const isS = solved.has(p.id), multi = p.answer.includes('\n');
+  function probHTML(p, i, mode = null) {
+    const exam = mode && mode.variant, isS = !exam && solved.has(p.id), multi = p.answer.includes('\n');
     const lines = p.data ? p.data.split('\n').length : 0, kb = p.data ? (new Blob([p.data]).size / 1024).toFixed(1) : 0;
     return `<article class="prob ${isS ? 'solved' : ''}" style="--i:${Math.min(i, 8)}" data-pid="${p.id}">
       <div class="prob-head">${p.task ? `<span class="pn"><em>№</em>${p.task}</span>` : `<span class="pn pn-s">${esc(ptag(p))}</span>`}<span class="pnum" title="Номер задачи в банке">#${pnum[p.id]}</span><h3>${esc(p.title)}</h3>${p.src && !p.src.builtin ? `<span class="pauth">автор: ${esc(p.src.author || 'учитель')}</span>` : ''}${isS ? '<span class="badge-ok">решено</span>' : ''}
         <span class="diff"><span>${lvWord[p.level]}</span>${[1, 2, 3].map(k => `<i class="${k <= lvDots[p.level] ? 'on' : ''}"></i>`).join('')}</span></div>
-      <div class="prob-body">${setHTML(p)}${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}
+      <div class="prob-body">${exam ? (p.task !== 19 && gameSet(p) ? `<div class="pgame">${gameText(gameSet(p).set[0])}</div>` : '') : setHTML(p)}${p.text}${shownExtra(p.extra) ? `<div class="extra">${p.extra}</div>` : ''}
         ${p.data ? `<div class="datafile"><span class="ico">TXT</span><span><span class="nm">${esc(p.dname)}</span><br><span class="sz">${lines} ${plural(lines, 'строка', 'строки', 'строк')} · ${kb} КБ</span></span>
           <span class="acts"><button type="button" class="btn small ghost" data-preview="${p.id}">Показать</button><button type="button" class="btn small" data-copydata="${p.id}">Скопировать</button></span></div><div class="pv"></div>` : ''}
       </div>
-      ${aiOn(p) ? aiCodeHTML(p.id) : ''}
-      ${p.pts ? selfForm(p) : `<form class="answer" data-check="${p.id}">
+      ${!exam && aiOn(p) ? aiCodeHTML(p.id) : ''}
+      ${exam ? examAnswerHTML(p, exam) : p.pts ? selfForm(p) : `<form class="answer" data-check="${p.id}">
         <label for="ans-${p.id}">Ответ${multi ? ' (все строки)' : ''}${multi ? `<textarea id="ans-${p.id}" placeholder="число число"></textarea>` : `<input id="ans-${p.id}" autocomplete="off" inputmode="text">`}</label>
         <button class="btn" type="submit">Проверить</button><span class="spacer"></span>
         <span class="more"><button type="button" class="btn small ghost" data-show="ans" data-p="${p.id}">Показать ответ</button><button type="button" class="btn small ghost" data-show="sol" data-p="${p.id}">Решение</button>${isTeacher() ? `<a class="btn small ghost" href="${canEditProblem(p) ? '#edit-p-' : '#edit-p-copy-'}${p.id}">${canEditProblem(p) ? 'Изменить' : 'Копия'}</a>` : ''}</span>
@@ -4097,10 +4111,11 @@ function stacklyApp() {
     return `<div class="${variant ? 'bk bk-narrow' : 'page wrap bk bk-narrow'}">
       <a class="bk-back" href="${back}">${I.chevL}${variant ? 'К варианту «' + esc(variant.title) + '»' : p.task ? `Задание ${p.task}` : esc(psubj(p)) + (psnum(p) ? ` · задание ${psnum(p)}` : '')}</a>
       ${variant ? `<header class="bk-head"><h1>${esc(variant.title)}</h1><p class="bk-lead">Задача ${variant.bank.indexOf(p.id) + 1} из ${variant.bank.length} в варианте</p></header>` : ''}
-      <div class="plist bk-one">${probHTML(p, variant ? variant.bank.indexOf(p.id) : 0)}</div>
+      <div class="plist bk-one">${probHTML(p, variant ? variant.bank.indexOf(p.id) : 0, variant ? {variant} : null)}</div>
       <nav class="bk-pager" aria-label="${variant ? 'Задачи варианта' : 'Соседние задачи'}">${prev ? `<a class="btn ghost" href="${href(prev)}">${I.chevL}Предыдущая</a>` : '<span></span>'}
         <span class="bk-pos">${variant ? variant.bank.indexOf(p.id) + 1 : i + 1} из ${variant ? variant.bank.length : list.length}</span>
         ${next ? `<a class="btn ${solved.has(p.id) ? '' : 'ghost'} bk-next" href="${href(next)}">Следующая${I.chev}</a>` : `<a class="btn ghost" href="${back}">${variant ? 'К варианту' : 'К списку'}</a>`}</nav>
+      ${variant ? `<div class="variant-detail-actions"><button type="button" class="btn blue" data-exam-finish="${variant.id}">${variant.attempt?.finished ? 'Результаты пробника' : 'Завершить пробник'}</button><p class="form-msg" role="alert" id="exam-message"></p></div>` : ''}
     </div>`;
   }
 
@@ -6910,10 +6925,11 @@ function stacklyApp() {
     return [...groups].sort((a,b) => a[0].localeCompare(b[0], 'ru', {numeric:true}));
   };
   function variantsHTML(variants, h) {
-    const id = /^teach-variant-(\d+)(?:\/p-([\w.-]+))?$/.exec(h), v = id && variants.find(x => x.id === +id[1]);
+    const id = /^teach-variant-(\d+)(?:\/p-([\w.-]+)|\/(results))?$/.exec(h), v = id && variants.find(x => x.id === +id[1]);
     const top = '<a class="t-back" href="#bank">Банк задач</a><h1>Варианты</h1>';
     if (id) {
       if (!v) return top + '<div class="t-empty"><b>Вариант не найден</b><a href="#teach-variants">К моим вариантам</a></div>';
+      if (id[3]) return examResultsHTML(v);
       const tasks = v.bank.map(id => BANK.find(p => p.id === id)).filter(Boolean);
       if (id[2]) {
         const task = tasks.find(p => p.id === id[2]);
@@ -6921,8 +6937,8 @@ function stacklyApp() {
       }
       return `<a class="t-back" href="#teach-variants">${I.chevL}Мои варианты</a>
         <header class="bk-head"><h1>${esc(v.title)}</h1><p class="bk-lead">${v.bank.length} ${plural(v.bank.length, 'задача', 'задачи', 'задач')} · порядок сохранён</p></header>
-        <p class="variant-hint">Откройте задачу, чтобы пройти вариант по порядку. Выдать его ученикам можно в форме домашнего задания через поле «Из варианта».</p>
-        ${tasks.length ? `<div class="form-acts"><a class="btn blue" href="#teach-variant-${v.id}/p-${tasks[0].id}">Начать вариант ${I.arrow}</a></div>` : ''}
+        <p class="variant-hint">Введите ответы и завершите пробник — проверка и разборы появятся после завершения.</p>
+        ${tasks.length ? `<div class="variant-detail-actions"><a class="btn blue" href="#teach-variant-${v.id}/${v.attempt?.finished ? 'results' : 'p-' + tasks[0].id}">${v.attempt?.finished ? 'Результаты пробника' : Object.keys(v.attempt?.answers || {}).length ? 'Продолжить пробник' : 'Начать вариант'} ${I.arrow}</a></div>` : ''}
         ${tasks.length !== v.bank.length ? '<p role="status">Часть задач больше недоступна в вашем банке. Они пропущены при переходах.</p>' : ''}
         ${listHTML(tasks, p => `#teach-variant-${v.id}/p-${p.id}`)}`;
     }
@@ -6947,6 +6963,67 @@ function stacklyApp() {
           <span class="variant-open">Открыть ${I.chev}</span></a></li>`).join('')}</ol>
         <div class="t-empty" id="variant-empty" ${variants.length ? 'hidden' : ''}><b>${variants.length ? 'Варианты не найдены' : 'Пока нет сохранённых вариантов'}</b>${variants.length ? 'Попробуйте другое название.' : 'Соберите состав выше и сохраните первый вариант.'}</div></section>`;
   }
+  const examKey = id => 'exam-draft:' + acct.uid + ':' + id;
+  let examSaveQueue = Promise.resolve();
+  const examSaveTimers = new Map();
+  function examAnswerHTML(p, v) {
+    const draft = store.get(examKey(v.id), {}), done = !!v.attempt?.finished;
+    const answer = done ? v.attempt.answers[p.id] || '' : draft[p.id] ?? v.attempt?.answers?.[p.id] ?? '';
+    return `<form class="answer" data-exam-answer="${v.id}" data-pid="${p.id}">
+      <label for="exam-answer-${p.id}">Ваш ответ${p.pts ? ' (развёрнутое решение)' : ''}<textarea id="exam-answer-${p.id}" maxlength="4000" ${done ? 'readonly' : ''}>${esc(answer)}</textarea></label>
+      ${done ? '' : '<button type="submit" class="btn">Сохранить ответ</button>'}
+      <div class="verdict" role="status">${done ? 'Пробник завершён. Ответ сохранён.' : 'Ответ проверяется только после завершения пробника.'}</div></form>`;
+  }
+  function flushExam(id, finish = false) {
+    const key = examKey(id), patch = {...store.get(key, {})};
+    const request = examSaveQueue.catch(() => {}).then(async () => {
+      const r = await api('/teach/variants/attempt', 'POST', {id: +id, answers: patch, finish});
+      const rest = store.get(key, {});
+      for (const pid in patch) if (rest[pid] === patch[pid]) delete rest[pid];
+      store.set(key, rest);
+      return r;
+    });
+    examSaveQueue = request; return request;
+  }
+  function examResultsHTML(v) {
+    const run = v.attempt;
+    if (!run?.finished) return `<a class="t-back" href="#teach-variant-${v.id}">К варианту</a><div class="t-empty"><b>Пробник ещё не завершён</b>Ответы сохраняются без проверки.</div>`;
+    const names = {correct:'Верно', incorrect:'Неверно', unanswered:'Нет ответа', manual:'По критериям', unavailable:'Недоступно'};
+    const results = run.results || [], wrong = results.filter(r => ['incorrect','unanswered','manual'].includes(r.status));
+    return `<a class="t-back" href="#teach-variant-${v.id}">К варианту</a><header class="bk-head"><h1>${esc(v.title)} · результаты</h1><p class="bk-lead">Верно: ${results.filter(r => r.status === 'correct').length} из ${results.length}. ${results.some(r => r.status === 'manual') ? 'Развёрнутые решения оцените по критериям ниже.' : ''}</p></header>
+      <div class="exam-results-scroll"><table class="exam-results"><caption>Ответы пробника</caption><thead><tr><th scope="col">№</th><th scope="col">Ваш ответ</th><th scope="col">Верный ответ</th><th scope="col">Результат</th></tr></thead><tbody>${results.map((r,i) => `<tr><th scope="row">${i+1}</th><td>${esc(r.answer || '—')}</td><td>${esc(r.expected || '—')}</td><td class="${r.status === 'correct' ? 'exam-ok' : r.status === 'incorrect' ? 'exam-bad' : ''}">${names[r.status] || 'Недоступно'}</td></tr>`).join('')}</tbody></table></div>
+      <section class="t-sec"><h2>${wrong.length ? 'Разбор ошибок и пропущенных заданий' : 'Все ответы верны'}</h2>${wrong.map(r => {
+        const p = BANK.find(p => p.id === r.id); if (!p) return '<p>Задание больше недоступно в банке.</p>';
+        const solution = p.task ? (p.code ? codeBlock([{t:'Решение',c:p.code}], 'solution_' + p.task + '.py') : '<p>Разбор пока не добавлен.</p>') : `<div class="sol-md">${!p.src && p.sol ? p.sol : p.code ? md(p.code) : 'Разбор пока не добавлен.'}</div>`;
+        return `<article class="prob"><div class="prob-head"><h3>${v.bank.indexOf(p.id)+1}. ${esc(p.title)}</h3></div><div class="prob-body">${p.task !== 19 && gameSet(p) ? gameText(gameSet(p).set[0]) : ''}${p.text}${shownExtra(p.extra) ? p.extra : ''}<h4>Как решается задание</h4>${solution}${p.pts ? selfCrit(p) : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}</div></article>`;
+      }).join('')}</section>`;
+  }
+  document.addEventListener('input', e => {
+    const f = e.target.closest('[data-exam-answer]'); if (!f || e.target.readOnly) return;
+    const key = examKey(f.dataset.examAnswer), draft = store.get(key, {});
+    draft[f.dataset.pid] = e.target.value; store.set(key, draft);
+    $('.verdict',f).textContent = 'Ответ сохраняется…';
+    clearTimeout(examSaveTimers.get(f.dataset.examAnswer));
+    examSaveTimers.set(f.dataset.examAnswer, setTimeout(() => flushExam(f.dataset.examAnswer).then(() => { if (f.isConnected) $('.verdict',f).textContent = 'Ответ сохранён. Проверка — после завершения.'; }).catch(() => { if (f.isConnected) $('.verdict',f).textContent = 'Нет связи. Черновик сохранён в браузере; нажмите «Сохранить ответ», чтобы повторить.'; }), 600));
+  });
+  document.addEventListener('submit', async e => {
+    const f = e.target.closest('[data-exam-answer]'); if (!f) return; e.preventDefault();
+    const btn = $('[type=submit]',f); if (!btn) return; btn.disabled = true;
+    clearTimeout(examSaveTimers.get(f.dataset.examAnswer));
+    try { await flushExam(f.dataset.examAnswer); $('.verdict',f).textContent = 'Ответ сохранён. Проверка — после завершения.'; }
+    catch (err) { $('.verdict',f).textContent = err.message || 'Не удалось сохранить. Повторите попытку.'; }
+    finally { btn.disabled = false; }
+  });
+  document.addEventListener('click', async e => {
+    const b = e.target.closest('[data-exam-finish]'); if (!b) return;
+    b.disabled = true; clearTimeout(examSaveTimers.get(b.dataset.examFinish));
+    try {
+      if (b.textContent.includes('Результаты')) { location.hash = '#teach-variant-' + b.dataset.examFinish + '/results'; return; }
+      await flushExam(b.dataset.examFinish, true);
+      location.hash = '#teach-variant-' + b.dataset.examFinish + '/results';
+    } catch (err) { $('#exam-message').textContent = err.message || 'Не удалось завершить пробник. Повторите попытку.'; }
+    finally { b.disabled = false; }
+  });
   function variantCounts(subject) {
     return variantGroups(subject).map(([key, ps], i) => {
       const p = ps[0], linked = gameSet(p), num = p.task || psnum(p);
