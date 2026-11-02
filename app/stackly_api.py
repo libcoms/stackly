@@ -152,6 +152,8 @@ def migrate():
       CREATE TABLE IF NOT EXISTS tg_links (
         user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, chat_id INTEGER NOT NULL UNIQUE,
         username TEXT NOT NULL DEFAULT '', prefs TEXT NOT NULL DEFAULT '{}', linked INTEGER NOT NULL, digest_day TEXT NOT NULL DEFAULT '');
+      CREATE TABLE IF NOT EXISTS tg_webhook_updates (
+        id INTEGER PRIMARY KEY, response TEXT NOT NULL, created INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS tg_logins (
         token_hash TEXT PRIMARY KEY, browser_hash TEXT NOT NULL, role TEXT NOT NULL,
         expires INTEGER NOT NULL, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE);
@@ -1394,6 +1396,8 @@ def ai_say_take(uid, sid):
 # ---------------------------------------------------------------- Telegram: очередь сообщений
 # Бот (app/stackly_bot.py) забирает сообщения из tg_outbox и отправляет их; API в Telegram сам не ходит.
 TG_TOKEN = os.environ.get('STACKLY_TG_TOKEN', '')
+TG_WEBHOOK_SECRET = os.environ.get('STACKLY_TG_WEBHOOK_SECRET', '')
+TG_WEBHOOK_LOCK = threading.Lock()
 TG_BOT = os.environ.get('STACKLY_TG_BOT', '').lstrip('@')          # имя бота без @ — для ссылки t.me/<бот>
 TG_PREFS = {'done': True, 'join': True, 'due': True, 'digest': True}   # что присылать преподавателю
 
@@ -1611,6 +1615,7 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/auth/telegram/start'): self.tg_login_start,
             ('POST', '/api/auth/telegram/poll'): self.tg_login_poll,
             ('GET', '/api/telegram/config'): self.tg_config,
+            ('POST', '/api/tg/webhook'): self.tg_webhook,
             ('POST', '/api/auth/logout'): self.logout,
             ('GET', '/api/auth/accounts'): self.accounts,
             ('POST', '/api/auth/switch'): self.switch_account,
@@ -1705,7 +1710,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if fn is None:
                 raise ApiError(404, 'not_found', 'Нет такого адреса')
-            if method != 'GET':
+            if method != 'GET' and path != '/api/tg/webhook':
                 self.check_origin()
             fn()
         except ApiError as e:
@@ -3449,6 +3454,25 @@ class Handler(BaseHTTPRequestHandler):
             raise ApiError(409, 'email_taken', 'Эта почта уже используется. Аккаунты автоматически не объединяются.')
         self.send_json(200, {'user': self.user_json(db().execute('SELECT * FROM users WHERE id=?', (u['id'],)).fetchone())})
 
+    def tg_webhook(self):
+        supplied = self.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
+        if not TG_WEBHOOK_SECRET or not hmac.compare_digest(supplied.encode(), TG_WEBHOOK_SECRET.encode()):
+            raise ApiError(403, 'forbidden', 'Недоступно')
+        update = self.body(limit=128*1024)
+        uid = update.get('update_id')
+        if type(uid) is not int:
+            raise ApiError(400, 'bad_update', 'Некорректное обновление')
+        import stackly_bot
+        with TG_WEBHOOK_LOCK:
+            old = db().execute('SELECT response FROM tg_webhook_updates WHERE id=?', (uid,)).fetchone()
+            if old:
+                return self.send_json(200, json.loads(old['response']))
+            result = stackly_bot.webhook_update(update)
+            now = int(time.time())
+            db().execute('INSERT INTO tg_webhook_updates VALUES(?,?,?)', (uid,json.dumps(result),now))
+            db().execute('DELETE FROM tg_webhook_updates WHERE created<?', (now-2*86400,))
+        self.send_json(200, result)
+
     def tg_config(self):
         self.send_json(200, {'enabled': bool(TG_TOKEN and TG_BOT), 'channel': os.environ.get('STACKLY_TG_CHANNEL_URL', 'https://t.me/stacklyai')})
 
@@ -3614,4 +3638,5 @@ def main():
     srv.serve_forever()
 
 if __name__ == '__main__':
+    sys.modules['stackly_api'] = sys.modules[__name__]
     main()

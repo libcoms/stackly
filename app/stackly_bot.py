@@ -36,6 +36,8 @@ TICK = float(os.environ.get('STACKLY_TG_TICK', '2'))
 PERIOD = float(os.environ.get('STACKLY_TG_PERIOD', '60'))
 DIGEST_HOUR = int(os.environ.get('STACKLY_TG_DIGEST', '20'))
 REMIND_GAP = 6 * 3600          # «Напомнить» по одному заданию — не чаще раза в 6 часов
+_webhook = threading.local()
+
 MONTHS = ('января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря')
 PREF_NAMES = {'done': 'Ученик выполнил задание', 'join': 'Новый ученик в группе', 'due': 'Сводка, когда прошёл срок', 'digest': f'Вечерняя сводка в {DIGEST_HOUR}:00'}
 log = A.log
@@ -51,6 +53,9 @@ class TgError(Exception):
 
 def tg(method, **params):
     """Вызов Bot API; ошибка Telegram — TgError с кодом, сеть — OSError."""
+    if hasattr(_webhook, 'actions'):
+        _webhook.actions.append(dict(params, method=method))
+        return True
     req = urllib.request.Request(f'{API}/bot{TOKEN}/{method}', data=json.dumps(params, ensure_ascii=False).encode(),
                                  headers={'Content-Type': 'application/json'})
     try:
@@ -75,6 +80,20 @@ def say(chat_id, text, markup=None, edit=None):
         tg('editMessageText', message_id=edit, **p)
     else:
         tg('sendMessage', **p)
+
+
+def webhook_update(update):
+    """Capture one inline Bot API response; no outbound Telegram connection is needed."""
+    _webhook.actions = []
+    try:
+        if 'message' in update:
+            on_message(update['message'])
+        elif 'callback_query' in update:
+            on_callback(update['callback_query'])
+        messages = [a for a in _webhook.actions if a['method'] in ('sendMessage', 'editMessageText')]
+        return messages[-1] if messages else (_webhook.actions[-1] if _webhook.actions else {})
+    finally:
+        del _webhook.actions
 
 
 # ---------------------------------------------------------------- данные
@@ -275,7 +294,9 @@ def confirm_login(c, nonce):
         con.commit()
     except Exception:
         con.rollback(); raise
-    answer('Вход подтверждён')
+    answer('Вход подтверждён. Вернитесь в браузер.')
+    if hasattr(_webhook, 'actions'):
+        return
     say(chat['id'], 'Вход подтверждён. Вернитесь в тот браузер, где начали вход: сайт откроет аккаунт автоматически.')
 
 
@@ -414,6 +435,10 @@ def main():
         log.info('STACKLY_TG_TOKEN не задан — Telegram-бот выключен')
         return
     A.migrate()
+    if A.TG_WEBHOOK_SECRET:
+        log.info('Telegram webhook enabled; polling disabled')
+        jobs()
+        return
     try:
         tg('setMyCommands', commands=[{'command': 'hw', 'description': 'Задания и кто сдал'}, {'command': 'groups', 'description': 'Группы и коды'},
                                       {'command': 'student', 'description': 'Статистика ученика'}, {'command': 'settings', 'description': 'Уведомления'},
