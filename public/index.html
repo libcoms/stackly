@@ -652,6 +652,48 @@ button.hwi { font-family: inherit; cursor: pointer; }
   .who { grid-template-columns: minmax(0, 1fr) auto; }
   .who .pbar { display: none; }
 }
+/* генератор вариантов: компактный список с количеством */
+.variant-builder { max-width: 880px; }
+.variant-builder .variant-heading { margin: 8px 0 0; font: 650 19px/1.3 var(--f-body); }
+.variant-hint { color: var(--ink-2); font-size: 14px; max-width: 65ch; margin: 0; }
+.variant-toolbar, .variant-actions, .variant-footer { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.variant-toolbar .fld { flex: 1 1 260px; }
+.variant-selected-filter { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
+.variant-selected-filter input { width: 18px; height: 18px; }
+.variant-actions { justify-content: space-between; }
+.variant-actions .btn { min-height: 44px; }
+.variant-sheet { border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); max-height: min(60vh, 560px); overflow: auto; scrollbar-color: var(--line-2) var(--paper); scrollbar-width: thin; }
+.variant-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; min-height: 64px; align-items: stretch; border-bottom: 1px solid var(--line); }
+.variant-row:last-child { border-bottom: 0; }
+.variant-row.is-selected { background: var(--blue-soft); }
+.variant-number { display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--margin); font: 500 14px/1.3 var(--f-mono); color: var(--mute); }
+.variant-row.is-selected .variant-number { color: var(--blue-ink); }
+.variant-topic { display: grid; align-content: center; gap: 4px; padding: 12px 20px; min-width: 0; }
+.variant-topic label { font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
+.variant-topic small { font-size: 13px; color: var(--mute); }
+.variant-stepper { display: flex; align-items: center; align-self: center; margin: 8px 16px 8px 0; border: 1px solid var(--line-2); border-radius: var(--r-s); background: var(--paper); }
+.variant-stepper button { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--blue-fg); border-radius: var(--r-s); }
+.variant-stepper button:hover:not(:disabled) { background: var(--blue-soft); }
+.variant-stepper button:disabled { color: var(--mute); opacity: .45; cursor: default; }
+.variant-stepper svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.variant-stepper input { width: 44px; height: 44px; padding: 0; text-align: center; font: 600 16px var(--f-body); font-variant-numeric: tabular-nums; color: var(--ink); background: transparent; border: 0; border-inline: 1px solid var(--line); border-radius: 0; appearance: textfield; -moz-appearance: textfield; }
+.variant-stepper input::-webkit-inner-spin-button, .variant-stepper input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.variant-stepper input[aria-invalid=true] { color: var(--bad); }
+.variant-footer { justify-content: space-between; padding: 16px 0; background: var(--bg); border-top: 1px solid var(--line); }
+.variant-total { display: grid; gap: 4px; }
+.variant-total small { color: var(--mute); font-size: 13px; }
+.variant-no-match { padding: 20px; color: var(--ink-2); }
+@media (max-width: 560px) {
+  .variant-row { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .variant-topic { padding: 12px; }
+  .variant-topic label { font-size: 14px; }
+  .variant-stepper { margin-right: 8px; }
+  .variant-stepper button { width: 36px; }
+  .variant-stepper input { width: 32px; }
+  .variant-footer { align-items: stretch; }
+  .variant-footer .btn { width: 100%; }
+}
+
 /* редактор задания: подбор пунктов */
 .hw-form { display: grid; gap: 16px; max-width: 880px; }
 .hw-form .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 14px; }
@@ -6854,26 +6896,75 @@ function stacklyApp() {
     const top = '<a class="t-back" href="#bank">Банк задач</a><h1>Варианты</h1>';
     if (id) return top + (v ? `<h2>${esc(v.title)}</h2><p>${v.bank.length} задач. Добавьте вариант в домашнее задание через поле «Из варианта».</p>${listHTML(v.bank.map(id => BANK.find(p => p.id === id)).filter(Boolean))}${v.bank.some(id => !BANK.some(p => p.id === id)) ? '<p role="status">Часть задач больше недоступна в вашем банке.</p>' : ''}<a class="btn ghost" href="#teach-variants">Все варианты</a>` : '<p>Вариант не найден.</p>');
     const subjects = [...new Set(BANK.map(psubj))].sort();
-    return top + `<section class="t-sec"><h2>Создать вариант</h2><form id="variant-form" class="hw-form">
-      <label class="fld"><span>Название</span><input name="title" required maxlength="120" placeholder="Например: Пробник по информатике · ноябрь"></label>
-      <label class="fld"><span>Предмет</span><select name="subject" id="variant-subject">${subjects.map(x => `<option>${esc(x)}</option>`).join('')}</select></label>
-      <p>Укажите количество задач для каждого номера или темы. Задачи выбираются случайно без повторов. Связанные задания 19–21 включаются целиком.</p>
-      <div id="variant-counts" class="two">${variantCounts(subjects[0])}</div><p class="form-msg" role="alert"></p>
-      <button class="btn blue" type="submit" ${subjects.length ? '' : 'disabled'}>Сгенерировать и сохранить</button></form></section>
+    return top + `<section class="t-sec"><h2>Создать вариант</h2><form id="variant-form" class="hw-form variant-builder">
+      <div class="two"><label class="fld"><span>Название</span><input name="title" required maxlength="120" placeholder="Например: Пробник · ноябрь"></label>
+      <label class="fld"><span>Предмет</span><select name="subject" id="variant-subject">${subjects.map(x => `<option>${esc(x)}</option>`).join('')}</select></label></div>
+      <h3 class="variant-heading">Состав варианта</h3>
+      <p class="variant-hint">Выберите количество задач по темам. Задачи подберутся случайно, без повторов. В строке 19–21 выбирается количество комплектов из трёх задач.</p>
+      <div class="variant-toolbar"><label class="fld"><span>Найти номер или тему</span><input type="search" id="variant-topic-search" placeholder="Найти номер или тему" autocomplete="off"></label>
+        <label class="variant-selected-filter"><input type="checkbox" id="variant-selected-only">Только выбранные</label></div>
+      <div class="variant-actions"><button type="button" class="btn small ghost" data-variant-bulk="one">По одной каждого номера</button><button type="button" class="btn small ghost" data-variant-bulk="clear">Сбросить выбор</button></div>
+      <div class="variant-sheet"><div id="variant-counts">${variantCounts(subjects[0])}</div><p id="variant-no-match" class="variant-no-match" hidden>Нет подходящих тем. Измените поиск или выключите «Только выбранные».</p></div>
+      <p class="form-msg" role="alert"></p>
+      <div class="variant-footer"><div class="variant-total" role="status" aria-live="polite" aria-atomic="true" id="variant-total"><strong>Задачи не выбраны</strong><small>До 200 задач в одном варианте</small></div>
+      <button class="btn blue" type="submit" disabled>Сгенерировать и сохранить</button></div></form></section>
       <section class="t-sec"><h2>Мои варианты</h2><label class="fld"><span>Поиск по названию</span><input type="search" id="variant-search" placeholder="Название варианта"></label>
       <div id="variant-results">${variants.map(v => `<p data-variant-title="${esc(v.title.toLocaleLowerCase('ru'))}"><a href="#teach-variant-${v.id}">${esc(v.title)}</a> · ${v.bank.length} задач</p>`).join('')}</div><p id="variant-empty" ${variants.length ? 'hidden' : ''}>Варианты не найдены.</p></section>`;
   }
   function variantCounts(subject) {
-    return variantGroups(subject).map(([key, ps], i) => `<label class="fld" style="margin-bottom:12px"><span>${esc(key)} · доступно ${ps.length}</span><input type="number" name="count-${i}" min="0" max="${Math.min(200,ps.length)}" step="1" value="0" inputmode="numeric"></label>`).join('') || '<p>В банке пока нет задач.</p>';
+    return variantGroups(subject).map(([key, ps], i) => {
+      const p = ps[0], linked = gameSet(p), num = p.task || psnum(p);
+      const title = linked ? 'Игры с кучами камней' : (p.task ? EGE.find(t => t.n === p.task)?.title : subject === 'Математика' ? mathBy[num]?.title : '') || (p.src || p).topic || (num ? 'Задание ' + num : key);
+      const units = linked ? linked.set.length : 1, max = Math.min(Math.floor(200 / units), ps.length);
+      return `<div class="variant-row" data-variant-row data-search="${esc((key + ' ' + title).toLocaleLowerCase('ru'))}" data-units="${units}">
+        <span class="variant-number">${linked ? '19–21' : num || '—'}</span>
+        <div class="variant-topic"><label for="variant-count-${i}">${esc(title)}</label><small>${ps.length} ${linked ? 'комплектов в банке · по 3 задачи' : 'задач в банке'}</small></div>
+        <div class="variant-stepper"><button type="button" data-variant-step="-1" aria-label="Уменьшить количество: ${esc(title)}" aria-controls="variant-count-${i}" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12"/></svg></button>
+          <input type="number" id="variant-count-${i}" name="count-${i}" min="0" max="${max}" step="1" value="0" inputmode="numeric" data-variant-count aria-label="${esc(title)}: ${linked ? 'комплектов' : 'задач'}">
+          <button type="button" data-variant-step="1" aria-label="Увеличить количество: ${esc(title)}" aria-controls="variant-count-${i}"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12"/></svg></button></div></div>`;
+    }).join('') || '<p class="variant-no-match">В банке пока нет задач по этому предмету.</p>';
   }
+  function updateVariantSelection() {
+    const f = $('#variant-form'); if (!f) return;
+    const q = $('#variant-topic-search').value.trim().toLocaleLowerCase('ru'), selectedOnly = $('#variant-selected-only').checked;
+    let total = 0, groups = 0, visible = 0, invalid = false;
+    $$('[data-variant-row]', f).forEach(row => {
+      const input = $('input', row), n = Number(input.value), valid = input.validity.valid && input.value !== '';
+      input.setAttribute('aria-invalid', String(!valid)); invalid ||= !valid;
+      row.classList.toggle('is-selected', valid && n > 0);
+      if (valid && n > 0) { total += n * +row.dataset.units; groups++; }
+      row.hidden = !row.dataset.search.includes(q) || (selectedOnly && !(n > 0)); if (!row.hidden) visible++;
+      $('[data-variant-step="-1"]', row).disabled = !(n > 0);
+      $('[data-variant-step="1"]', row).disabled = n >= +input.max;
+    });
+    $('#variant-no-match').hidden = !!visible || !f.querySelector('[data-variant-row]');
+    $('#variant-total').innerHTML = `<strong>${invalid ? 'Проверьте количество задач' : total ? `Выбрано: ${total} ${plural(total, 'задача', 'задачи', 'задач')}` : 'Задачи не выбраны'}</strong><small>${total > 200 ? 'Лимит — 200 задач. Уменьшите количество.' : groups ? `Разделов: ${groups} · максимум 200 задач` : 'Укажите количество или выберите по одной'}</small>`;
+    f.querySelector('[type=submit]').disabled = !!f.dataset.saving || invalid || total === 0 || total > 200;
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-variant-step], [data-variant-bulk]'); if (!b) return;
+    if (b.dataset.variantStep) {
+      const input = document.getElementById(b.getAttribute('aria-controls'));
+      input.value = Math.max(0, Math.min(+input.max, (Number(input.value) || 0) + +b.dataset.variantStep));
+    } else {
+      $$('[data-variant-count]').forEach(input => { input.value = b.dataset.variantBulk === 'one' ? 1 : 0; });
+    }
+    updateVariantSelection();
+  });
   document.addEventListener('input', e => {
+    if (e.target.matches('[data-variant-count], #variant-topic-search')) return updateVariantSelection();
     if (e.target.id !== 'variant-search') return;
     const q = e.target.value.trim().toLocaleLowerCase('ru'); let found = 0;
     $$('[data-variant-title]').forEach(row => { row.hidden = !row.dataset.variantTitle.includes(q); if (!row.hidden) found++; });
     $('#variant-empty').hidden = !!found;
   });
   document.addEventListener('change', e => {
-    if (e.target.id === 'variant-subject') $('#variant-counts').innerHTML = variantCounts(e.target.value);
+    if (e.target.id === 'variant-selected-only') updateVariantSelection();
+    if (e.target.id === 'variant-subject') {
+      $('#variant-counts').innerHTML = variantCounts(e.target.value);
+      $('#variant-topic-search').value = ''; $('#variant-selected-only').checked = false;
+      updateVariantSelection();
+    }
     if (e.target.id === 'variant-import' && e.target.value && hwDraft) {
       const v = hwVariants.find(v => v.id === +e.target.value);
       if (!v) return;
@@ -6886,7 +6977,7 @@ function stacklyApp() {
   document.addEventListener('submit', async e => {
     const f = e.target; if (f.id !== 'variant-form') return; e.preventDefault();
     const msg = f.querySelector('.form-msg'), btn = f.querySelector('button[type=submit]');
-    btn.disabled = true; msg.textContent = '';
+    f.dataset.saving = '1'; btn.disabled = true; msg.textContent = '';
     try {
       const ids = new Set();
       variantGroups(f.elements.subject.value).forEach(([key, pool], i) => {
@@ -6901,7 +6992,7 @@ function stacklyApp() {
       const result = await api('/teach/variants', 'POST', {title: f.elements.title.value, bank: ordered});
       location.hash = '#teach-variant-' + result.id;
     } catch (err) { msg.textContent = err.message || 'Не удалось сохранить вариант'; }
-    finally { btn.disabled = false; }
+    finally { delete f.dataset.saving; updateVariantSelection(); }
   });
   async function loadTeach(h) {
     const seq = ++tSeq;
