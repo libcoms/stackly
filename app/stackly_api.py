@@ -88,6 +88,10 @@ def close_db():
 def migrate():
     os.makedirs(os.path.dirname(DB_PATH) or '.', exist_ok=True)
     db().executescript('''
+      CREATE TABLE IF NOT EXISTS variants (
+        id INTEGER PRIMARY KEY, author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL, bank TEXT NOT NULL, created INTEGER NOT NULL);
+      CREATE INDEX IF NOT EXISTS variants_author ON variants(author_id);
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
         pw_hash TEXT NOT NULL, created INTEGER NOT NULL);
@@ -1605,6 +1609,8 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/me/rating'): self.my_rating,
             ('GET', '/api/me/motivation'): self.my_motivation,
             # учитель
+            ('GET', '/api/teach/variants'): self.variants,
+            ('POST', '/api/teach/variants'): self.variant_save,
             ('GET', '/api/teach/groups'): self.t_groups,
             ('POST', '/api/teach/groups'): self.t_group_create,
             ('POST', '/api/teach/groups/update'): self.t_group_update,
@@ -2569,6 +2575,31 @@ class Handler(BaseHTTPRequestHandler):
         if u['role'] not in ('teacher', 'admin'):
             raise ApiError(403, 'forbidden', 'Раздел доступен только учителям')
         return u
+
+    def variants(self):
+        u = self.teacher()
+        rows = db().execute('SELECT * FROM variants WHERE author_id = ? ORDER BY id DESC', (u['id'],))
+        q = self.query.get('q', '').strip().casefold()
+        self.send_json(200, {'variants': [dict(r) | {'bank': json.loads(r['bank'])} for r in rows
+                                         if q in r['title'].casefold()]})
+
+    def variant_save(self):
+        u, d = self.teacher(), self.body()
+        title = self.text_field(d, 'title', 1, 120, 'Название')
+        bank = d.get('bank')
+        if not isinstance(bank, list) or not 1 <= len(bank) <= 200 or any(not isinstance(x, str) for x in bank):
+            raise ApiError(400, 'bad_variant', 'Выберите от 1 до 200 задач')
+        bank = list(dict.fromkeys(bank))
+        _, items, _ = content_bank()
+        allowed = {p['id'] for p in items} if u['role'] == 'admin' else teacher_builtin_ids(u, items)
+        where, args = self.visible_problems(u)
+        allowed |= {r['id'] for r in db().execute(f'SELECT p.id FROM problems p WHERE {where}', args)}
+        if any(x not in allowed for x in bank):
+            raise ApiError(400, 'bad_problem', 'В варианте есть недоступные задачи. Обновите банк.')
+        cur = db().execute('INSERT INTO variants(author_id,title,bank,created) VALUES(?,?,?,?)',
+                           (u['id'], title, json.dumps(bank), int(time.time())))
+        db().commit()
+        self.send_json(201, {'id': cur.lastrowid})
 
     def own_group(self, u, gid):
         g = db().execute('SELECT * FROM study_groups WHERE id = ?', (gid,)).fetchone()
