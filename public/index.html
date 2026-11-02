@@ -3977,7 +3977,7 @@ function stacklyApp() {
         <p class="bk-lead">${teacher ? 'Общий банк платформы и задачи преподавателей. Выберите номер задания или предмет — ответ проверяется сразу, решение открывается в любой момент.'
           : 'Задачи из ваших домашних заданий и банк, который открыл преподаватель. Решайте их здесь или прямо в задании — отметки общие.'}</p>${subjHint}
         <div class="bk-tools"><form class="bk-search" role="search" onsubmit="return false"><span aria-hidden="true">#</span><input id="bankq" type="search" placeholder="Номер (17, 5-9) или слова из условия" aria-label="Поиск задачи" value="${esc(bankF.q)}" autocomplete="off"></form>
-          ${teacher ? `<a class="btn" href="#edit-p-new">Новая задача</a><a class="btn ghost" href="#edit">Редактор задач</a>` : ''}</div>
+          ${teacher ? `<a class="btn" href="#edit-p-new">Новая задача</a><a class="btn ghost" href="#teach-variants">Варианты</a><a class="btn ghost" href="#edit">Редактор задач</a>` : ''}</div>
         ${srcSeg()}</header>`;
     if (!BANK.length) return `<div class="page wrap bk">${head.replace(/<div class="bk-tools">[\s\S]*?<\/form>/, '<div class="bk-tools">')}
       <div class="t-empty"><b>Задач пока нет</b>${teacher ? ((acct.subjects || []).length || acct.role === 'admin' ? 'По вашим предметам в банке пока нет задач. Добавьте свою — она сразу появится здесь.' : 'Отметьте предметы в <a href="#materials">«Материалах»</a> или добавьте свою задачу.') : 'Здесь появятся задачи, которые выдаст или откроет преподаватель. Ещё не в группе? Введите код группы в <a href="#me">личном кабинете</a>.'}</div></div>`;
@@ -6837,6 +6837,72 @@ function stacklyApp() {
   const tMsg = (title, text, href, label) => `<div class="t-empty" style="margin-top:30px"><b>${esc(title)}</b>${esc(text)}${href ? `<div class="cta-row"><a class="btn small" href="${href}">${label}</a></div>` : ''}</div>`;
   // разделы кабинета теперь в боковой панели — вкладок внутри страниц нет
   const tTabs = () => '';
+  let hwVariants = [];
+  const variantGroups = subject => {
+    const groups = new Map();
+    BANK.filter(p => psubj(p) === subject).forEach(p => {
+      const linked = gameSet(p);
+      if (linked && p.task !== 19) return;
+      const key = linked ? '19–21 (комплекты)' : String(p.task || psnum(p) || (p.src || p).topic || 'Без номера');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(p);
+    });
+    return [...groups].sort((a,b) => a[0].localeCompare(b[0], 'ru', {numeric:true}));
+  };
+  function variantsHTML(variants, h) {
+    const id = /^teach-variant-(\d+)$/.exec(h), v = id && variants.find(x => x.id === +id[1]);
+    const top = '<a class="t-back" href="#bank">Банк задач</a><h1>Варианты</h1>';
+    if (id) return top + (v ? `<h2>${esc(v.title)}</h2><p>${v.bank.length} задач. Добавьте вариант в домашнее задание через поле «Из варианта».</p>${listHTML(v.bank.map(id => BANK.find(p => p.id === id)).filter(Boolean))}${v.bank.some(id => !BANK.some(p => p.id === id)) ? '<p role="status">Часть задач больше недоступна в вашем банке.</p>' : ''}<a class="btn ghost" href="#teach-variants">Все варианты</a>` : '<p>Вариант не найден.</p>');
+    const subjects = [...new Set(BANK.map(psubj))].sort();
+    return top + `<section class="t-sec"><h2>Создать вариант</h2><form id="variant-form" class="hw-form">
+      <label class="fld"><span>Название</span><input name="title" required maxlength="120" placeholder="Например: Пробник по информатике · ноябрь"></label>
+      <label class="fld"><span>Предмет</span><select name="subject" id="variant-subject">${subjects.map(x => `<option>${esc(x)}</option>`).join('')}</select></label>
+      <p>Укажите количество задач для каждого номера или темы. Задачи выбираются случайно без повторов. Связанные задания 19–21 включаются целиком.</p>
+      <div id="variant-counts" class="two">${variantCounts(subjects[0])}</div><p class="form-msg" role="alert"></p>
+      <button class="btn blue" type="submit" ${subjects.length ? '' : 'disabled'}>Сгенерировать и сохранить</button></form></section>
+      <section class="t-sec"><h2>Мои варианты</h2><label class="fld"><span>Поиск по названию</span><input type="search" id="variant-search" placeholder="Название варианта"></label>
+      <div id="variant-results">${variants.map(v => `<p data-variant-title="${esc(v.title.toLocaleLowerCase('ru'))}"><a href="#teach-variant-${v.id}">${esc(v.title)}</a> · ${v.bank.length} задач</p>`).join('')}</div><p id="variant-empty" ${variants.length ? 'hidden' : ''}>Варианты не найдены.</p></section>`;
+  }
+  function variantCounts(subject) {
+    return variantGroups(subject).map(([key, ps], i) => `<label class="fld" style="margin-bottom:12px"><span>${esc(key)} · доступно ${ps.length}</span><input type="number" name="count-${i}" min="0" max="${Math.min(200,ps.length)}" step="1" value="0" inputmode="numeric"></label>`).join('') || '<p>В банке пока нет задач.</p>';
+  }
+  document.addEventListener('input', e => {
+    if (e.target.id !== 'variant-search') return;
+    const q = e.target.value.trim().toLocaleLowerCase('ru'); let found = 0;
+    $$('[data-variant-title]').forEach(row => { row.hidden = !row.dataset.variantTitle.includes(q); if (!row.hidden) found++; });
+    $('#variant-empty').hidden = !!found;
+  });
+  document.addEventListener('change', e => {
+    if (e.target.id === 'variant-subject') $('#variant-counts').innerHTML = variantCounts(e.target.value);
+    if (e.target.id === 'variant-import' && e.target.value && hwDraft) {
+      const v = hwVariants.find(v => v.id === +e.target.value);
+      if (!v) return;
+      if (v.bank.some(id => !BANK.some(p => p.id === id))) { toast('Часть задач варианта недоступна. Обновите состав варианта.'); return; }
+      v.bank.forEach(id => pickBank(id, true));
+      const title = e.target.form.elements.title; if (!title.value.trim()) title.value = v.title;
+      renderPicker(true); e.target.value = ''; toast('Вариант добавлен в ДЗ');
+    }
+  });
+  document.addEventListener('submit', async e => {
+    const f = e.target; if (f.id !== 'variant-form') return; e.preventDefault();
+    const msg = f.querySelector('.form-msg'), btn = f.querySelector('button[type=submit]');
+    btn.disabled = true; msg.textContent = '';
+    try {
+      const ids = new Set();
+      variantGroups(f.elements.subject.value).forEach(([key, pool], i) => {
+        const n = Number(f.elements['count-' + i].value);
+        if (!Number.isInteger(n) || n < 0 || n > pool.length || n > 200) throw new Error('Проверьте количество задач: ' + key);
+        const shuffled = [...pool];
+        for (let j = shuffled.length - 1; j > 0; j--) { const k = Math.floor(Math.random() * (j + 1)); [shuffled[j], shuffled[k]] = [shuffled[k], shuffled[j]]; }
+        shuffled.slice(0,n).forEach(p => { const g = gameSet(p); (g ? g.set : [p]).forEach(p => ids.add(p.id)); });
+      });
+      if (!ids.size || ids.size > 200) throw new Error('В варианте должно быть от 1 до 200 задач с учётом комплектов.');
+      const ordered = [...ids].sort((a,b) => { const p = BANK.find(p => p.id === a), q = BANK.find(p => p.id === b); return (p.task || psnum(p)) - (q.task || psnum(q)); });
+      const result = await api('/teach/variants', 'POST', {title: f.elements.title.value, bank: ordered});
+      location.hash = '#teach-variant-' + result.id;
+    } catch (err) { msg.textContent = err.message || 'Не удалось сохранить вариант'; }
+    finally { btn.disabled = false; }
+  });
   async function loadTeach(h) {
     const seq = ++tSeq;
     const put = html => { const box = $('#tpage'); if (seq !== tSeq || !box) return false; box.innerHTML = html; swapIn(box); return true; };
@@ -6845,7 +6911,11 @@ function stacklyApp() {
     if (!isTeacher()) return put(tMsg('Раздел для учителей', 'Попросите администратора сайта выдать вам роль учителя.', '#me', 'В личный кабинет'));
     let m;
     try {
-      if (h === 'teach' || h === 'teach-all') {
+      if (h === 'teach-variants' || /^teach-variant-/.test(h)) {
+        const data = await api('/teach/variants');
+        put(variantsHTML(data.variants, h));
+      }
+      else if (h === 'teach' || h === 'teach-all') {
         const all = h === 'teach-all' && acct.role === 'admin';
         // заодно освежаем тариф и занятые лимиты — их показывает строка тарифа
         const [gr, me] = await Promise.all([api('/teach/groups' + (all ? '?all=1' : '')), api('/auth/me').catch(() => null)]);
@@ -6869,7 +6939,12 @@ function stacklyApp() {
         if (m[2] !== 'new' && !hw) throw { message: 'Задание не найдено — возможно, его удалили' };
         const it = hw ? hw.items : {};
         hwDraft = { bank: new Set(it.bank || []), py: new Set(it.py || []), ege: new Set(it.ege || []), mat: new Set(it.mat || []), tab: 'bank', num: 0, lvl: '', q: '' };
-        if (put(tHwEditHTML(tGroup, hw))) renderPicker(true);
+        if (put(tHwEditHTML(tGroup, hw))) {
+          renderPicker(true);
+          const vs = await api('/teach/variants');
+          if (seq === tSeq && $('#variant-import')) $('#variant-import').innerHTML = '<option value="">Добавить сохранённый вариант…</option>' + vs.variants.map(v => `<option value="${v.id}">${esc(v.title)}</option>`).join('');
+          hwVariants = vs.variants;
+        }
       }
       else if ((m = h.match(/^teach-s-(\d+)$/))) put(tStudentHTML(await api('/teach/student?id=' + m[1])));
       else if ((m = h.match(/^teach-hwv-(\d+)$/))) put(tHwStatsHTML(await api('/teach/homework?id=' + m[1])));
@@ -6911,7 +6986,7 @@ function stacklyApp() {
   }
   function tGroupsHTML(groups, all) {
     return `<header class="t-head"><div><h1>${all ? 'Все группы' : 'Мои группы'}</h1>
-        <p>${all ? 'Группы всех преподавателей платформы.' : tCounts(groups)}</p></div></header>
+        <p>${all ? 'Группы всех преподавателей платформы.' : tCounts(groups)}</p></div><a class="btn ghost" href="#teach-variants">Варианты из банка</a></header>
       ${all ? '' : teachNext(groups) + (acct.plan && acct.plan.active && acct.plan.plan === 'pro' ? '' : planCard())}
       <section class="t-sec">
         ${all ? '' : `<form class="t-create" data-tform="group-new" novalidate><input name="name" maxlength="60" placeholder="Название: «11А» или «Пн 18:00»" aria-label="Название группы"><button class="btn blue" type="submit">Создать группу</button><div class="form-msg" role="alert"></div></form>`}
@@ -6980,7 +7055,7 @@ function stacklyApp() {
         <label class="fld"><span>Комментарий для учеников</span><textarea name="comment" maxlength="2000" placeholder="Например: сначала прочитайте разбор, потом решайте задачи">${esc(hw ? hw.comment : '')}</textarea></label>
         <div class="fld"><span>Кому</span><div class="stud-picks"><label><input type="radio" name="to" value="all" ${toAll ? 'checked' : ''}>Всей группе</label><label><input type="radio" name="to" value="some" ${toAll ? '' : 'checked'}>Выбранным ученикам</label></div>
           <div class="stud-picks" id="studlist" style="margin-top:6px" ${toAll ? 'hidden' : ''}>${ms.map(m => `<label><input type="checkbox" name="st" value="${m.id}" ${picked.has(m.id) ? 'checked' : ''}>${esc(m.name)}</label>`).join('') || '<span class="muted">В группе пока нет учеников</span>'}</div></div>
-        <div class="fld"><span>Состав задания</span><div class="picker"><div class="sel-sum" id="selsum"></div>
+        <label class="fld"><span>Из варианта</span><select id="variant-import"><option value="">Загрузка вариантов…</option></select></label><div class="fld"><span>Состав задания</span><div class="picker"><div class="sel-sum" id="selsum"></div>
           <div class="seg" role="tablist" ${canSee('inf-py') || canSee('inf-ege') || MATS.length ? '' : 'hidden'}><button type="button" data-ptab="bank">Банк задач<i></i></button>${canSee('inf-py') ? '<button type="button" data-ptab="py">Python<i></i></button>' : ''}${canSee('inf-ege') ? '<button type="button" data-ptab="ege">Разборы ЕГЭ<i></i></button>' : ''}${MATS.length ? '<button type="button" data-ptab="mat">Материалы<i></i></button>' : ''}</div>
           <div id="pickbody"></div></div></div>
         <div class="form-msg" role="alert"></div>
