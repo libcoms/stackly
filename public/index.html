@@ -757,6 +757,10 @@ html:has(.exam-shell) { scrollbar-gutter: stable; }
 @media (max-width: 700px) { .exam-footer { grid-template-columns: minmax(0,1fr); gap: 12px; } .exam-finish { justify-self: end; } }
 @media (max-width: 560px) { .exam-shell { gap: 12px; height: max(900px, calc(100dvh - 180px)); } .exam-progress-meta span { display: none; } .exam-numbers { max-height: 200px; } .exam-pager { gap: 8px; } .exam-pager .btn { padding-inline: 12px; font-size: 13px; } }
 
+.tg-auth { display: grid; gap: 12px; margin: 24px 0; padding-top: 20px; border-top: 1px solid var(--line); }
+.tg-subscribe { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 20px; border-bottom: 1px solid var(--line); }
+.tg-subscribe p { margin: 6px 0 0; color: var(--ink-2); font-size: 14px; }
+@media(max-width:560px) { .tg-subscribe { align-items: start; flex-direction: column; gap: 12px; } }
 /* редактор задания: подбор пунктов */
 .hw-form { display: grid; gap: 16px; max-width: 880px; }
 .hw-form .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 260px); gap: 14px; }
@@ -3651,7 +3655,7 @@ function stacklyApp() {
       ['Сколько это стоит?', 'Есть бесплатный тариф: до 5 групп и 5 учеников, 2 ГБ, домашние задания с автопроверкой и статистика. Тариф Про — 350 ₽ в месяц или 3 700 ₽ в год, новым преподавателям первые 14 дней бесплатно. Оплата через ЮKassa, условия — в публичной оферте.'],
     ];
     const subjects = HOME_SUBJECTS.slice(0, 11);
-    return `<div class="page home">
+    return `<div class="page home"><aside class="tg-subscribe wrap" data-tg-subscribe hidden><div><b>stackly в Telegram</b><p>Разборы задач, приёмы подготовки и новости платформы — один пост в день.</p></div><a class="btn ghost" data-tg-channel target="_blank" rel="noopener noreferrer">Подписаться</a></aside>
     <section class="l-hero"><div class="wrap l-hero-grid">
       <div class="h-copy">
         <h1>Домашние задания, которые <em>проверяются сами</em></h1>
@@ -5729,6 +5733,7 @@ function stacklyApp() {
   const NEXT = 'stackly_next';
   const guestLink = `<a class="btn ghost wide" href="#python">Учебник Python — без входа</a>`;
   const addingAccount = () => location.hash === '#add-account';
+  const tgAuthHTML = () => `<section class="tg-auth" id="tg-auth" hidden><p>Или через Telegram</p><label class="fld"><span>Для нового аккаунта</span><select id="tg-auth-role"><option value="student">Я ученик</option><option value="teacher">Я преподаватель</option></select></label><button type="button" class="btn ghost wide" data-tg-login>Войти через Telegram</button><p class="auth-note">Если аккаунт уже есть, сначала привяжите Telegram в профиле. Для нового аккаунта действуют <a href="#offer">оферта</a> и <a href="#privacy">политика</a>.</p><div id="tg-auth-message" class="form-msg" role="status"></div></section>`;
   function pageLogin(gate) {
     const head = addingAccount()
       ? `<span class="eyebrow">stackly · ещё один аккаунт</span>
@@ -5750,7 +5755,7 @@ function stacklyApp() {
           <li><span class="no">3</span><div><b>Всё в аккаунте</b><span>Решённые задачи и сданные задания доступны с любого устройства.</span></div></li>
         </ul>
       </section>
-      <div class="auth-card" id="authcard">${authForm()}${guestLink}</div>
+      <div class="auth-card" id="authcard">${authForm()}${['login','register'].includes(acct.mode) ? tgAuthHTML() : ''}${guestLink}</div>
     </div>`;
   }
   // вошли, но материалы не загрузились (сеть, сбой сервера) — вход тут не поможет
@@ -5760,7 +5765,7 @@ function stacklyApp() {
       <p class="lead">Проверьте интернет и обновите страницу.</p>
       <button type="button" class="btn blue" data-act="reload">Обновить</button></section></div>`;
   }
-  function setMode(m) { acct.mode = m; const c = $('#authcard'); if (c) { c.innerHTML = authForm() + guestLink; const f = c.querySelector('input'); if (f) f.focus(); } }
+  function setMode(m) { acct.mode = m; const c = $('#authcard'); if (c) { c.innerHTML = authForm() + (['login','register'].includes(m) ? tgAuthHTML() : '') + guestLink; loadTelegramConfig(); const f = c.querySelector('input'); if (f) f.focus(); } }
   async function submitAuth(form) {
     const kind = form.dataset.auth, msg = form.querySelector('.form-msg'), btn = form.querySelector('[type=submit]');
     const v = id => (form.querySelector('#' + id) || {}).value || '';
@@ -5835,12 +5840,13 @@ function stacklyApp() {
     return `<section class="me-settings">
       <div class="panel span2 tg-panel" id="tgbox" hidden></div>
       <div class="panel"><div class="panel-h"><h2>Аккаунт</h2></div>
-        <div class="row-kv"><span>Почта</span><b>${esc(acct.email)}</b></div>
+        <div class="row-kv"><span>Почта</span><b>${acct.email.endsWith('@telegram.stackly.local') ? 'Вход через Telegram' : esc(acct.email)}</b></div>
         <div class="row-kv"><span>Имя</span><b>${esc(acct.name)}</b></div>
-        <form class="auth-form" data-settings="password" novalidate style="margin-top:14px">
+        ${acct.email.endsWith('@telegram.stackly.local') ? `<form class="auth-form" data-tg-email><p>Вы вошли через Telegram. Добавьте почту и пароль для резервного входа.</p><label class="fld"><span>Почта</span><input type="email" name="email" required autocomplete="email"></label><label class="fld"><span>Новый пароль</span><input type="password" name="password" required minlength="8" autocomplete="new-password"></label><div class="form-msg" role="alert"></div><button class="btn" type="submit">Добавить почту и пароль</button></form>` : `        <form class="auth-form" data-settings="password" novalidate style="margin-top:14px">
           ${field('st-old', 'Текущий пароль', 'password', 'autocomplete="current-password" required')}
           ${field('st-new', 'Новый пароль — от 8 символов', 'password', 'autocomplete="new-password" required minlength="8"')}
-          <div class="form-msg" role="alert"></div><button class="btn small" type="submit">Сменить пароль</button></form></div>
+          <div class="form-msg" role="alert"></div><button class="btn small" type="submit">Сменить пароль</button></form>`}
+</div>
       ${acct.ai ? aiStyleHTML() : ''}
       <div class="panel"><div class="panel-h"><h2>Удалить аккаунт</h2></div>
         <p class="auth-note">Аккаунт, прогресс и статистика удалятся с сервера навсегда.</p>
@@ -5849,14 +5855,54 @@ function stacklyApp() {
           <div class="form-msg" role="alert"></div><button class="btn small danger-btn" type="submit">Удалить навсегда</button></form></div>
     </section>`;
   }
+  async function loadTelegramConfig() {
+    try {
+      const cfg = await api('/telegram/config');
+      const auth = $('#tg-auth'); if (auth) auth.hidden = !cfg.enabled;
+      $$('[data-tg-subscribe]').forEach(box => { box.hidden = !/^https:\/\/t\.me\/[A-Za-z0-9_+/-]+$/.test(cfg.channel || ''); if (!box.hidden) $('[data-tg-channel]', box).href = cfg.channel; });
+    } catch (_) { }
+  }
+  let tgLoginGeneration = 0;
+  document.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-tg-login]'); if (!btn) return;
+    const generation = ++tgLoginGeneration, box = $('#tg-auth-message');
+    const popup = window.open('', '_blank'); let opened = false; btn.disabled = true;
+    try {
+      const start = await api('/auth/telegram/start', 'POST', {role: $('#tg-auth-role').value});
+      if (popup) { popup.opener = null; popup.location = start.url; opened = true; }
+      box.replaceChildren(document.createTextNode('Подтвердите вход в боте и вернитесь сюда. '));
+      const link = document.createElement('a'); link.href = start.url; link.target = '_blank'; link.rel = 'noopener'; link.textContent = 'Открыть бота'; box.append(link);
+      const deadline = Date.now() + start.expires_in * 1000;
+      while (generation === tgLoginGeneration && box.isConnected && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (!box.isConnected) break;
+        const r = await api('/auth/telegram/poll', 'POST', {token:start.token, add:addingAccount()});
+        if (!r.pending) {
+          if (!addingAccount()) forgetLocal();
+          let next = r.user.role === 'student' ? 'start' : 'teach';
+          try { next = sessionStorage.getItem(NEXT) || next; sessionStorage.removeItem(NEXT); } catch (_) { }
+          location.hash = next; location.reload(); return;
+        }
+      }
+      if (box.isConnected) box.textContent = 'Время ожидания истекло. Нажмите «Войти через Telegram» ещё раз.';
+    } catch (err) { if (popup && !opened) popup.close(); box.textContent = err.message || 'Не удалось войти через Telegram'; }
+    finally { btn.disabled = false; }
+  });
+  document.addEventListener('submit', async e => {
+    const f = e.target.closest('[data-tg-email]'); if (!f) return; e.preventDefault();
+    const btn = $('button',f), msg = $('.form-msg',f); btn.disabled = true;
+    try { const r = await api('/account/email','POST',{email:f.elements.email.value,password:f.elements.password.value}); setUser(r.user); route(); }
+    catch (err) { msg.textContent = err.message || 'Не удалось сохранить'; }
+    finally { btn.disabled = false; }
+  });
   /* ── Telegram-бот: подключение в кабинете. Ссылка одноразовая, бот привязывает по ней чат к аккаунту ── */
   const TG_PREF_NAMES = { done: 'Ученик выполнил задание', join: 'Новый ученик в группе', due: 'Сводка, когда прошёл срок', digest: 'Вечерняя сводка в 20:00' };
   function tgHTML(r) {
     const teacher = isTeacher();
     const head = `<div class="panel-h"><h2>Telegram</h2>${r.linked ? `<span class="plan-chip on">подключён${r.username ? ' · @' + esc(r.username) : ''}</span>` : ''}</div>`;
-    const about = teacher ? 'Бот присылает, кто сдал задания и кто вступил в группы, сводку после срока и вечернюю сводку за день. Командами /hw, /groups и /student прогресс видно прямо в Telegram, а кнопкой можно напомнить не сдавшим.'
-      : 'Бот пришлёт напоминания преподавателя о домашних заданиях, а по команде /hw покажет, что осталось сделать.';
-    if (!r.linked && r.pro_required) return head + `<p class="plan-note">${about}</p><p class="plan-note">Для преподавателей бот входит в тариф Про.</p>`;
+    const about = teacher ? 'Привяжите Telegram, чтобы входить без пароля. На тарифе Про бот присылает, кто сдал задания и кто вступил в группы, сводку после срока и вечернюю сводку за день. Командами /hw, /groups и /student прогресс видно прямо в Telegram, а кнопкой можно напомнить не сдавшим.'
+      : 'Привяжите Telegram для входа без пароля. Бот пришлёт напоминания преподавателя о домашних заданиях, а по команде /hw покажет, что осталось сделать.';
+
     if (!r.linked) return head + `<p class="plan-note">${about}</p>
       <div class="form-acts"><button type="button" class="btn small" data-tg="link">Подключить Telegram</button></div>
       <p class="plan-note" id="tgwait" hidden>Откройте Telegram и нажмите «Запустить» — ссылка действует 15 минут. <a id="tgurl" target="_blank" rel="noopener">Открыть ссылку</a> · <button type="button" class="linkbtn" data-tg="check">Я подключил</button></p>`;
@@ -8642,6 +8688,7 @@ function stacklyApp() {
     if (nav === 'rating') loadRating();
     if (nav === 'farm' || nav === 'sklad' || nav === 'vars') loadFarm(h);
     if (nav === 'me') { loadMyClass(); loadTg(); }
+    if (nav === 'login' || nav === 'home' || nav === 'start') loadTelegramConfig();
     document.title = { home: 'stackly · платформа для репетиторов', start: 'Главная · stackly', games: 'Игры · stackly', farm: 'Ферма · stackly', sklad: 'Склад · stackly', vars: 'Мастерская переменных · stackly', shop: 'Магазин баллов · stackly', rating: 'Рейтинг группы · stackly', course: 'Курс ЕГЭ по информатике · stackly', materials: 'Материалы · stackly', ege: 'Методичка · stackly', python: 'Python · stackly', bank: 'Банк задач · stackly', cheat: 'Шпаргалка · stackly', login: 'Вход · stackly', me: 'Кабинет · stackly', teach: 'Учителю · stackly', hw: 'Домашние задания · stackly', pay: 'Оплата · stackly', pricing: 'Тарифы и оплата · stackly', offer: location.hash === '#privacy' ? 'Политика персональных данных · stackly' : 'Публичная оферта · stackly' }[nav] || 'stackly';
     const ab = $('#acctbtn'); if (ab) ab.classList.toggle('cur', (nav === 'me' && acct.role !== 'student') || nav === 'login');
   }

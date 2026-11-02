@@ -152,6 +152,9 @@ def migrate():
       CREATE TABLE IF NOT EXISTS tg_links (
         user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, chat_id INTEGER NOT NULL UNIQUE,
         username TEXT NOT NULL DEFAULT '', prefs TEXT NOT NULL DEFAULT '{}', linked INTEGER NOT NULL, digest_day TEXT NOT NULL DEFAULT '');
+      CREATE TABLE IF NOT EXISTS tg_logins (
+        token_hash TEXT PRIMARY KEY, browser_hash TEXT NOT NULL, role TEXT NOT NULL,
+        expires INTEGER NOT NULL, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE);
       CREATE TABLE IF NOT EXISTS tg_tokens (
         token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS tg_outbox (
@@ -239,6 +242,8 @@ def migrate():
     db().execute("UPDATE spends SET status = 'shown' WHERE kind = 'alert' AND status = 'pending'")
     # номера задач учителей — с 1001 (до 1000 — встроенный банк); старые 101… сдвигаем один раз
     db().execute('UPDATE problems SET num = num + 900 WHERE builtin = 0 AND num BETWEEN 101 AND 1000')
+    if 'tg_only' not in [r['name'] for r in db().execute('PRAGMA table_info(users)')]:
+        db().execute('ALTER TABLE users ADD COLUMN tg_only INTEGER NOT NULL DEFAULT 0')
     cols = [r['name'] for r in db().execute('PRAGMA table_info(users)')]
     if 'role' not in cols:
         db().execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'student'")
@@ -1603,6 +1608,9 @@ class Handler(BaseHTTPRequestHandler):
             ('GET', '/api/auth/me'): self.me,
             ('POST', '/api/auth/register'): self.register,
             ('POST', '/api/auth/login'): self.login,
+            ('POST', '/api/auth/telegram/start'): self.tg_login_start,
+            ('POST', '/api/auth/telegram/poll'): self.tg_login_poll,
+            ('GET', '/api/telegram/config'): self.tg_config,
             ('POST', '/api/auth/logout'): self.logout,
             ('GET', '/api/auth/accounts'): self.accounts,
             ('POST', '/api/auth/switch'): self.switch_account,
@@ -1610,6 +1618,7 @@ class Handler(BaseHTTPRequestHandler):
             ('POST', '/api/auth/reset'): self.reset,
             ('POST', '/api/auth/password'): self.change_password,
             ('POST', '/api/account/delete'): self.delete_account,
+            ('POST', '/api/account/email'): self.tg_add_email,
             ('GET', '/api/progress'): self.get_progress,
             ('PUT', '/api/progress'): self.put_progress,
             ('GET', '/api/content/ege.js'): self.content_js,
@@ -2031,7 +2040,7 @@ class Handler(BaseHTTPRequestHandler):
         ip = self.client_ip()
         if too_many('reg:' + ip, 60, 3600):      # класс за одним NAT регистрируется на первом уроке
             raise ApiError(429, 'rate_limited', 'Слишком много регистраций с этого адреса, попробуйте через час')
-        if not EMAIL_RE.match(email):
+        if email.endswith('@telegram.stackly.local') or not EMAIL_RE.match(email):
             raise ApiError(400, 'bad_email', 'Проверьте адрес почты')
         if not 1 <= len(name) <= 60:
             raise ApiError(400, 'bad_name', 'Укажите имя — от 1 до 60 символов')
@@ -3426,6 +3435,60 @@ class Handler(BaseHTTPRequestHandler):
         self.send_json(200, {'ok': True})        # ЮKassa ждёт 200, иначе будет повторять уведомление
 
     # --- Telegram-бот: подключение из кабинета
+    def tg_add_email(self):
+        u, d = self.current_user(), self.body()
+        if not u['tg_only']:
+            raise ApiError(400, 'bad_request', 'В аккаунте уже настроен вход по почте')
+        email, password = str(d.get('email', '')).strip().lower(), str(d.get('password', ''))
+        if not EMAIL_RE.match(email) or email.endswith('@telegram.stackly.local'):
+            raise ApiError(400, 'bad_email', 'Проверьте адрес почты')
+        check_new_password(password, email)
+        try:
+            db().execute('UPDATE users SET email=?,pw_hash=?,tg_only=0 WHERE id=?', (email, hash_password(password), u['id']))
+        except sqlite3.IntegrityError:
+            raise ApiError(409, 'email_taken', 'Эта почта уже используется. Аккаунты автоматически не объединяются.')
+        self.send_json(200, {'user': self.user_json(db().execute('SELECT * FROM users WHERE id=?', (u['id'],)).fetchone())})
+
+    def tg_config(self):
+        self.send_json(200, {'enabled': bool(TG_TOKEN and TG_BOT), 'channel': os.environ.get('STACKLY_TG_CHANNEL_URL', 'https://t.me/stacklyai')})
+
+    def tg_login_start(self):
+        if not (TG_TOKEN and TG_BOT):
+            raise ApiError(503, 'tg_off', 'Вход через Telegram пока не настроен')
+        ip = self.client_ip()
+        if too_many('tglogin:' + ip, 20, 600):
+            raise ApiError(429, 'rate_limited', 'Слишком много попыток. Попробуйте позже')
+        hit('tglogin:' + ip)
+        d = self.body()
+        token, browser, now = secrets.token_urlsafe(24), secrets.token_urlsafe(32), int(time.time())
+        db().execute('DELETE FROM tg_logins WHERE expires < ?', (now,))
+        db().execute('INSERT INTO tg_logins VALUES(?,?,?,?,NULL)',
+                     (sha(token), sha(browser), 'teacher' if d.get('role') == 'teacher' else 'student', now+300))
+        self.send_json(200, {'url': f'https://t.me/{TG_BOT}?start=auth_{token}', 'token': token, 'expires_in': 300},
+                       [self.make_cookie('stackly_tg_login', browser, 300)])
+
+    def tg_login_poll(self):
+        d = self.body()
+        browser = self.cookie('stackly_tg_login') or ''
+        con = db()
+        con.execute('BEGIN IMMEDIATE')
+        try:
+            r = con.execute('SELECT * FROM tg_logins WHERE token_hash=? AND browser_hash=? AND expires>?',
+                            (sha(str(d.get('token', ''))), sha(browser), int(time.time()))).fetchone()
+            if not r or not browser:
+                raise ApiError(400, 'expired', 'Ссылка входа устарела. Начните вход заново.')
+            if not r['user_id']:
+                con.commit()
+                return self.send_json(200, {'pending': True})
+            u = con.execute('SELECT * FROM users WHERE id=?', (r['user_id'],)).fetchone()
+            con.execute('DELETE FROM tg_logins WHERE token_hash=?', (r['token_hash'],))
+            cookies = [self.start_session(u['id']), self.make_cookie('stackly_tg_login', '', 0)] + self.keep_current(d, u['id'])
+            con.commit()
+        except Exception:
+            con.rollback()
+            raise
+        self.send_json(200, {'user': self.user_json(u)}, cookies)
+
     def tg_status(self):
         u = self.current_user()
         r = db().execute('SELECT * FROM tg_links WHERE user_id = ?', (u['id'],)).fetchone()
@@ -3439,8 +3502,6 @@ class Handler(BaseHTTPRequestHandler):
         u = self.current_user()
         if not (TG_TOKEN and TG_BOT):
             raise ApiError(503, 'tg_off', 'Бот ещё не настроен на сервере')
-        if u['role'] != 'student' and not plan_of(u)['active']:
-            raise ApiError(403, 'plan_limit', 'Telegram-бот для преподавателей входит в тариф Про')
         if too_many(f'tg:{u["id"]}', 10, 3600):
             raise ApiError(429, 'rate_limited', 'Слишком много ссылок. Попробуйте через час')
         hit(f'tg:{u["id"]}')
@@ -3451,6 +3512,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def tg_unlink(self):
         u = self.current_user()
+        if u['tg_only']:
+            raise ApiError(400, 'email_required', 'Сначала добавьте почту и пароль в настройках аккаунта, чтобы сохранить доступ.')
         db().execute('DELETE FROM tg_links WHERE user_id = ?', (u['id'],))
         self.send_json(200, {'ok': True})
 

@@ -12,3 +12,6 @@ tools/fipi/
 
 # то же для профильной математики (tools/fipi_math.py)
 tools/fipi_math/
+
+# Local Telegram delivery receipts (never publish credentials)
+marketing/.delivery/

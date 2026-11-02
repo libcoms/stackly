@@ -160,7 +160,7 @@ class BotTest(T.ServerCase):
         a.call('POST', '/admin/plan', {'user_id': tid, 'plan': 'free'})
         self.tg.push(111, '/hw')
         self.last(111, 'входит в тариф Про')
-        self.assertEqual(t.call('POST', '/tg/link', {})[1]['error'], 'plan_limit')
+        self.assertEqual(t.call('POST', '/tg/link', {})[0], 200)  # linking/login is free; notifications remain Pro
         # /stop отвязывает чат
         self.tg.push(222, '/stop')
         self.last(222, 'Бот отключён')

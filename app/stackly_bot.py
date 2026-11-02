@@ -125,6 +125,15 @@ HELP_STUDENT = '<b>Команды</b>\n/hw — что осталось сдел�
 
 
 def cmd_start(chat, token, username):
+    if token.startswith('auth_'):
+        nonce = token[5:]
+        r = db().execute('SELECT * FROM tg_logins WHERE token_hash=? AND expires>? AND user_id IS NULL',
+                         (A.sha(nonce), int(time.time()))).fetchone()
+        if not r:
+            return say(chat, 'Ссылка входа устарела. Начните вход заново на сайте.')
+        return say(chat, '<b>Войти в stackly?</b>\nПодтвердите вход в браузере, где вы открыли сайт. Если вы не начинали вход — не нажимайте кнопку.\n'
+                   'Если аккаунт уже есть, сначала войдите по почте и привяжите Telegram в профиле, чтобы сохранить свои группы и прогресс.',
+                   {'inline_keyboard': [[{'text':'Подтвердить вход', 'callback_data':'auth:' + nonce}]]})
     if not token:
         u = linked(chat)
         return say(chat, ('Бот уже подключён.\n\n' + (HELP_STUDENT if u['role'] == 'student' else HELP_TEACHER)) if u else
@@ -134,7 +143,10 @@ def cmd_start(chat, token, username):
     if not r:
         return say(chat, 'Ссылка устарела или уже использована. Возьмите новую в кабинете на сайте.')
     db().execute('DELETE FROM tg_tokens WHERE token_hash = ?', (A.sha(token),))
-    # один чат — один аккаунт: прежняя привязка этого чата или этого аккаунта заменяется
+    existing = linked(chat)
+    if existing and existing['id'] != r['user_id']:
+        return say(chat, 'Этот Telegram уже привязан к другому аккаунту. Сначала отключите его в профиле прежнего аккаунта.')
+    # один чат — один аккаунт
     db().execute('DELETE FROM tg_links WHERE chat_id = ? OR user_id = ?', (chat, r['user_id']))
     db().execute("INSERT INTO tg_links (user_id, chat_id, username, prefs, linked) VALUES (?,?,?,'{}',?)", (r['user_id'], chat, username or '', now))
     u = linked(chat)
@@ -235,7 +247,41 @@ def on_message(m):
     return handlers[cmd]() if cmd in handlers else say(chat, HELP_TEACHER)
 
 
+def confirm_login(c, nonce):
+    msg, sender = c.get('message') or {}, c.get('from') or {}
+    chat = msg.get('chat') or {}
+    answer = lambda text: tg('answerCallbackQuery', callback_query_id=c['id'], text=text)
+    if chat.get('type') != 'private' or chat.get('id') != sender.get('id'):
+        return answer('Подтвердить вход можно только в личном чате с ботом.')
+    con = db(); con.execute('BEGIN IMMEDIATE')
+    try:
+        r = con.execute('SELECT * FROM tg_logins WHERE token_hash=? AND expires>? AND user_id IS NULL',
+                        (A.sha(nonce), int(time.time()))).fetchone()
+        if not r:
+            con.rollback(); return answer('Ссылка устарела или уже использована.')
+        u = linked(chat['id'])
+        if not u:
+            email = f"telegram-{sender['id']}@telegram.stackly.local"
+            u = con.execute('SELECT * FROM users WHERE email=? AND tg_only=1', (email,)).fetchone()
+            if not u:
+                name = ' '.join(str(sender.get(k) or '') for k in ('first_name','last_name')).strip()[:60] or 'Пользователь Telegram'
+                cur = con.execute('INSERT INTO users(email,name,pw_hash,created,role,tg_only) VALUES(?,?,?,?,?,1)',
+                                  (email, name, A.hash_password(A.secrets.token_urlsafe(48)), int(time.time()), r['role']))
+                if r['role'] == 'teacher': A.start_trial(cur.lastrowid)
+                u = con.execute('SELECT * FROM users WHERE id=?', (cur.lastrowid,)).fetchone()
+            con.execute("INSERT INTO tg_links(user_id,chat_id,username,linked) VALUES(?,?,?,?)",
+                        (u['id'],chat['id'],sender.get('username',''),int(time.time())))
+        con.execute('UPDATE tg_logins SET user_id=? WHERE token_hash=?', (u['id'],r['token_hash']))
+        con.commit()
+    except Exception:
+        con.rollback(); raise
+    answer('Вход подтверждён')
+    say(chat['id'], 'Вход подтверждён. Вернитесь в тот браузер, где начали вход: сайт откроет аккаунт автоматически.')
+
+
 def on_callback(c):
+    if (c.get('data') or '').startswith('auth:'):
+        return confirm_login(c, c['data'][5:])
     msg = c.get('message') or {}
     chat = (msg.get('chat') or {}).get('id')
     answer = lambda text: tg('answerCallbackQuery', callback_query_id=c['id'], text=text)
@@ -356,6 +402,7 @@ def jobs():
                 due_summaries()
                 digests()
                 db().execute('DELETE FROM tg_tokens WHERE expires < ?', (int(last),))
+                db().execute('DELETE FROM tg_logins WHERE expires < ?', (int(last),))
                 db().execute('DELETE FROM tg_sent WHERE ts < ?', (int(last) - 30 * 86400,))
         except Exception:
             log.exception('бот: фоновая задача')
